@@ -1,4 +1,3 @@
-
 # Data contract — first version
 
 Before generating data, I wrote down the grain I think each entity should have. This is a starting point, not a finished specification. If the data generation exposes a problem, I will change the contract and record why.
@@ -10,7 +9,7 @@ Before generating data, I wrote down the grain I think each entity should have. 
 | Customer | One row per customer | customer_id |
 | Loan | One row per loan account | account_id |
 | Subscription | One row per subscription agreement | subscription_id |
-| Payment | One row per payment transaction | payment_id |
+| Payment | One row per payment transaction against a loan account | payment_id |
 | Portfolio snapshot | One row per account and reporting date | account_id plus snapshot_date |
 | Reporting exclusion | One row per account, run and exclusion reason | run_id plus account_id plus exclusion_code |
 
@@ -36,9 +35,15 @@ Payment: payment_id, account_id, payment_date, amount, payment_status, payment_m
 
 Snapshot: account_id, snapshot_date, outstanding_balance, arrears_amount, days_past_due
 
+## Day 2 decision
+
+For the first version, payments belong to loan accounts through account_id. Subscriptions are linked to customers but do not share the payment table yet.
+
+This is intentional. Combining loan and subscription transactions now would create a mixed-grain table before there is a clear business requirement. Subscription billing can be added as a separate transaction type later if the reporting use case needs it.
+
 ## Questions for the next few days
 
-- Should payments belong to loans, subscriptions or both?
+- Should subscription payments eventually have their own table?
 - Do I need a separate product table?
 - Which dates need to be event dates and which are reporting dates?
 - How will I represent a refund or reversed payment?
