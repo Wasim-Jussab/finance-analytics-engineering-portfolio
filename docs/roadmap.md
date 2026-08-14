@@ -1,34 +1,50 @@
 
-# 90-day roadmap
+# Working plan
 
-## Phase 1 — Foundations: Days 1–15
+This is the order I currently expect to follow. It is not meant to imply that I already know every tool in advance.
 
-Repository standards, Python structure, synthetic data generation, SQL conventions, data contracts and local execution.
+## First 15 days — get a trustworthy local dataset
 
-## Phase 2 — Analytics engineering: Days 16–30
+- Generate synthetic data with a fixed seed
+- Inspect row counts, keys, dates and relationships
+- Add deliberately bad records so the checks have something to find
+- Load the data locally
+- Record the first changes to the data contract
 
-dbt project, staging/intermediate/mart layers, subscription revenue logic, incremental processing, snapshots and documentation.
+## Days 16–30 — build the first reporting use case
 
-## Phase 3 — Quality and delivery: Days 31–45
+- Create staging and reporting models
+- Learn the basic dbt project structure
+- Build subscription and payment outputs
+- Test grain, duplicates and important business rules
+- Explain one result from source record to final metric
 
-pytest, data-quality rules, reconciliation checks, failure injection, Docker-compatible setup and GitHub Actions CI.
+## Days 31–45 — make it less fragile
 
-## Phase 4 — Orchestration and cloud design: Days 46–60
+- Add Python tests and data-quality checks
+- Add reconciliation outputs
+- Test reruns and partial failures
+- Add GitHub Actions once the local commands are stable
 
-Airflow DAG design, retries, backfills, idempotency, S3/Glue/Redshift-compatible implementation and operational runbooks.
+## Days 46–60 — investigate orchestration and cloud patterns
 
-## Phase 5 — Loan risk and BI: Days 61–75
+- Create a small orchestration example
+- Add retry and backfill thinking
+- Map the local process to Glue, S3 and Redshift
+- Document what I would monitor in production
 
-Portfolio snapshots, arrears, repayment behaviour, ECL-style calculations, variance analysis, semantic modelling and governed reporting.
+## Days 61–75 — loan and reporting work
 
-## Phase 6 — Senior-level evidence: Days 76–90
+- Add portfolio snapshots
+- Add arrears and repayment behaviour
+- Build an ECL-style example with clearly stated assumptions
+- Produce a reporting layer that could feed BI
 
-Architecture decisions, security review, cost controls, performance review, documentation, interview narratives and final portfolio polish.
+## Days 76–90 — review the work properly
 
-## Milestone outputs
+- Revisit joins, grain, NULLs, dates and status logic
+- Try to break the pipeline
+- Improve the documentation based on what actually happened
+- Write a short explanation of the trade-offs and remaining gaps
 
-- **Milestone 1:** Reproducible local finance pipeline
-- **Milestone 2:** Auditable subscription reporting mart
-- **Milestone 3:** Tested and continuously validated pipeline
-- **Milestone 4:** Orchestrated loan-risk and reconciliation workflow
-- **Milestone 5:** Governed BI-ready portfolio with senior-level documentation
+The plan will change if the data exposes a better question. That change is part of the project rather than something to hide.
