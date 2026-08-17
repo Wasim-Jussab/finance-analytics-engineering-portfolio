@@ -41,6 +41,28 @@ For the first version, payments belong to loan accounts through account_id. Subs
 
 This is intentional. Combining loan and subscription transactions now would create a mixed-grain table before there is a clear business requirement. Subscription billing can be added as a separate transaction type later if the reporting use case needs it.
 
+## Day 3 reporting layer
+
+The first reporting outputs have these grains:
+
+| Output | Grain | Purpose |
+|---|---|---|
+| dim_customer | One row per customer | Descriptive customer attributes |
+| dim_loan | One row per loan account | Loan attributes plus completed-payment summary |
+| fct_payment | One row per payment transaction | Payment-level reporting, retaining failed payments |
+
+A failed payment remains a payment event. It is not removed from the fact table. It is excluded from completed-payment counts and amounts using an explicit `is_successful` flag. This avoids a common reporting problem where filtering failed transactions out too early makes the number of attempts look like the number of successful payments.
+
+The validation checks:
+
+- Keys are unique at each output grain.
+- Loan customer references resolve.
+- Payment account references resolve.
+- Completed payment amount reconciles to the raw payment file.
+- The completed-payment summary on `dim_loan` reconciles to the same total.
+
+The `as_of_date` used for loan age is supplied to the transformation rather than taken from the machine clock. That keeps the output reproducible.
+
 ## Questions for the next few days
 
 - Should subscription payments eventually have their own table?
