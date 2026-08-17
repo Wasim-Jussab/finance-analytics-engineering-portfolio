@@ -33,9 +33,17 @@ This is a local-first project. I will not create AWS resources, use employer dat
 
 ## Current state
 
-Day 1 was mainly setup. On Day 2 I added a standard-library Python generator that creates customers, loans, subscriptions and payments. It uses a fixed seed and checks keys, relationships and payment dates before writing CSVs locally.
+Day 1 was mainly setup. Day 2 added a standard-library Python generator for customers, loans, subscriptions and payments. Day 3 adds a first reporting layer from the raw CSVs.
 
-There is still no dbt project or useful reporting output. I want to inspect the generated files before deciding what should become a database table and what needs changing.
+The reporting layer currently contains:
+
+- `dim_customer`: one row per customer
+- `dim_loan`: one row per loan, including completed-payment summaries
+- `fct_payment`: one row per payment, including failed payments
+
+The transformation keeps failed payments in the fact table instead of silently dropping them. The loan summary only counts completed payments, and the validation checks that the completed total reconciles back to the raw payments.
+
+There is still no dbt project or database in the repository. That is deliberate: I wanted to establish the grain and checks in plain Python before adding another tool.
 
 ## Repository structure
 
