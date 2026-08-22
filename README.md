@@ -33,17 +33,27 @@ This is a local-first project. I will not create AWS resources, use employer dat
 
 ## Current state
 
-Day 1 was mainly setup. Day 2 added a standard-library Python generator for customers, loans, subscriptions and payments. Day 3 adds a first reporting layer from the raw CSVs.
+Day 1 was mainly setup. Day 2 added a standard-library Python generator for customers, loans, subscriptions and payments. Day 3 added a first reporting layer from the raw CSVs. Day 4 adds a local DuckDB boundary and moves the reporting SQL into a database-backed run.
 
-The reporting layer currently contains:
+The current reporting layer contains:
 
-- `dim_customer`: one row per customer
-- `dim_loan`: one row per loan, including completed-payment summaries
-- `fct_payment`: one row per payment, including failed payments
+- `mart.dim_customer`: one row per customer
+- `mart.dim_loan`: one row per loan, including completed-payment summaries
+- `mart.fct_payment`: one row per payment, including failed payments
 
-The transformation keeps failed payments in the fact table instead of silently dropping them. The loan summary only counts completed payments, and the validation checks that the completed total reconciles back to the raw payments.
+The load step creates typed `raw` tables from the generated CSVs, then runs the SQL in `sql/duckdb/marts.sql`. The as-of date is passed into the run instead of coming from the machine clock, and the completed-payment totals are reconciled across the raw and reporting tables.
 
-There is still no dbt project or database in the repository. That is deliberate: I wanted to establish the grain and checks in plain Python before adding another tool.
+There is still no dbt project or cloud infrastructure in the repository. That is deliberate: I wanted to understand the database boundary and SQL model first before adding dbt.
+
+## Running it locally
+
+```bash
+python -m pip install -e ".[dev]"
+PYTHONPATH=src python -m finance_portfolio.generate_data
+PYTHONPATH=src python -m finance_portfolio.load_duckdb
+```
+
+The generated CSVs and DuckDB file are ignored by Git. They can be recreated from the commands above.
 
 ## Repository structure
 
@@ -51,6 +61,7 @@ There is still no dbt project or database in the repository. That is deliberate:
 docs/                  Notes about the design and data
 notes/                 Short learning notes by day
 data/                  Local generated data, excluded where appropriate
+sql/duckdb/            SQL models run against the local database
 src/finance_portfolio/ Reusable Python code
 tests/                 Automated checks
 pyproject.toml         Python project and tooling configuration
@@ -61,7 +72,8 @@ Makefile               Short repeatable commands
 
 - Generate deterministic synthetic customers, loans, subscriptions and payments.
 - Inspect the output before writing reporting logic.
-- Add dbt models and tests once the grain is understood.
+- Load typed raw tables into a local analytical database.
+- Add dbt models and tests once the database boundary is understood.
 - Add reconciliation and failure cases rather than only successful examples.
 - Add CI and an orchestration design after the local process works.
 - Finish with a reporting layer and a review of what I would change in a real system.
