@@ -11,7 +11,9 @@ readme = "README.md"
 authors = [
     { name = "Wasim Jussab" }
 ]
-dependencies = []
+dependencies = [
+    "duckdb>=1.0,<2.0"
+]
 
 [project.optional-dependencies]
 dev = [
