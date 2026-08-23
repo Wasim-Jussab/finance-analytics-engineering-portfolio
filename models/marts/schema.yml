@@ -1,0 +1,26 @@
+version: 2
+models:
+  - name: dim_customer
+    columns:
+      - name: customer_id
+        tests: [not_null, unique]
+  - name: dim_loan
+    columns:
+      - name: account_id
+        tests: [not_null, unique]
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              to: source('raw', 'customers')
+              field: customer_id
+  - name: fct_payment
+    columns:
+      - name: payment_id
+        tests: [not_null, unique]
+      - name: account_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_loan')
+              field: account_id
