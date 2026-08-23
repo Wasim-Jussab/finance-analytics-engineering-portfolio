@@ -1,0 +1,7 @@
+finance_portfolio:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: "{{ env_var('FINANCE_DUCKDB_PATH', 'data/finance.duckdb') }}"
+      threads: 1
