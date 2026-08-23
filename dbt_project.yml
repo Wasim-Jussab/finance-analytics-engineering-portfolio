@@ -1,0 +1,12 @@
+name: finance_portfolio
+version: "1.0"
+config-version: 2
+profile: finance_portfolio
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+models:
+  finance_portfolio:
+    marts:
+      +materialized: table
+      +schema: mart
