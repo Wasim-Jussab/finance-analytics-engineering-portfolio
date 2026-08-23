@@ -14,10 +14,16 @@ select
     loan.customer_id,
     loan.product_code,
     loan.origination_date,
+    date_diff('month', loan.origination_date, parameters.as_of_date)
+        - case
+            when day(parameters.as_of_date) < day(loan.origination_date) then 1
+            else 0
+          end as loan_age_months,
     loan.original_balance,
     loan.status,
     coalesce(payment_summary.completed_payment_count, 0) as completed_payment_count,
     coalesce(payment_summary.completed_payment_amount, 0.00) as completed_payment_amount,
     payment_summary.last_completed_payment_date
 from {{ source('raw', 'loans') }} as loan
+cross join {{ source('raw', 'run_parameters') }} as parameters
 left join payment_summary using (account_id)
