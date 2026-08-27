@@ -33,7 +33,11 @@ This is a local-first project. I will not create AWS resources, use employer dat
 
 ## Current state
 
-Day 1 was mainly setup. Day 2 added a standard-library Python generator for customers, loans, subscriptions and payments. Day 3 added a first reporting layer from the raw CSVs. Day 4 adds a local DuckDB boundary and moves the reporting SQL into a database-backed run.
+Day 1 was mainly setup. Day 2 added a standard-library Python generator for customers, loans, subscriptions and payments. Day 3 added a first reporting layer from the raw CSVs. Day 4 added a local DuckDB boundary and moved the reporting SQL into a database-backed run.
+
+Day 5 introduced dbt Core with the DuckDB adapter. The raw DuckDB tables are declared as dbt sources, and the customer, loan and payment models are now materialised into the `mart` schema.
+
+On Day 6 I ran the dbt build against a freshly loaded database, fixed a database-path mismatch, and added descriptions for the sources and models. The local build completed with 3 models and 11 data tests passing. The full notes are in `notes/day-06.md`, and the run sequence is in `docs/dbt-workflow.md`.
 
 The current reporting layer contains:
 
@@ -41,29 +45,31 @@ The current reporting layer contains:
 - `mart.dim_loan`: one row per loan, including completed-payment summaries
 - `mart.fct_payment`: one row per payment, including failed payments
 
-The load step creates typed `raw` tables from the generated CSVs, then runs the SQL in `sql/duckdb/marts.sql`. The as-of date is passed into the run instead of coming from the machine clock, and the completed-payment totals are reconciled across the raw and reporting tables.
-
-There is still no dbt project or cloud infrastructure in the repository. That is deliberate: I wanted to understand the database boundary and SQL model first before adding dbt.
-
 ## Running it locally
 
 ```bash
 python -m pip install -e ".[dev]"
-PYTHONPATH=src python -m finance_portfolio.generate_data
-PYTHONPATH=src python -m finance_portfolio.load_duckdb
+make generate
+make load
+make dbt-debug
+make dbt-build
+make dbt-docs
 ```
 
-The generated CSVs and DuckDB file are ignored by Git. They can be recreated from the commands above.
+The generated CSVs, DuckDB file and dbt `target/` directory are ignored by Git. They can be recreated from the commands above. `DBT_DATABASE` can be set when a different local database path is needed.
 
 ## Repository structure
 
 ~~~text
-docs/                  Notes about the design and data
-notes/                 Short learning notes by day
-data/                  Local generated data, excluded where appropriate
-sql/duckdb/            SQL models run against the local database
+config/               Local dbt profile with no credentials
+docs/                 Notes about the design, data and dbt workflow
+notes/                Short learning notes by day
+data/                 Local generated data, excluded where appropriate
+models/               dbt sources and reporting models
+macros/               Small dbt configuration macro
+sql/duckdb/            Earlier SQL models run against the local database
 src/finance_portfolio/ Reusable Python code
-tests/                 Automated checks
+tests/                 Automated checks and dbt singular tests
 pyproject.toml         Python project and tooling configuration
 Makefile               Short repeatable commands
 ~~~
