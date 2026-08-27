@@ -3,7 +3,11 @@ from pathlib import Path
 
 import duckdb
 
-from finance_portfolio.generate_data import GeneratorConfig, generate_dataset, write_dataset
+from finance_portfolio.generate_data import (
+    GeneratorConfig,
+    generate_dataset,
+    write_dataset,
+)
 from finance_portfolio.load_duckdb import build_database, validate_database
 
 SQL_PATH = Path(__file__).parents[1] / "sql/duckdb/marts.sql"
