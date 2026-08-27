@@ -1,26 +1,70 @@
 version: 2
 models:
   - name: dim_customer
+    description: "Customer reporting dimension with a readable full name."
     columns:
       - name: customer_id
+        description: "Stable synthetic customer identifier."
         tests: [not_null, unique]
+      - name: full_name
+        description: "First and last name combined for reporting."
+      - name: date_of_birth
+        description: "Customer date of birth."
+      - name: postcode
+        description: "Synthetic customer postcode."
   - name: dim_loan
+    description: "One row per loan account with completed-payment summaries."
     columns:
       - name: account_id
+        description: "Stable synthetic loan account identifier."
         tests: [not_null, unique]
       - name: customer_id
+        description: "Customer associated with the loan."
         tests:
           - not_null
           - relationships:
-              to: source('raw', 'customers')
-              field: customer_id
+              arguments:
+                to: source('raw', 'customers')
+                field: customer_id
+      - name: product_code
+        description: "Synthetic loan product code."
+      - name: origination_date
+        description: "Date the loan was originated."
+      - name: loan_age_months
+        description: "Completed calendar months from origination to the fixed run date."
+      - name: original_balance
+        description: "Original loan balance."
+      - name: status
+        description: "Loan status at the point represented by the generated data."
+      - name: completed_payment_count
+        description: "Number of completed payment attempts for the account."
+      - name: completed_payment_amount
+        description: "Total amount from completed payment attempts."
+      - name: last_completed_payment_date
+        description: "Most recent completed payment date, where one exists."
   - name: fct_payment
+    description: "One row per payment attempt, retaining failed attempts."
     columns:
       - name: payment_id
+        description: "Stable synthetic payment identifier."
         tests: [not_null, unique]
       - name: account_id
+        description: "Loan account associated with the payment."
         tests:
           - not_null
           - relationships:
-              to: ref('dim_loan')
-              field: account_id
+              arguments:
+                to: ref('dim_loan')
+                field: account_id
+      - name: payment_date
+        description: "Date of the payment attempt."
+      - name: payment_month
+        description: "Payment date formatted as YYYY-MM for reporting."
+      - name: amount
+        description: "Payment amount."
+      - name: payment_status
+        description: "Whether the payment attempt completed or failed."
+      - name: payment_method
+        description: "Method used for the payment attempt."
+      - name: is_successful
+        description: "Boolean flag derived from payment_status."
