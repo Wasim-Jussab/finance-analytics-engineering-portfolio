@@ -22,6 +22,8 @@ htmlcov/
 *.sqlite3
 outputs/
 reports/
+target/
+logs/
 
 # Data files
 data/raw/*
