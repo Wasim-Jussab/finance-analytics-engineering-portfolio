@@ -39,6 +39,8 @@ Day 5 introduced dbt Core with the DuckDB adapter. The raw DuckDB tables are dec
 
 On Day 6 I ran the dbt build against a freshly loaded database, fixed a database-path mismatch, and added descriptions for the sources and models. The local build completed with 3 models and 11 data tests passing. The full notes are in `notes/day-06.md`, and the run sequence is in `docs/dbt-workflow.md`.
 
+Day 7 adds domain and cross-table quality checks. The project now checks accepted statuses and payment methods, required reporting fields, and payment dates against loan origination dates. Source freshness is still deliberately deferred because the raw tables do not yet contain a real ingestion timestamp.
+
 The current reporting layer contains:
 
 - `mart.dim_customer`: one row per customer
