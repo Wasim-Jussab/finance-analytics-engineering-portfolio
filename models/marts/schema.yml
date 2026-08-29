@@ -8,10 +8,13 @@ models:
         tests: [not_null, unique]
       - name: full_name
         description: "First and last name combined for reporting."
+        tests: [not_null]
       - name: date_of_birth
         description: "Customer date of birth."
+        tests: [not_null]
       - name: postcode
         description: "Synthetic customer postcode."
+        tests: [not_null]
   - name: dim_loan
     description: "One row per loan account with completed-payment summaries."
     columns:
@@ -28,20 +31,34 @@ models:
                 field: customer_id
       - name: product_code
         description: "Synthetic loan product code."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['LOAN-A', 'LOAN-B', 'LOAN-C']
       - name: origination_date
         description: "Date the loan was originated."
+        tests: [not_null]
       - name: loan_age_months
         description: "Completed calendar months from origination to the fixed run date."
+        tests:
+          - not_null
       - name: original_balance
         description: "Original loan balance."
+        tests: [not_null]
       - name: status
         description: "Loan status at the point represented by the generated data."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Open', 'Pending', 'Closed']
       - name: completed_payment_count
         description: "Number of completed payment attempts for the account."
+        tests: [not_null]
       - name: completed_payment_amount
         description: "Total amount from completed payment attempts."
-      - name: last_completed_payment_date
-        description: "Most recent completed payment date, where one exists."
+        tests: [not_null]
   - name: fct_payment
     description: "One row per payment attempt, retaining failed attempts."
     columns:
@@ -58,13 +75,24 @@ models:
                 field: account_id
       - name: payment_date
         description: "Date of the payment attempt."
-      - name: payment_month
-        description: "Payment date formatted as YYYY-MM for reporting."
+        tests: [not_null]
       - name: amount
         description: "Payment amount."
+        tests: [not_null]
       - name: payment_status
         description: "Whether the payment attempt completed or failed."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Completed', 'Failed']
       - name: payment_method
         description: "Method used for the payment attempt."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Direct Debit', 'Card', 'Bank Transfer']
       - name: is_successful
         description: "Boolean flag derived from payment_status."
+        tests: [not_null]
