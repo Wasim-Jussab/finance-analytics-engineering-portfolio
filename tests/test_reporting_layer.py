@@ -1,6 +1,4 @@
 from datetime import date
-from decimal import Decimal
-
 from finance_portfolio.build_reporting_layer import (
     build_reporting_layer,
     validate_reporting_layer,
