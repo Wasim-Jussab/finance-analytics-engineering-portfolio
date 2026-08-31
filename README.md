@@ -1,56 +1,82 @@
-# Finance analytics engineering practice
+# Finance Analytics Engineering Portfolio
 
-I am using this repository to work through the parts of analytics engineering that I want more evidence of publicly.
+[![quality-checks](https://github.com/Wasim-Jussab/finance-analytics-engineering-portfolio/actions/workflows/quality-checks.yml/badge.svg)](https://github.com/Wasim-Jussab/finance-analytics-engineering-portfolio/actions/workflows/quality-checks.yml)
 
-In my current work I already use SQL, Power BI, Redshift, AWS Glue/Python, reporting models, regulatory reporting and reconciliations. I do not want to upload work data or pretend that a small GitHub project is the same as running a production platform. The plan is to build a small synthetic finance data system, make the decisions visible and keep notes on what I am learning.
+A local finance data pipeline built with Python, DuckDB and dbt Core. It generates synthetic customer, loan, subscription and payment data, loads typed raw tables, builds reporting models and checks the outputs through data tests and reconciliation controls.
 
-## What I am trying to learn
+I am building this project to make my move from data analysis into analytics engineering visible without publishing employer data. The business problems are familiar to me; the dbt structure, automated testing and engineering workflow are the areas I am practising publicly.
 
-The main gaps I want to practise are:
+## Current pipeline
 
-- Structuring a Python data project properly
-- Building transformations in dbt
-- Testing data rather than only checking the final report
-- Making pipelines repeatable and safe to rerun
-- Using GitHub Actions for basic CI
-- Designing orchestration and cloud versions of a local pipeline
-- Explaining the decisions clearly enough for another analyst or engineer to review
+```mermaid
+flowchart LR
+    A["Synthetic finance data"] --> B["Python generation and validation"]
+    B --> C[("DuckDB raw tables")]
+    C --> D["dbt transformations"]
+    D --> E[("Reporting marts")]
+    E --> F["dbt tests and reconciliation"]
+    F --> G["GitHub Actions"]
+```
 
-## What the project will cover
+Everything runs locally with no cloud account, credentials or paid service.
 
-The examples will be based on problems I understand, but the data will be generated:
+## What is implemented
 
-1. Subscription payments and revenue reporting
-2. Regulatory-style submission rules and exclusion reasons
-3. Loan portfolio snapshots and reconciliation
-4. A small governed reporting layer for BI
+| Area | Current implementation |
+|---|---|
+| Data generation | Deterministic customers, loans, subscriptions and payment attempts using a fixed seed |
+| Ingestion | Python loader creates typed DuckDB tables in the `raw` schema |
+| Transformation | dbt materialises customer, loan and payment models in the `mart` schema |
+| Data quality | Key, relationship, required-field, accepted-value and chronology tests |
+| Financial control | Completed-payment totals reconcile across raw payments, the payment fact and loan summaries |
+| Documentation | dbt source/model descriptions, architecture notes, data contract and daily decision log |
+| Automation | GitHub Actions reruns the local pipeline, Python tests and linting |
 
-The order may change when I find something that needs more work. I would rather record that than make the project look more finished than it is.
+## Reporting models
 
-## Cost and data boundaries
+| Model | Grain | Important logic |
+|---|---|---|
+| `mart.dim_customer` | One row per customer | Combines customer attributes into a reporting dimension |
+| `mart.dim_loan` | One row per loan account | Adds completed-payment count, value and latest completed-payment date |
+| `mart.fct_payment` | One row per payment attempt | Retains successful and failed attempts and derives a success flag |
 
-This is a local-first project. I will not create AWS resources, use employer data, add personal identifiers, commit credentials or use paid APIs. The GitHub repository is public so the work can be reviewed, and generated data is excluded from the repository.
+Failed payments are deliberately retained. Filtering them out during transformation would make the reporting totals look cleaner while removing useful operational evidence.
 
-## Current state
+## Validation evidence
 
-Day 1 was mainly setup. Day 2 added a standard-library Python generator for customers, loans, subscriptions and payments. Day 3 added a first reporting layer from the raw CSVs. Day 4 added a local DuckDB boundary and moved the reporting SQL into a database-backed run.
+The current seed-42 run produced:
 
-Day 5 introduced dbt Core with the DuckDB adapter. The raw DuckDB tables are declared as dbt sources, and the customer, loan and payment models are now materialised into the `mart` schema.
+| Check | Result |
+|---|---:|
+| Customers | 25 |
+| Loans | 25 |
+| Subscriptions | 20 |
+| Payment attempts | 99 |
+| dbt models | 3 passed |
+| dbt data tests | 31 passed |
+| Total dbt resources | 34 passed |
+| Python tests | 6 passed |
+| Ruff | Passed |
 
-On Day 6 I ran the dbt build against a freshly loaded database, fixed a database-path mismatch, and added descriptions for the sources and models. The local build completed with 3 models and 11 data tests passing. The full notes are in `notes/day-06.md`, and the run sequence is in `docs/dbt-workflow.md`.
+I also changed one temporary payment status to an invalid value. The accepted-values test returned exactly one failure, proving that the check detects the intended issue rather than only passing clean generated data.
 
-Day 7 adds domain and cross-table quality checks. The project now checks accepted statuses and payment methods, required reporting fields, and payment dates against loan origination dates. Source freshness is still deliberately deferred because the raw tables do not yet contain a real ingestion timestamp.
+The full evidence and remaining limitations are recorded in [docs/validation.md](docs/validation.md).
 
-The current reporting layer contains:
+## Run locally
 
-- `mart.dim_customer`: one row per customer
-- `mart.dim_loan`: one row per loan, including completed-payment summaries
-- `mart.fct_payment`: one row per payment, including failed payments
-
-## Running it locally
+Requirements: Python 3.11 or later.
 
 ```bash
+git clone https://github.com/Wasim-Jussab/finance-analytics-engineering-portfolio.git
+cd finance-analytics-engineering-portfolio
 python -m pip install -e ".[dev]"
+make pipeline
+make check
+```
+
+Useful individual commands:
+
+```bash
 make generate
 make load
 make dbt-debug
@@ -58,32 +84,52 @@ make dbt-build
 make dbt-docs
 ```
 
-The generated CSVs, DuckDB file and dbt `target/` directory are ignored by Git. They can be recreated from the commands above. `DBT_DATABASE` can be set when a different local database path is needed.
+Generated CSVs, DuckDB files, dbt output and logs are excluded from Git.
 
-## Repository structure
+## Design decisions
 
-~~~text
-config/               Local dbt profile with no credentials
-docs/                 Notes about the design, data and dbt workflow
-notes/                Short learning notes by day
-data/                 Local generated data, excluded where appropriate
-models/               dbt sources and reporting models
-macros/               Small dbt configuration macro
-sql/duckdb/            Earlier SQL models run against the local database
-src/finance_portfolio/ Reusable Python code
-tests/                 Automated checks and dbt singular tests
-pyproject.toml         Python project and tooling configuration
-Makefile               Short repeatable commands
-~~~
+- **Synthetic data only:** no employer records, customer identifiers or confidential business rules are used.
+- **Explicit grain:** customer, loan and payment models have documented keys and relationship tests.
+- **Fixed reporting date:** loan age uses a supplied as-of date rather than the machine clock.
+- **Decimal money types:** monetary fields are loaded as controlled decimal values.
+- **Raw and mart separation:** source data is kept separate from reporting transformations.
+- **Reconciliation before presentation:** completed-payment values are compared at raw, fact and account-summary level.
+- **No false freshness claim:** source freshness is deferred because the raw tables do not yet contain a genuine ingestion timestamp.
 
-## Rough sequence
+## Known gaps
 
-- Generate deterministic synthetic customers, loans, subscriptions and payments.
-- Inspect the output before writing reporting logic.
-- Load typed raw tables into a local analytical database.
-- Add dbt models and tests once the database boundary is understood.
-- Add reconciliation and failure cases rather than only successful examples.
-- Add CI and an orchestration design after the local process works.
-- Finish with a reporting layer and a review of what I would change in a real system.
+This is a working project, not a finished platform.
 
-This is a learning project and a public record of the work. It is not a claim that every tool listed here has already been used in production.
+- The models currently rebuild as tables rather than incrementally.
+- Subscription data is generated and loaded but is not yet modelled into the reporting mart.
+- Source freshness needs real ingestion metadata.
+- The dataset is intentionally small and has not been performance-tested.
+- The cloud architecture is documented as a possible production mapping, not presented as a deployed AWS system.
+
+## Repository map
+
+```text
+config/                 Local dbt profile with no credentials
+docs/                   Architecture, data contract, workflow and validation evidence
+models/                 dbt sources and reporting models
+notes/                  Daily learning and decision log
+src/finance_portfolio/  Python generation and loading code
+sql/duckdb/             Earlier SQL implementation retained for comparison
+tests/                   Python and dbt data tests
+.github/workflows/       Automated quality checks
+```
+
+## Project notes
+
+The daily notes record what changed, what failed and what remains unresolved. They are intentionally more candid than the main README.
+
+- [Day 1: foundation and initial data contract](notes/day-01.md)
+- [Day 2: deterministic synthetic data](notes/day-02.md)
+- [Day 3: first reporting layer](notes/day-03.md)
+- [Day 4: DuckDB ingestion and SQL marts](notes/day-04.md)
+- [Day 5: first dbt models](notes/day-05.md)
+- [Day 6: end-to-end dbt run](notes/day-06.md)
+- [Day 7: stronger data-quality checks](notes/day-07.md)
+- [Day 8: public milestone review](notes/day-08.md)
+
+This repository demonstrates how I structure and validate analytics-engineering work. My production experience with Redshift, AWS Glue/Python, Power BI, regulatory reporting and financial reconciliations is described separately in my professional profile.
