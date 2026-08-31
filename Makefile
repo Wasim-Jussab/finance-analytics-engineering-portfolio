@@ -1,4 +1,4 @@
-.PHONY: test lint format generate load dbt-debug dbt-build dbt-docs check
+.PHONY: test lint format generate load dbt-debug dbt-build dbt-docs pipeline check
 
 DBT_DATABASE ?= data/finance.duckdb
 DBT_FLAGS = --project-dir . --profiles-dir config --target local
@@ -26,5 +26,7 @@ dbt-build:
 
 dbt-docs:
 	FINANCE_DUCKDB_PATH=$(DBT_DATABASE) dbt docs generate $(DBT_FLAGS) --no-partial-parse
+
+pipeline: generate load dbt-build
 
 check: lint test
