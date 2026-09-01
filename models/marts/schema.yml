@@ -96,3 +96,47 @@ models:
       - name: is_successful
         description: "Boolean flag derived from payment_status."
         tests: [not_null]
+  - name: dim_subscription
+    description: "One row per subscription agreement with reporting attributes as at the fixed run date."
+    columns:
+      - name: subscription_id
+        description: "Stable synthetic subscription identifier."
+        tests: [not_null, unique]
+      - name: customer_id
+        description: "Customer associated with the subscription."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customer')
+                field: customer_id
+      - name: product_code
+        description: "Synthetic subscription product code."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['SUB-1', 'SUB-2']
+      - name: start_date
+        description: "Date the subscription agreement started."
+        tests: [not_null]
+      - name: months_since_start
+        description: "Completed calendar months from start date to the fixed run date."
+        tests: [not_null]
+      - name: billing_frequency
+        description: "Contracted billing frequency; it is not treated as evidence of a payment."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Monthly', 'Annual']
+      - name: status
+        description: "Subscription status represented by the generated source row."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Active', 'Cancelled']
+      - name: is_active
+        description: "Boolean flag derived from status; no point-in-time history is implied."
+        tests: [not_null]
