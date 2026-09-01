@@ -63,9 +63,29 @@ The validation checks:
 
 The `as_of_date` used for loan age is supplied to the transformation rather than taken from the machine clock. That keeps the output reproducible.
 
+## Day 9 subscription mart
+
+The first subscription output keeps the agreement grain unchanged:
+
+| Output | Grain | Purpose |
+|---|---|---|
+| dim_subscription | One row per subscription agreement | Agreement attributes, current status and completed months since start |
+
+The source has a start date and current status but no cancellation date, status history, price or billing transactions. I therefore did not calculate revenue, lifetime value or historical active counts. Those measures would look useful but would rely on invented assumptions.
+
+The model adds `months_since_start` using the same fixed run date as the loan model. For a cancelled agreement this means elapsed months since the agreement began, not active tenure. The model also keeps billing frequency as a descriptive field rather than treating it as proof that a payment occurred.
+
+The additional checks confirm that:
+
+- Subscription keys are unique and required fields are populated.
+- Customer references resolve to the customer dimension.
+- Product, frequency and status values remain within the documented sets.
+- Start dates do not fall after the fixed run date.
+- The mart retains the same number of agreements as the raw source.
+
 ## Questions for the next few days
 
-- Should subscription payments eventually have their own table?
+- Should subscription payments eventually have their own transaction table?
 - Do I need a separate product table?
 - Which dates need to be event dates and which are reporting dates?
 - How will I represent a refund or reversed payment?

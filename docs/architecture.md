@@ -38,6 +38,10 @@ The SQL models create:
 
 The model uses a stored `run_parameters` table for the as-of date. This keeps loan-age calculations stable when the same input is rerun later.
 
+## Day 9 addition
+
+dbt now also creates `mart.dim_subscription` at one row per subscription agreement. It uses the same stored run date to calculate completed months since start. The model does not infer revenue or active tenure because the current source has no price, billing-event or cancellation-date fields.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.
