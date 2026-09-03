@@ -54,9 +54,30 @@ The subscription-specific checks cover key grain, required fields, customer rela
 
 For a controlled failure, one temporary mart start date was changed to 1 January 2026, after the fixed run date of 31 December 2025. `subscription_start_not_after_as_of_date` returned exactly one row and dbt exited with code 1. Rebuilding `dim_subscription` restored the clean data and all 15 subscription tests passed.
 
+## Subscription billing run — 3 September 2026
+
+The seed-42 pipeline was rebuilt after adding cancellation dates and subscription billing attempts. The existing published row counts remained stable.
+
+| Check | Result |
+|---|---:|
+| Raw subscription agreements | 20 |
+| Active / cancelled agreements | 14 / 6 |
+| Raw subscription billing attempts | 150 |
+| Completed / failed attempts | 125 / 25 |
+| Completed synthetic collections | £3,648.00 |
+| dbt table models | 5 passed |
+| dbt data tests | 61 passed |
+| Total dbt resources | 66 passed |
+| Python tests | 12 passed |
+| Ruff | Passed |
+
+The first generator run exposed a regression: inserting new random choices in the subscription function changed the established seed-42 outputs from 20 to 16 agreements and from 99 to 98 loan-payment attempts. I restored the original random-draw order and gave billing status generation a separate seeded random stream. A unit test now protects the published row-count baseline.
+
+For a controlled failure, one temporary fact amount was changed from a positive value to `-1.00`. `subscription_payment_amount_positive` returned exactly one row and dbt exited with code 1. Rebuilding the fact restored the clean data and all 61 tests passed again.
+
 ## Known gaps
 
 - Source freshness is not enabled because the raw tables do not yet contain a genuine ingestion timestamp.
 - The dbt models currently rebuild as tables rather than incrementally.
-- Subscription billing events, cancellation dates and price data are not yet available, so revenue and active-tenure measures are deliberately excluded.
+- Subscription refunds, retries, plan changes and revenue-recognition rules are not yet represented.
 - The current dataset is intentionally small; scale and performance behaviour have not been tested.

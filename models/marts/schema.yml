@@ -123,6 +123,11 @@ models:
       - name: months_since_start
         description: "Completed calendar months from start date to the fixed run date."
         tests: [not_null]
+      - name: cancellation_date
+        description: "Date a cancelled agreement ended; null for an active agreement."
+      - name: active_months
+        description: "Completed calendar months from start to cancellation or the fixed run date."
+        tests: [not_null]
       - name: billing_frequency
         description: "Contracted billing frequency; it is not treated as evidence of a payment."
         tests:
@@ -139,4 +144,37 @@ models:
                 values: ['Active', 'Cancelled']
       - name: is_active
         description: "Boolean flag derived from status; no point-in-time history is implied."
+        tests: [not_null]
+  - name: fct_subscription_payment
+    description: "One row per scheduled subscription payment attempt, including failed attempts."
+    columns:
+      - name: subscription_payment_id
+        description: "Stable synthetic subscription payment identifier."
+        tests: [not_null, unique]
+      - name: subscription_id
+        description: "Subscription agreement associated with the payment attempt."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_subscription')
+                field: subscription_id
+      - name: billing_date
+        description: "Scheduled date of the subscription payment attempt."
+        tests: [not_null]
+      - name: billing_month
+        description: "Calendar month derived from billing_date for reporting."
+        tests: [not_null]
+      - name: amount
+        description: "Synthetic contractual amount requested in the payment attempt."
+        tests: [not_null]
+      - name: payment_status
+        description: "Whether the subscription payment attempt completed or failed."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Completed', 'Failed']
+      - name: is_collected
+        description: "Boolean flag derived from payment_status."
         tests: [not_null]

@@ -28,6 +28,7 @@ def test_duckdb_build_loads_raw_and_reporting_tables(tmp_path) -> None:
     assert database_path.exists()
     assert counts["raw.customers"] == 10
     assert counts["raw.loans"] == 10
+    assert counts["raw.subscription_payments"] > 0
     assert counts["mart.dim_customer"] == 10
     assert counts["mart.dim_loan"] == 10
     assert counts["mart.fct_payment"] > 0
