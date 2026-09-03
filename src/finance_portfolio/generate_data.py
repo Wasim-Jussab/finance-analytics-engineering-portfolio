@@ -8,6 +8,7 @@ visible before any database or transformation tool is added.
 from __future__ import annotations
 
 import argparse
+import calendar
 import csv
 import random
 from dataclasses import dataclass
@@ -34,8 +35,16 @@ TABLE_COLUMNS = {
         "customer_id",
         "product_code",
         "start_date",
+        "cancellation_date",
         "billing_frequency",
         "status",
+    ],
+    "subscription_payments": [
+        "subscription_payment_id",
+        "subscription_id",
+        "billing_date",
+        "amount",
+        "payment_status",
     ],
     "payments": [
         "payment_id",
@@ -51,6 +60,12 @@ FIRST_NAMES = ["Aisha", "Ben", "Daniel", "Fatima", "Hannah", "Imran", "Leah", "M
 LAST_NAMES = ["Ahmed", "Clarke", "Davies", "Khan", "Patel", "Roberts", "Smith", "Taylor"]
 LOAN_PRODUCTS = ["LOAN-A", "LOAN-B", "LOAN-C"]
 SUBSCRIPTION_PRODUCTS = ["SUB-1", "SUB-2"]
+SUBSCRIPTION_PRICE_PENCE = {
+    ("SUB-1", "Monthly"): 1500,
+    ("SUB-1", "Annual"): 15000,
+    ("SUB-2", "Monthly"): 2400,
+    ("SUB-2", "Annual"): 24000,
+}
 PAYMENT_METHODS = ["Direct Debit", "Card", "Bank Transfer"]
 
 
@@ -68,6 +83,16 @@ def _random_date(rng: random.Random, start: date, end: date) -> date:
 
 def _money_from_pence(pence: int) -> str:
     return f"{Decimal(pence) / Decimal(100):.2f}"
+
+
+def _add_months(value: date, months: int) -> date:
+    """Add calendar months without allowing month-end dates to drift."""
+
+    month_index = value.month - 1 + months
+    year = value.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(value.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
 
 
 def generate_customers(config: GeneratorConfig, rng: random.Random) -> list[Row]:
@@ -116,18 +141,69 @@ def generate_subscriptions(
         # Not every customer has a subscription. This creates a useful join case.
         if rng.random() >= 0.72:
             continue
+        # Keep the original draw order stable so adding billing events does not
+        # silently change the existing seed-42 loan and subscription baseline.
+        product_code = rng.choice(SUBSCRIPTION_PRODUCTS)
+        start_date = _random_date(rng, config.start_date, date(2025, 9, 30))
+        billing_frequency = rng.choice(["Monthly", "Annual"])
+        status = rng.choice(["Active", "Active", "Cancelled"])
+        cancellation_date = ""
+        if status == "Cancelled":
+            synthetic_duration_days = 45 + (number % 4) * 30
+            cancellation_date = min(
+                start_date + timedelta(days=synthetic_duration_days),
+                config.end_date,
+            ).isoformat()
+
         rows.append(
             {
                 "subscription_id": f"SUB-{number:06d}",
                 "customer_id": customer["customer_id"],
-                "product_code": rng.choice(SUBSCRIPTION_PRODUCTS),
-                "start_date": _random_date(
-                    rng, config.start_date, date(2025, 9, 30)
-                ).isoformat(),
-                "billing_frequency": rng.choice(["Monthly", "Annual"]),
-                "status": rng.choice(["Active", "Active", "Cancelled"]),
+                "product_code": product_code,
+                "start_date": start_date.isoformat(),
+                "cancellation_date": cancellation_date,
+                "billing_frequency": billing_frequency,
+                "status": status,
             }
         )
+    return rows
+
+
+def generate_subscription_payments(
+    config: GeneratorConfig,
+    rng: random.Random,
+    subscriptions: list[Row],
+) -> list[Row]:
+    """Create one row per scheduled subscription payment attempt."""
+
+    rows: list[Row] = []
+    for subscription in subscriptions:
+        start_date = date.fromisoformat(subscription["start_date"])
+        cancellation_date = subscription["cancellation_date"]
+        final_billing_date = (
+            date.fromisoformat(cancellation_date) if cancellation_date else config.end_date
+        )
+        interval_months = 1 if subscription["billing_frequency"] == "Monthly" else 12
+        price_pence = SUBSCRIPTION_PRICE_PENCE[
+            (subscription["product_code"], subscription["billing_frequency"])
+        ]
+
+        sequence = 0
+        billing_date = start_date
+        while billing_date <= final_billing_date:
+            rows.append(
+                {
+                    "subscription_payment_id": f"SPAY-{len(rows) + 1:07d}",
+                    "subscription_id": subscription["subscription_id"],
+                    "billing_date": billing_date.isoformat(),
+                    "amount": _money_from_pence(price_pence),
+                    "payment_status": rng.choice(
+                        ["Completed", "Completed", "Completed", "Completed", "Failed"]
+                    ),
+                }
+            )
+            sequence += 1
+            billing_date = _add_months(start_date, sequence * interval_months)
     return rows
 
 
@@ -163,11 +239,17 @@ def generate_dataset(config: GeneratorConfig | None = None) -> Dataset:
     loans = generate_loans(config, rng, customers)
     subscriptions = generate_subscriptions(config, rng, customers)
     payments = generate_payments(rng, loans)
+    subscription_payments = generate_subscription_payments(
+        config,
+        random.Random(config.seed + 10_000),
+        subscriptions,
+    )
     return {
         "customers": customers,
         "loans": loans,
         "subscriptions": subscriptions,
         "payments": payments,
+        "subscription_payments": subscription_payments,
     }
 
 
@@ -180,6 +262,7 @@ def validate_dataset(dataset: Dataset) -> list[str]:
         "loans": "account_id",
         "subscriptions": "subscription_id",
         "payments": "payment_id",
+        "subscription_payments": "subscription_payment_id",
     }
 
     for table, key_field in key_fields.items():
@@ -190,6 +273,9 @@ def validate_dataset(dataset: Dataset) -> list[str]:
 
     customer_ids = {row["customer_id"] for row in dataset["customers"]}
     account_ids = {row["account_id"] for row in dataset["loans"]}
+    subscriptions_by_id = {
+        row["subscription_id"]: row for row in dataset["subscriptions"]
+    }
 
     missing_loan_customers = sorted(
         {row["customer_id"] for row in dataset["loans"]} - customer_ids
@@ -211,6 +297,59 @@ def validate_dataset(dataset: Dataset) -> list[str]:
     )
     if missing_payment_accounts:
         errors.append(f"payments reference missing accounts: {missing_payment_accounts}")
+
+    missing_payment_subscriptions = sorted(
+        {row["subscription_id"] for row in dataset["subscription_payments"]}
+        - set(subscriptions_by_id)
+    )
+    if missing_payment_subscriptions:
+        errors.append(
+            "subscription payments reference missing subscriptions: "
+            f"{missing_payment_subscriptions}"
+        )
+
+    for subscription in dataset["subscriptions"]:
+        cancellation_date = subscription["cancellation_date"]
+        if subscription["status"] == "Cancelled" and not cancellation_date:
+            errors.append(
+                "cancelled subscription has no cancellation date: "
+                f"{subscription['subscription_id']}"
+            )
+        if subscription["status"] == "Active" and cancellation_date:
+            errors.append(
+                "active subscription has a cancellation date: "
+                f"{subscription['subscription_id']}"
+            )
+        if cancellation_date and date.fromisoformat(cancellation_date) < date.fromisoformat(
+            subscription["start_date"]
+        ):
+            errors.append(
+                "subscription cancellation predates start: "
+                f"{subscription['subscription_id']}"
+            )
+
+    for payment in dataset["subscription_payments"]:
+        subscription = subscriptions_by_id.get(payment["subscription_id"])
+        if subscription is None:
+            continue
+        billing_date = date.fromisoformat(payment["billing_date"])
+        start_date = date.fromisoformat(subscription["start_date"])
+        cancellation_date = subscription["cancellation_date"]
+        if billing_date < start_date:
+            errors.append(
+                "subscription payment predates agreement: "
+                f"{payment['subscription_payment_id']}"
+            )
+        if cancellation_date and billing_date > date.fromisoformat(cancellation_date):
+            errors.append(
+                "subscription payment follows cancellation: "
+                f"{payment['subscription_payment_id']}"
+            )
+        if Decimal(payment["amount"]) <= 0:
+            errors.append(
+                "subscription payment amount is not positive: "
+                f"{payment['subscription_payment_id']}"
+            )
 
     loan_dates = {
         row["account_id"]: date.fromisoformat(row["origination_date"])

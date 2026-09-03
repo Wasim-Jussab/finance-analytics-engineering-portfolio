@@ -42,6 +42,12 @@ The model uses a stored `run_parameters` table for the as-of date. This keeps lo
 
 dbt now also creates `mart.dim_subscription` at one row per subscription agreement. It uses the same stored run date to calculate completed months since start. The model does not infer revenue or active tenure because the current source has no price, billing-event or cancellation-date fields.
 
+## Day 10 addition
+
+The synthetic source now includes cancellation dates and a separate subscription billing-event file. The loader keeps those events in `raw.subscription_payments`, and dbt creates `mart.fct_subscription_payment` at one row per billing attempt.
+
+This preserves the boundary between an agreement and its transactions. Joining the two without respecting that one-to-many relationship would multiply agreement rows and make active-subscription counts unreliable. Completed attempts can be summed as synthetic collections, but the model does not claim accounting revenue.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.

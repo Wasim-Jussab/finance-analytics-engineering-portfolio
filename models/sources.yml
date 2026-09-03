@@ -12,5 +12,7 @@ sources:
         description: "One row per payment attempt, including failed attempts."
       - name: subscriptions
         description: "One row per synthetic subscription."
+      - name: subscription_payments
+        description: "One row per scheduled synthetic subscription payment attempt."
       - name: run_parameters
         description: "One row containing the fixed as-of date for the run."
