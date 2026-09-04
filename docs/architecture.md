@@ -48,6 +48,12 @@ The synthetic source now includes cancellation dates and a separate subscription
 
 This preserves the boundary between an agreement and its transactions. Joining the two without respecting that one-to-many relationship would multiply agreement rows and make active-subscription counts unreliable. Completed attempts can be summed as synthetic collections, but the model does not claim accounting revenue.
 
+## Day 11 addition
+
+`mart.agg_subscription_monthly` sits downstream of the agreement dimension and billing fact. It joins at subscription key, then aggregates to month, product and billing frequency. This creates a BI-friendly reporting table without changing the transaction-level source of truth.
+
+The model does not generate empty calendar months. That is acceptable for the current event-reporting use case, but a later trend model will need a date spine if zero-activity months must appear.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.

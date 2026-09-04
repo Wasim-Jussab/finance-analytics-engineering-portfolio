@@ -113,6 +113,28 @@ The additional checks confirm that:
 - Cancellation dates agree with current agreement status.
 - Completed collection totals reconcile exactly from raw events to the fact table.
 
+## Day 11 monthly performance mart
+
+The billing fact now feeds a reporting aggregate with an explicit compound grain:
+
+| Output | Grain | Purpose |
+|---|---|---|
+| agg_subscription_monthly | One row per billing month, product code and billing frequency | Monthly attempt, failure and collection reporting |
+
+`billing_month` is stored as the first day of the month rather than a display string. That keeps it usable for sorting, date filtering and later calendar joins.
+
+The model exposes attempt, completed and failed counts alongside attempted and collected amounts. `collection_rate` is completed attempts divided by all attempts in the group. It is deliberately named and documented as an attempt-based rate; it is not a revenue measure or an amount-weighted recovery percentage.
+
+The additional controls confirm that:
+
+- The month, product and frequency combination is unique.
+- Completed and failed counts add back to all attempts.
+- Collected amount cannot exceed attempted amount.
+- Collection rate remains between zero and one.
+- Counts and monetary totals reconcile from the aggregate back to the billing fact.
+
+The aggregate currently contains only months with billing events. A date spine would be needed before missing months could be represented explicitly with zero values.
+
 ## Questions for the next few days
 
 - Do I need a separate product table?
@@ -121,4 +143,4 @@ The additional checks confirm that:
 - Should a failed attempt followed by a retry be linked through a billing-cycle identifier?
 - What should happen when an account has no matching customer?
 
-These questions are intentionally left open. I will answer them when the generated data and first models make the trade-offs clearer.
+These questions are intentionally left open. I will answer them when the generated data and models make the trade-offs clearer.
