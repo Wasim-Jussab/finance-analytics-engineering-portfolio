@@ -54,6 +54,12 @@ This preserves the boundary between an agreement and its transactions. Joining t
 
 The model does not generate empty calendar months. That is acceptable for the current event-reporting use case, but a later trend model will need a date spine if zero-activity months must appear.
 
+## Day 12 addition
+
+`mart.dim_date` provides a daily calendar from a configured start date to the fixed reporting date. Subscription billing events use a left join to derive their reporting month, while relationship and required-field tests verify complete coverage.
+
+I chose a left join so a calendar defect cannot silently remove a financial event. A missing calendar match leaves the event in the fact with a NULL reporting month, which causes the build to fail visibly.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.

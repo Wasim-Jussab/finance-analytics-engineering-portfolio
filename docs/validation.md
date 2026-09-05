@@ -95,10 +95,30 @@ The subscription billing fact was aggregated by billing month, product and billi
 
 For a controlled grain failure, I duplicated one temporary aggregate row for March 2024, SUB-1 and annual billing. `subscription_monthly_unique_grain` returned exactly one duplicate group and dbt exited with code 1. Rebuilding the aggregate restored 54 rows and the complete suite passed.
 
+## Date dimension run — 5 September 2026
+
+The calendar was generated from the configured start date to the fixed reporting date.
+
+| Check | Result |
+|---|---:|
+| First / last date | 1 January 2024 / 31 December 2025 |
+| Calendar rows | 731 |
+| Month-end dates | 24 |
+| Weekend dates | 208 |
+| Subscription billing dates matched | 150 / 150 |
+| dbt table models | 7 passed |
+| dbt data tests | 93 passed |
+| Total dbt resources | 100 passed |
+| Python tests | 12 passed |
+| Ruff | Passed |
+
+For a controlled continuity failure, I removed 15 July 2024 from the temporary date dimension. `date_dimension_continuity` returned exactly one gap and dbt exited with code 1. Rebuilding the calendar restored all 731 dates and the complete suite passed.
+
 ## Known gaps
 
 - Source freshness is not enabled because the raw tables do not yet contain a genuine ingestion timestamp.
 - The dbt models currently rebuild as tables rather than incrementally.
 - Subscription refunds, retries, plan changes and revenue-recognition rules are not yet represented.
-- The monthly aggregate has no date spine, so months without billing events do not appear as zero rows.
+- The date dimension exists, but the monthly aggregate does not yet zero-fill product/frequency combinations with no events.
+- The calendar start date is a project variable rather than source-system metadata.
 - The current dataset is intentionally small; scale and performance behaviour have not been tested.
