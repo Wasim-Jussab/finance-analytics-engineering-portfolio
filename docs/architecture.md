@@ -38,6 +38,28 @@ The SQL models create:
 
 The model uses a stored `run_parameters` table for the as-of date. This keeps loan-age calculations stable when the same input is rerun later.
 
+## Day 9 addition
+
+dbt now also creates `mart.dim_subscription` at one row per subscription agreement. It uses the same stored run date to calculate completed months since start. The model does not infer revenue or active tenure because the current source has no price, billing-event or cancellation-date fields.
+
+## Day 10 addition
+
+The synthetic source now includes cancellation dates and a separate subscription billing-event file. The loader keeps those events in `raw.subscription_payments`, and dbt creates `mart.fct_subscription_payment` at one row per billing attempt.
+
+This preserves the boundary between an agreement and its transactions. Joining the two without respecting that one-to-many relationship would multiply agreement rows and make active-subscription counts unreliable. Completed attempts can be summed as synthetic collections, but the model does not claim accounting revenue.
+
+## Day 11 addition
+
+`mart.agg_subscription_monthly` sits downstream of the agreement dimension and billing fact. It joins at subscription key, then aggregates to month, product and billing frequency. This creates a BI-friendly reporting table without changing the transaction-level source of truth.
+
+The model does not generate empty calendar months. That is acceptable for the current event-reporting use case, but a later trend model will need a date spine if zero-activity months must appear.
+
+## Day 12 addition
+
+`mart.dim_date` provides a daily calendar from a configured start date to the fixed reporting date. Subscription billing events use a left join to derive their reporting month, while relationship and required-field tests verify complete coverage.
+
+I chose a left join so a calendar defect cannot silently remove a financial event. A missing calendar match leaves the event in the fact with a NULL reporting month, which causes the build to fail visibly.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.

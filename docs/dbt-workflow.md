@@ -27,7 +27,7 @@ FINANCE_DUCKDB_PATH=data/finance.duckdb dbt debug --project-dir . --profiles-dir
 FINANCE_DUCKDB_PATH=data/finance.duckdb dbt build --project-dir . --profiles-dir config --target local --no-partial-parse
 ```
 
-`dbt build` materialises the three mart models and runs the model tests and singular reconciliation test. The `--no-partial-parse` option is useful while changing the project because it makes the command parse the files currently on disk.
+`dbt build` materialises the seven mart models and runs the model tests and singular controls. The `--no-partial-parse` option is useful while changing the project because it makes the command parse the files currently on disk.
 
 To generate the local documentation site:
 
@@ -41,9 +41,13 @@ The generated `target/` directory is local output and is not committed.
 
 | Model | Grain | Main checks |
 |---|---|---|
+| `dim_date` | One row per calendar date | Date/key uniqueness, valid attributes, configured bounds and uninterrupted daily sequence |
 | `dim_customer` | One row per customer | Customer key not null and unique |
 | `dim_loan` | One row per loan account | Account key not null and unique; customer relationship |
+| `dim_subscription` | One row per subscription agreement | Subscription key, customer relationship, accepted values, chronology and row-count reconciliation |
 | `fct_payment` | One row per payment | Payment key not null and unique; account relationship |
+| `fct_subscription_payment` | One row per subscription billing attempt | Payment key, subscription relationship, accepted values, chronology, positive amount and collection reconciliation |
+| `agg_subscription_monthly` | One row per month, product and billing frequency | Compound grain, metric consistency and reconciliation to the billing fact |
 
 The singular test `reconcile_completed_payments` compares completed-payment totals in three places:
 
@@ -52,6 +56,14 @@ The singular test `reconcile_completed_payments` compares completed-payment tota
 3. The completed-payment summary in `mart.dim_loan`
 
 This is a deliberately small control, but it reflects the type of check I would want before allowing a financial reporting model to be consumed.
+
+`reconcile_subscription_row_count` confirms that the agreement-level mart has not silently lost or multiplied source rows. `subscription_start_not_after_as_of_date` prevents a future-starting agreement from appearing in a model described as being valid at the fixed run date.
+
+`reconcile_subscription_collections` compares completed billing amounts in the raw event table with the fact table. The cancellation and billing-date tests also check that an active agreement has no cancellation date and that no attempt falls outside its agreement dates.
+
+`reconcile_subscription_monthly` proves that the reporting aggregate preserves attempt counts and monetary totals from `fct_subscription_payment`. Separate controls test the compound grain and internal count/rate logic.
+
+`date_dimension_bounds` checks the configured start, fixed end and expected number of dates. `date_dimension_continuity` uses the previous date in sequence to detect gaps inside those bounds. Billing fact and monthly aggregate relationship tests confirm that both daily and month-start dates resolve to the calendar.
 
 ## Local setup decision
 

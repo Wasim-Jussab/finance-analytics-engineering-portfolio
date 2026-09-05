@@ -33,8 +33,16 @@ RAW_TABLES: dict[str, list[tuple[str, str]]] = {
         ("customer_id", "VARCHAR"),
         ("product_code", "VARCHAR"),
         ("start_date", "DATE"),
+        ("cancellation_date", "DATE"),
         ("billing_frequency", "VARCHAR"),
         ("status", "VARCHAR"),
+    ],
+    "subscription_payments": [
+        ("subscription_payment_id", "VARCHAR"),
+        ("subscription_id", "VARCHAR"),
+        ("billing_date", "DATE"),
+        ("amount", "DECIMAL(12, 2)"),
+        ("payment_status", "VARCHAR"),
     ],
     "payments": [
         ("payment_id", "VARCHAR"),
@@ -67,7 +75,10 @@ def load_raw_tables(connection: duckdb.DuckDBPyConnection, raw_dir: Path) -> dic
         _create_raw_table(connection, table)
         column_names = [name for name, _ in columns]
         placeholders = ", ".join("?" for _ in column_names)
-        values = [tuple(row[name] for name in column_names) for row in rows]
+        values = [
+            tuple(row[name] if row[name] != "" else None for name in column_names)
+            for row in rows
+        ]
         if values:
             connection.executemany(f"INSERT INTO raw.{table} VALUES ({placeholders})", values)
         row_counts[table] = len(rows)
@@ -165,6 +176,7 @@ def build_database(
                 "raw.customers",
                 "raw.loans",
                 "raw.subscriptions",
+                "raw.subscription_payments",
                 "raw.payments",
                 "mart.dim_customer",
                 "mart.dim_loan",

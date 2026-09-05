@@ -5,6 +5,7 @@ __pycache__/
 *.pyd
 .venv/
 venv/
+*.egg-info/
 .env
 .env.*
 
@@ -24,6 +25,7 @@ outputs/
 reports/
 target/
 logs/
+config/.user.yml
 
 # Data files
 data/raw/*
