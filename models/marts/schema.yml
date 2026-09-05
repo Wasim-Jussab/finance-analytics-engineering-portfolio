@@ -1,5 +1,46 @@
 version: 2
 models:
+  - name: dim_date
+    description: "Daily reporting calendar from the configured start date to the fixed run date."
+    columns:
+      - name: date_key
+        description: "Integer calendar key in YYYYMMDD form."
+        tests: [not_null, unique]
+      - name: calendar_date
+        description: "One row per calendar date."
+        tests: [not_null, unique]
+      - name: calendar_year
+        description: "Four-digit calendar year."
+        tests: [not_null]
+      - name: calendar_quarter
+        description: "Calendar quarter number from one to four."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4]
+      - name: month_number
+        description: "Calendar month number from one to twelve."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+      - name: month_name
+        description: "Full English month name."
+        tests: [not_null]
+      - name: month_start_date
+        description: "First day of the calendar month."
+        tests: [not_null]
+      - name: month_end_date
+        description: "Last day of the calendar month."
+        tests: [not_null]
+      - name: is_month_end
+        description: "True when calendar_date is the final day of its month."
+        tests: [not_null]
+      - name: is_weekend
+        description: "True for Saturday and Sunday."
+        tests: [not_null]
   - name: dim_customer
     description: "Customer reporting dimension with a readable full name."
     columns:
@@ -161,7 +202,12 @@ models:
                 field: subscription_id
       - name: billing_date
         description: "Scheduled date of the subscription payment attempt."
-        tests: [not_null]
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: calendar_date
       - name: billing_month
         description: "First day of the calendar month derived from billing_date."
         tests: [not_null]
@@ -183,7 +229,12 @@ models:
     columns:
       - name: billing_month
         description: "First day of the billing calendar month."
-        tests: [not_null]
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: calendar_date
       - name: product_code
         description: "Synthetic subscription product code."
         tests:

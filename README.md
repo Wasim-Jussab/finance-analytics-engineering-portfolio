@@ -37,6 +37,7 @@ Everything runs locally with no cloud account, credentials or paid service.
 | Model | Grain | Important logic |
 |---|---|---|
 | `mart.dim_customer` | One row per customer | Combines customer attributes into a reporting dimension |
+| `mart.dim_date` | One row per calendar date | Provides tested calendar, month, quarter and weekend attributes |
 | `mart.dim_loan` | One row per loan account | Adds completed-payment count, value and latest completed-payment date |
 | `mart.dim_subscription` | One row per subscription agreement | Adds cancellation date, current status and completed active months |
 | `mart.fct_payment` | One row per payment attempt | Retains successful and failed attempts and derives a success flag |
@@ -58,13 +59,14 @@ The current seed-42 run produced:
 | Subscription billing attempts | 150 |
 | Completed subscription collections | 125 / £3,648.00 |
 | Monthly aggregate rows | 54 |
-| dbt models | 6 passed |
-| dbt data tests | 75 passed |
-| Total dbt resources | 81 passed |
+| Calendar dates | 731 |
+| dbt models | 7 passed |
+| dbt data tests | 93 passed |
+| Total dbt resources | 100 passed |
 | Python tests | 12 passed |
 | Ruff | Passed |
 
-Controlled failure checks have detected an invalid loan-payment status, a subscription start date after the reporting date and a non-positive subscription payment amount. Each targeted test returned exactly one offending row and a non-zero exit code before the clean model was rebuilt.
+Controlled failure checks have detected an invalid loan-payment status, a subscription start date after the reporting date, a non-positive subscription payment amount, a duplicate monthly grain and a missing calendar day. Each targeted test returned exactly one offending result and a non-zero exit code before the clean model was rebuilt.
 
 The full evidence and remaining limitations are recorded in [docs/validation.md](docs/validation.md).
 
@@ -105,6 +107,7 @@ Generated CSVs, DuckDB files, dbt output and logs are excluded from Git.
 - **Collections are not revenue:** a completed synthetic billing attempt supports a cash-collected measure, but revenue recognition remains out of scope.
 - **Aggregate grain is explicit:** monthly performance is grouped by billing month, product and billing frequency, with a compound-grain test.
 - **Collection rate is attempt-based:** completed attempts are divided by all attempts; this is not an amount-weighted recovery rate.
+- **Calendar range is controlled:** the date dimension starts from a dbt variable and ends at the fixed reporting date, with bounds and continuity tests.
 - **No false freshness claim:** source freshness is deferred because the raw tables do not yet contain a genuine ingestion timestamp.
 
 ## Known gaps
@@ -113,7 +116,8 @@ This is a working project, not a finished platform.
 
 - The models currently rebuild as tables rather than incrementally.
 - Subscription refunds, retries, plan changes and revenue-recognition rules are not modelled.
-- Months with no billing events are absent because a calendar spine has not been introduced yet.
+- The monthly aggregate is not yet zero-filled from the date dimension, so months without billing events remain absent.
+- The calendar start date is configuration rather than source-system metadata.
 - Source freshness needs real ingestion metadata.
 - The dataset is intentionally small and has not been performance-tested.
 - The cloud architecture is documented as a possible production mapping, not presented as a deployed AWS system.
@@ -146,5 +150,6 @@ The daily notes record what changed, what failed and what remains unresolved. Th
 - [Day 9: subscription modelling without invented revenue](notes/day-09.md)
 - [Day 10: subscription billing events and controls](notes/day-10.md)
 - [Day 11: monthly subscription performance](notes/day-11.md)
+- [Day 12: tested date dimension](notes/day-12.md)
 
 This repository demonstrates how I structure and validate analytics-engineering work. My production experience with Redshift, AWS Glue/Python, Power BI, regulatory reporting and financial reconciliations is described separately in my professional profile.

@@ -1,9 +1,11 @@
 select
-    subscription_payment_id,
-    subscription_id,
-    billing_date,
-    cast(date_trunc('month', billing_date) as date) as billing_month,
-    amount,
-    payment_status,
-    payment_status = 'Completed' as is_collected
-from {{ source('raw', 'subscription_payments') }}
+    payment.subscription_payment_id,
+    payment.subscription_id,
+    payment.billing_date,
+    calendar.month_start_date as billing_month,
+    payment.amount,
+    payment.payment_status,
+    payment.payment_status = 'Completed' as is_collected
+from {{ source('raw', 'subscription_payments') }} as payment
+left join {{ ref('dim_date') }} as calendar
+    on payment.billing_date = calendar.calendar_date

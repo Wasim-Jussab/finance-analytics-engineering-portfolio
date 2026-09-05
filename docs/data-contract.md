@@ -7,6 +7,7 @@ Before generating data, I wrote down the grain I think each entity should have. 
 | Entity | Intended grain | Key |
 |---|---|---|
 | Customer | One row per customer | customer_id |
+| Date | One row per calendar date | calendar_date |
 | Loan | One row per loan account | account_id |
 | Subscription | One row per subscription agreement | subscription_id |
 | Subscription payment | One row per scheduled subscription billing attempt | subscription_payment_id |
@@ -135,12 +136,35 @@ The additional controls confirm that:
 
 The aggregate currently contains only months with billing events. A date spine would be needed before missing months could be represented explicitly with zero values.
 
+## Day 12 date dimension
+
+The reporting calendar has its own tested grain:
+
+| Output | Grain | Purpose |
+|---|---|---|
+| dim_date | One row per calendar day from 1 January 2024 to the fixed run date | Shared date, month, quarter, month-end and weekend attributes |
+
+The start date is the `calendar_start_date` dbt variable and the end date comes from `raw.run_parameters`. This makes the calendar repeatable and prevents it from changing with the machine clock.
+
+Subscription billing dates are left joined to the calendar. The left join retains an event even if calendar coverage is wrong; the required `billing_month` field and date relationship test then expose the gap rather than silently dropping the transaction.
+
+The additional controls confirm that:
+
+- Calendar date and integer date key are unique and required.
+- Month and quarter values remain within valid ranges.
+- The first date, last date and expected row count agree with the configured bounds.
+- There are no missing dates inside the range.
+- Every billing date and aggregate billing month resolves to the calendar.
+
+The date dimension is now available, but the monthly aggregate is still event-led. Zero-filling every product and frequency combination would require a separate definition of which plans are valid in each month.
+
 ## Questions for the next few days
 
 - Do I need a separate product table?
 - Which dates need to be event dates and which are reporting dates?
 - How will I represent a refund or reversed payment?
 - Should a failed attempt followed by a retry be linked through a billing-cycle identifier?
+- Which product and frequency combinations should be generated for zero-activity months?
 - What should happen when an account has no matching customer?
 
 These questions are intentionally left open. I will answer them when the generated data and models make the trade-offs clearer.
