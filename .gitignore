@@ -19,6 +19,7 @@ htmlcov/
 # Local databases and generated outputs
 *.db
 *.duckdb
+*.wal
 *.sqlite
 *.sqlite3
 outputs/

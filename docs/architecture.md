@@ -60,6 +60,14 @@ The model does not generate empty calendar months. That is acceptable for the cu
 
 I chose a left join so a calendar defect cannot silently remove a financial event. A missing calendar match leaves the event in the fact with a NULL reporting month, which causes the build to fail visibly.
 
+## Day 13 addition
+
+The synthetic plan definitions now move through the same source-to-mart path as the transaction data. Python writes `subscription_plans.csv`, the typed loader creates `raw.subscription_plans`, and dbt materialises `mart.dim_subscription_plan`.
+
+Agreements reference plans by key. The monthly aggregate takes product and billing frequency from the plan dimension rather than treating the generator's price lookup as hidden business logic. A payment-to-plan control also confirms that every attempted amount equals the related synthetic contractual amount.
+
+This is a current-state reference table, not a historical pricing model. Effective dating and plan changes remain separate modelling work.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.

@@ -27,7 +27,7 @@ FINANCE_DUCKDB_PATH=data/finance.duckdb dbt debug --project-dir . --profiles-dir
 FINANCE_DUCKDB_PATH=data/finance.duckdb dbt build --project-dir . --profiles-dir config --target local --no-partial-parse
 ```
 
-`dbt build` materialises the seven mart models and runs the model tests and singular controls. The `--no-partial-parse` option is useful while changing the project because it makes the command parse the files currently on disk.
+`dbt build` materialises the eight mart models and runs the model tests and singular controls. The `--no-partial-parse` option is useful while changing the project because it makes the command parse the files currently on disk.
 
 To generate the local documentation site:
 
@@ -44,6 +44,7 @@ The generated `target/` directory is local output and is not committed.
 | `dim_date` | One row per calendar date | Date/key uniqueness, valid attributes, configured bounds and uninterrupted daily sequence |
 | `dim_customer` | One row per customer | Customer key not null and unique |
 | `dim_loan` | One row per loan account | Account key not null and unique; customer relationship |
+| `dim_subscription_plan` | One row per product and billing frequency | Plan key, compound grain, accepted values, positive amount and source reconciliation |
 | `dim_subscription` | One row per subscription agreement | Subscription key, customer relationship, accepted values, chronology and row-count reconciliation |
 | `fct_payment` | One row per payment | Payment key not null and unique; account relationship |
 | `fct_subscription_payment` | One row per subscription billing attempt | Payment key, subscription relationship, accepted values, chronology, positive amount and collection reconciliation |
@@ -64,6 +65,8 @@ This is a deliberately small control, but it reflects the type of check I would 
 `reconcile_subscription_monthly` proves that the reporting aggregate preserves attempt counts and monetary totals from `fct_subscription_payment`. Separate controls test the compound grain and internal count/rate logic.
 
 `date_dimension_bounds` checks the configured start, fixed end and expected number of dates. `date_dimension_continuity` uses the previous date in sequence to detect gaps inside those bounds. Billing fact and monthly aggregate relationship tests confirm that both daily and month-start dates resolve to the calendar.
+
+`subscription_agreement_matches_plan` checks that the product and billing frequency retained on each agreement agree with its referenced plan. `subscription_payment_matches_plan_amount` follows the agreement-to-plan relationship and rejects billing attempts with a different amount.
 
 ## Local setup decision
 

@@ -31,6 +31,7 @@ def test_csv_outputs_can_be_written(tmp_path) -> None:
     paths = write_dataset(dataset, tmp_path)
 
     assert set(paths) == {
+        "subscription_plans",
         "customers",
         "loans",
         "subscriptions",
@@ -58,11 +59,35 @@ def test_subscription_payments_have_valid_agreement_references() -> None:
 def test_seed_42_preserves_the_published_row_count_baseline() -> None:
     dataset = generate_dataset(GeneratorConfig(seed=42))
 
+    assert len(dataset["subscription_plans"]) == 4
     assert len(dataset["customers"]) == 25
     assert len(dataset["loans"]) == 25
     assert len(dataset["subscriptions"]) == 20
     assert len(dataset["payments"]) == 99
     assert len(dataset["subscription_payments"]) == 150
+
+
+def test_subscription_payment_amount_must_match_plan() -> None:
+    dataset = generate_dataset(GeneratorConfig(seed=42, customer_count=10))
+    dataset["subscription_payments"][0]["amount"] = "0.01"
+
+    assert validate_dataset(dataset) == [
+        "subscription payment amount does not match plan: SPAY-0000001"
+    ]
+
+
+def test_missing_subscription_plan_is_reported_without_crashing() -> None:
+    dataset = generate_dataset(GeneratorConfig(seed=42, customer_count=10))
+    missing_plan_id = dataset["subscriptions"][0]["subscription_plan_id"]
+    dataset["subscription_plans"] = [
+        plan
+        for plan in dataset["subscription_plans"]
+        if plan["subscription_plan_id"] != missing_plan_id
+    ]
+
+    assert validate_dataset(dataset) == [
+        f"subscriptions reference missing plans: ['{missing_plan_id}']"
+    ]
 
 
 def test_orphan_subscription_payment_is_reported() -> None:

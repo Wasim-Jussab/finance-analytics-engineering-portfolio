@@ -10,6 +10,7 @@ select
     subscription_id,
     customer_id,
     product_code,
+    subscription_plan_id,
     start_date,
     date_diff('month', start_date, as_of_date)
         - case

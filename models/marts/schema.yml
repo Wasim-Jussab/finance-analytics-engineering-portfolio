@@ -56,6 +56,29 @@ models:
       - name: postcode
         description: "Synthetic customer postcode."
         tests: [not_null]
+  - name: dim_subscription_plan
+    description: "Governed catalogue of the four synthetic subscription plans used in this project."
+    columns:
+      - name: subscription_plan_id
+        description: "Stable identifier for a product and billing-frequency combination."
+        tests: [not_null, unique]
+      - name: product_code
+        description: "Synthetic subscription product code."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['SUB-1', 'SUB-2']
+      - name: billing_frequency
+        description: "Contracted billing frequency for the plan."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Monthly', 'Annual']
+      - name: billing_amount
+        description: "Entirely synthetic contractual amount used to create and test billing attempts."
+        tests: [not_null]
   - name: dim_loan
     description: "One row per loan account with completed-payment summaries."
     columns:
@@ -151,6 +174,14 @@ models:
               arguments:
                 to: ref('dim_customer')
                 field: customer_id
+      - name: subscription_plan_id
+        description: "Governed synthetic plan assigned to the agreement."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_subscription_plan')
+                field: subscription_plan_id
       - name: product_code
         description: "Synthetic subscription product code."
         tests:
