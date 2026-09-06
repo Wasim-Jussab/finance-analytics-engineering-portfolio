@@ -13,6 +13,12 @@ import duckdb
 Row: TypeAlias = dict[str, str]
 
 RAW_TABLES: dict[str, list[tuple[str, str]]] = {
+    "subscription_plans": [
+        ("subscription_plan_id", "VARCHAR"),
+        ("product_code", "VARCHAR"),
+        ("billing_frequency", "VARCHAR"),
+        ("billing_amount", "DECIMAL(12, 2)"),
+    ],
     "customers": [
         ("customer_id", "VARCHAR"),
         ("first_name", "VARCHAR"),
@@ -32,6 +38,7 @@ RAW_TABLES: dict[str, list[tuple[str, str]]] = {
         ("subscription_id", "VARCHAR"),
         ("customer_id", "VARCHAR"),
         ("product_code", "VARCHAR"),
+        ("subscription_plan_id", "VARCHAR"),
         ("start_date", "DATE"),
         ("cancellation_date", "DATE"),
         ("billing_frequency", "VARCHAR"),
@@ -173,6 +180,7 @@ def build_database(
         return {
             table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
             for table in (
+                "raw.subscription_plans",
                 "raw.customers",
                 "raw.loans",
                 "raw.subscriptions",

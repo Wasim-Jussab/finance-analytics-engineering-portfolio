@@ -1,12 +1,13 @@
 with billing_attempts as (
     select
         payment.billing_month,
-        subscription.product_code,
-        subscription.billing_frequency,
+        plan.product_code,
+        plan.billing_frequency,
         payment.amount,
         payment.is_collected
     from {{ ref('fct_subscription_payment') }} as payment
     inner join {{ ref('dim_subscription') }} as subscription using (subscription_id)
+    inner join {{ ref('dim_subscription_plan') }} as plan using (subscription_plan_id)
 ),
 monthly_metrics as (
     select

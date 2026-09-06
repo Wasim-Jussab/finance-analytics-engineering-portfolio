@@ -4,6 +4,8 @@ sources:
     description: "Typed tables loaded from the generated CSV files."
     schema: raw
     tables:
+      - name: subscription_plans
+        description: "Four synthetic product and billing-frequency plan definitions."
       - name: customers
         description: "One row per synthetic customer."
       - name: loans

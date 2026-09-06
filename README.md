@@ -24,11 +24,11 @@ Everything runs locally with no cloud account, credentials or paid service.
 
 | Area | Current implementation |
 |---|---|
-| Data generation | Deterministic customers, loans, subscriptions, loan payments and subscription billing attempts using a fixed seed |
+| Data generation | Deterministic customers, loans, subscription plans, agreements and payment attempts using a fixed seed |
 | Ingestion | Python loader creates typed DuckDB tables in the `raw` schema |
 | Transformation | dbt materialises customer, loan, subscription, transaction and monthly aggregate models in the `mart` schema |
 | Data quality | Key, relationship, required-field, accepted-value and chronology tests |
-| Financial control | Completed loan payments reconcile across raw, fact and account-summary levels; completed subscription collections reconcile from raw to fact |
+| Financial control | Loan payments and subscription collections reconcile to source; billed amounts agree with the governed synthetic plan catalogue |
 | Documentation | dbt source/model descriptions, architecture notes, data contract and daily decision log |
 | Automation | GitHub Actions reruns the local pipeline, Python tests and linting |
 
@@ -39,6 +39,7 @@ Everything runs locally with no cloud account, credentials or paid service.
 | `mart.dim_customer` | One row per customer | Combines customer attributes into a reporting dimension |
 | `mart.dim_date` | One row per calendar date | Provides tested calendar, month, quarter and weekend attributes |
 | `mart.dim_loan` | One row per loan account | Adds completed-payment count, value and latest completed-payment date |
+| `mart.dim_subscription_plan` | One row per product and billing frequency | Holds the visible synthetic billing amount used by agreements and payment controls |
 | `mart.dim_subscription` | One row per subscription agreement | Adds cancellation date, current status and completed active months |
 | `mart.fct_payment` | One row per payment attempt | Retains successful and failed attempts and derives a success flag |
 | `mart.fct_subscription_payment` | One row per subscription billing attempt | Retains completed and failed attempts and derives a collected flag |
@@ -54,19 +55,20 @@ The current seed-42 run produced:
 |---|---:|
 | Customers | 25 |
 | Loans | 25 |
+| Subscription plans | 4 |
 | Subscriptions | 20 |
 | Loan payment attempts | 99 |
 | Subscription billing attempts | 150 |
 | Completed subscription collections | 125 / £3,648.00 |
 | Monthly aggregate rows | 54 |
 | Calendar dates | 731 |
-| dbt models | 7 passed |
-| dbt data tests | 93 passed |
-| Total dbt resources | 100 passed |
-| Python tests | 12 passed |
+| dbt models | 8 passed |
+| dbt data tests | 107 passed |
+| Total dbt resources | 115 passed |
+| Python tests | 14 passed |
 | Ruff | Passed |
 
-Controlled failure checks have detected an invalid loan-payment status, a subscription start date after the reporting date, a non-positive subscription payment amount, a duplicate monthly grain and a missing calendar day. Each targeted test returned exactly one offending result and a non-zero exit code before the clean model was rebuilt.
+Controlled failure checks have detected an invalid loan-payment status, a subscription start date after the reporting date, a non-positive payment amount, a duplicate monthly grain, a missing calendar day and a billed amount that disagreed with its plan. Each targeted test returned exactly one offending result and a non-zero exit code before the clean model was rebuilt.
 
 The full evidence and remaining limitations are recorded in [docs/validation.md](docs/validation.md).
 
@@ -103,7 +105,7 @@ Generated CSVs, DuckDB files, dbt output and logs are excluded from Git.
 - **Raw and mart separation:** source data is kept separate from reporting transformations.
 - **Reconciliation before presentation:** completed-payment values are compared at raw, fact and account-summary level.
 - **Separate agreement and event grains:** subscription attributes remain in the dimension while billing attempts have their own fact table.
-- **Explicit synthetic pricing:** billing amounts come from a small, documented lookup created for this project; they do not represent an employer's pricing.
+- **Governed synthetic pricing:** agreements reference a four-row plan catalogue, and every billed amount is tested against it. The values were invented for this project and do not represent an employer's pricing.
 - **Collections are not revenue:** a completed synthetic billing attempt supports a cash-collected measure, but revenue recognition remains out of scope.
 - **Aggregate grain is explicit:** monthly performance is grouped by billing month, product and billing frequency, with a compound-grain test.
 - **Collection rate is attempt-based:** completed attempts are divided by all attempts; this is not an amount-weighted recovery rate.
@@ -116,6 +118,7 @@ This is a working project, not a finished platform.
 
 - The models currently rebuild as tables rather than incrementally.
 - Subscription refunds, retries, plan changes and revenue-recognition rules are not modelled.
+- Subscription plan prices are not effective-dated, so historical price changes are not represented.
 - The monthly aggregate is not yet zero-filled from the date dimension, so months without billing events remain absent.
 - The calendar start date is configuration rather than source-system metadata.
 - Source freshness needs real ingestion metadata.
@@ -151,5 +154,6 @@ The daily notes record what changed, what failed and what remains unresolved. Th
 - [Day 10: subscription billing events and controls](notes/day-10.md)
 - [Day 11: monthly subscription performance](notes/day-11.md)
 - [Day 12: tested date dimension](notes/day-12.md)
+- [Day 13: governed subscription plans](notes/day-13.md)
 
 This repository demonstrates how I structure and validate analytics-engineering work. My production experience with Redshift, AWS Glue/Python, Power BI, regulatory reporting and financial reconciliations is described separately in my professional profile.

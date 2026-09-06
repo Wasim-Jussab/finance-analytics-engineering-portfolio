@@ -9,6 +9,7 @@ Before generating data, I wrote down the grain I think each entity should have. 
 | Customer | One row per customer | customer_id |
 | Date | One row per calendar date | calendar_date |
 | Loan | One row per loan account | account_id |
+| Subscription plan | One row per product and billing-frequency combination | subscription_plan_id |
 | Subscription | One row per subscription agreement | subscription_id |
 | Subscription payment | One row per scheduled subscription billing attempt | subscription_payment_id |
 | Payment | One row per payment transaction against a loan account | payment_id |
@@ -31,7 +32,9 @@ Customer: customer_id, date_of_birth, postcode, customer_created_date
 
 Loan: account_id, customer_id, product_code, origination_date, original_balance, status
 
-Subscription: subscription_id, customer_id, product_code, start_date, cancellation_date, billing_frequency, status
+Subscription plan: subscription_plan_id, product_code, billing_frequency, billing_amount
+
+Subscription: subscription_id, customer_id, product_code, subscription_plan_id, start_date, cancellation_date, billing_frequency, status
 
 Subscription payment: subscription_payment_id, subscription_id, billing_date, amount, payment_status
 
@@ -158,13 +161,36 @@ The additional controls confirm that:
 
 The date dimension is now available, but the monthly aggregate is still event-led. Zero-filling every product and frequency combination would require a separate definition of which plans are valid in each month.
 
+## Day 13 subscription plan catalogue
+
+The price lookup used by the generator is now a source entity and a reporting dimension:
+
+| Output | Grain | Purpose |
+|---|---|---|
+| dim_subscription_plan | One row per product code and billing frequency | Visible synthetic plan definitions and contractual billing amounts |
+
+Each agreement references a `subscription_plan_id`. The denormalised product code and billing frequency remain on the agreement for now, but a consistency test verifies that they agree with the referenced plan. This avoids silently accepting conflicting descriptions.
+
+The four billing amounts are invented project values. They are not employer pricing or market benchmarks. Every billing attempt must equal the amount on its agreement's plan; a separate control returns any mismatch.
+
+The additional checks confirm that:
+
+- Plan identifiers are unique and required.
+- Product and frequency combinations occur exactly once.
+- Plan amounts are positive.
+- Agreement plan references resolve and descriptive fields agree.
+- Plan rows reconcile from raw source to mart.
+- Every billing attempt agrees with its plan amount.
+
+The catalogue is deliberately current-state only. It has no effective-from or effective-to dates, so it cannot yet represent a historical price change or a mid-agreement plan change.
+
 ## Questions for the next few days
 
-- Do I need a separate product table?
+- When should a plan become effective-dated rather than current-state only?
 - Which dates need to be event dates and which are reporting dates?
 - How will I represent a refund or reversed payment?
 - Should a failed attempt followed by a retry be linked through a billing-cycle identifier?
-- Which product and frequency combinations should be generated for zero-activity months?
+- Should zero-activity reporting include all four plans in every month, or only plans valid in that month?
 - What should happen when an account has no matching customer?
 
 These questions are intentionally left open. I will answer them when the generated data and models make the trade-offs clearer.

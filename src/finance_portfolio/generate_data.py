@@ -21,6 +21,12 @@ Row: TypeAlias = dict[str, str]
 Dataset: TypeAlias = dict[str, list[Row]]
 
 TABLE_COLUMNS = {
+    "subscription_plans": [
+        "subscription_plan_id",
+        "product_code",
+        "billing_frequency",
+        "billing_amount",
+    ],
     "customers": ["customer_id", "first_name", "last_name", "date_of_birth", "postcode"],
     "loans": [
         "account_id",
@@ -34,6 +40,7 @@ TABLE_COLUMNS = {
         "subscription_id",
         "customer_id",
         "product_code",
+        "subscription_plan_id",
         "start_date",
         "cancellation_date",
         "billing_frequency",
@@ -60,12 +67,32 @@ FIRST_NAMES = ["Aisha", "Ben", "Daniel", "Fatima", "Hannah", "Imran", "Leah", "M
 LAST_NAMES = ["Ahmed", "Clarke", "Davies", "Khan", "Patel", "Roberts", "Smith", "Taylor"]
 LOAN_PRODUCTS = ["LOAN-A", "LOAN-B", "LOAN-C"]
 SUBSCRIPTION_PRODUCTS = ["SUB-1", "SUB-2"]
-SUBSCRIPTION_PRICE_PENCE = {
-    ("SUB-1", "Monthly"): 1500,
-    ("SUB-1", "Annual"): 15000,
-    ("SUB-2", "Monthly"): 2400,
-    ("SUB-2", "Annual"): 24000,
-}
+SUBSCRIPTION_PLANS = [
+    {
+        "subscription_plan_id": "SUB-1-MONTHLY",
+        "product_code": "SUB-1",
+        "billing_frequency": "Monthly",
+        "billing_amount": "15.00",
+    },
+    {
+        "subscription_plan_id": "SUB-1-ANNUAL",
+        "product_code": "SUB-1",
+        "billing_frequency": "Annual",
+        "billing_amount": "150.00",
+    },
+    {
+        "subscription_plan_id": "SUB-2-MONTHLY",
+        "product_code": "SUB-2",
+        "billing_frequency": "Monthly",
+        "billing_amount": "24.00",
+    },
+    {
+        "subscription_plan_id": "SUB-2-ANNUAL",
+        "product_code": "SUB-2",
+        "billing_frequency": "Annual",
+        "billing_amount": "240.00",
+    },
+]
 PAYMENT_METHODS = ["Direct Debit", "Card", "Bank Transfer"]
 
 
@@ -93,6 +120,16 @@ def _add_months(value: date, months: int) -> date:
     month = month_index % 12 + 1
     day = min(value.day, calendar.monthrange(year, month)[1])
     return date(year, month, day)
+
+
+def _subscription_plan_id(product_code: str, billing_frequency: str) -> str:
+    return f"{product_code}-{billing_frequency.upper()}"
+
+
+def generate_subscription_plans() -> list[Row]:
+    """Return a copy of the synthetic plan catalogue used by the generator."""
+
+    return [dict(plan) for plan in SUBSCRIPTION_PLANS]
 
 
 def generate_customers(config: GeneratorConfig, rng: random.Random) -> list[Row]:
@@ -160,6 +197,9 @@ def generate_subscriptions(
                 "subscription_id": f"SUB-{number:06d}",
                 "customer_id": customer["customer_id"],
                 "product_code": product_code,
+                "subscription_plan_id": _subscription_plan_id(
+                    product_code, billing_frequency
+                ),
                 "start_date": start_date.isoformat(),
                 "cancellation_date": cancellation_date,
                 "billing_frequency": billing_frequency,
@@ -173,10 +213,14 @@ def generate_subscription_payments(
     config: GeneratorConfig,
     rng: random.Random,
     subscriptions: list[Row],
+    subscription_plans: list[Row],
 ) -> list[Row]:
     """Create one row per scheduled subscription payment attempt."""
 
     rows: list[Row] = []
+    plans_by_id = {
+        plan["subscription_plan_id"]: plan for plan in subscription_plans
+    }
     for subscription in subscriptions:
         start_date = date.fromisoformat(subscription["start_date"])
         cancellation_date = subscription["cancellation_date"]
@@ -184,8 +228,8 @@ def generate_subscription_payments(
             date.fromisoformat(cancellation_date) if cancellation_date else config.end_date
         )
         interval_months = 1 if subscription["billing_frequency"] == "Monthly" else 12
-        price_pence = SUBSCRIPTION_PRICE_PENCE[
-            (subscription["product_code"], subscription["billing_frequency"])
+        billing_amount = plans_by_id[subscription["subscription_plan_id"]][
+            "billing_amount"
         ]
 
         sequence = 0
@@ -196,7 +240,7 @@ def generate_subscription_payments(
                     "subscription_payment_id": f"SPAY-{len(rows) + 1:07d}",
                     "subscription_id": subscription["subscription_id"],
                     "billing_date": billing_date.isoformat(),
-                    "amount": _money_from_pence(price_pence),
+                    "amount": billing_amount,
                     "payment_status": rng.choice(
                         ["Completed", "Completed", "Completed", "Completed", "Failed"]
                     ),
@@ -235,6 +279,7 @@ def generate_dataset(config: GeneratorConfig | None = None) -> Dataset:
         raise ValueError("customer_count must be at least 1")
 
     rng = random.Random(config.seed)
+    subscription_plans = generate_subscription_plans()
     customers = generate_customers(config, rng)
     loans = generate_loans(config, rng, customers)
     subscriptions = generate_subscriptions(config, rng, customers)
@@ -243,8 +288,10 @@ def generate_dataset(config: GeneratorConfig | None = None) -> Dataset:
         config,
         random.Random(config.seed + 10_000),
         subscriptions,
+        subscription_plans,
     )
     return {
+        "subscription_plans": subscription_plans,
         "customers": customers,
         "loans": loans,
         "subscriptions": subscriptions,
@@ -258,6 +305,7 @@ def validate_dataset(dataset: Dataset) -> list[str]:
 
     errors: list[str] = []
     key_fields = {
+        "subscription_plans": "subscription_plan_id",
         "customers": "customer_id",
         "loans": "account_id",
         "subscriptions": "subscription_id",
@@ -276,6 +324,9 @@ def validate_dataset(dataset: Dataset) -> list[str]:
     subscriptions_by_id = {
         row["subscription_id"]: row for row in dataset["subscriptions"]
     }
+    plans_by_id = {
+        row["subscription_plan_id"]: row for row in dataset["subscription_plans"]
+    }
 
     missing_loan_customers = sorted(
         {row["customer_id"] for row in dataset["loans"]} - customer_ids
@@ -290,6 +341,16 @@ def validate_dataset(dataset: Dataset) -> list[str]:
         errors.append(
             "subscriptions reference missing customers: "
             f"{missing_subscription_customers}"
+        )
+
+    missing_subscription_plans = sorted(
+        {row["subscription_plan_id"] for row in dataset["subscriptions"]}
+        - set(plans_by_id)
+    )
+    if missing_subscription_plans:
+        errors.append(
+            "subscriptions reference missing plans: "
+            f"{missing_subscription_plans}"
         )
 
     missing_payment_accounts = sorted(
@@ -348,6 +409,14 @@ def validate_dataset(dataset: Dataset) -> list[str]:
         if Decimal(payment["amount"]) <= 0:
             errors.append(
                 "subscription payment amount is not positive: "
+                f"{payment['subscription_payment_id']}"
+            )
+        plan = plans_by_id.get(subscription["subscription_plan_id"])
+        if plan is None:
+            continue
+        if Decimal(payment["amount"]) != Decimal(plan["billing_amount"]):
+            errors.append(
+                "subscription payment amount does not match plan: "
                 f"{payment['subscription_payment_id']}"
             )
 

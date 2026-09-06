@@ -114,11 +114,34 @@ The calendar was generated from the configured start date to the fixed reporting
 
 For a controlled continuity failure, I removed 15 July 2024 from the temporary date dimension. `date_dimension_continuity` returned exactly one gap and dbt exited with code 1. Rebuilding the calendar restored all 731 dates and the complete suite passed.
 
+## Subscription plan run — 6 September 2026
+
+The hidden generator price lookup was exposed as a typed source and governed plan dimension.
+
+| Check | Result |
+|---|---:|
+| Raw / mart subscription plans | 4 / 4 |
+| Agreements with a valid plan | 20 / 20 |
+| Billing attempts matching plan amount | 150 / 150 |
+| Reconciled attempted amount | £4,680.00 |
+| Reconciled collected amount | £3,648.00 |
+| dbt table models | 8 passed |
+| dbt data tests | 107 passed |
+| Total dbt resources | 115 passed |
+| Python tests | 14 passed |
+| Ruff | Passed |
+| dbt documentation generation | Passed |
+
+For a controlled contract failure, I increased one temporary billing attempt by £0.01. `subscription_payment_matches_plan_amount` returned exactly one mismatch and dbt exited with code 1. Rebuilding the fact restored all 150 matching attempts and the complete suite passed.
+
+The first documentation run hit a local DuckDB write-ahead-log replay conflict after the build. The database itself had passed all 115 resources. I rebuilt the disposable database, checkpointed it cleanly and generated the dbt catalogue successfully. `*.wal` is now explicitly excluded from Git so a local recovery file cannot be committed accidentally.
+
 ## Known gaps
 
 - Source freshness is not enabled because the raw tables do not yet contain a genuine ingestion timestamp.
 - The dbt models currently rebuild as tables rather than incrementally.
 - Subscription refunds, retries, plan changes and revenue-recognition rules are not yet represented.
+- The subscription plan catalogue has no effective dates, so price history is not yet represented.
 - The date dimension exists, but the monthly aggregate does not yet zero-fill product/frequency combinations with no events.
 - The calendar start date is a project variable rather than source-system metadata.
 - The current dataset is intentionally small; scale and performance behaviour have not been tested.
