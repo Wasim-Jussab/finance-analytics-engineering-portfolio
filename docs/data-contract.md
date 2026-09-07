@@ -184,13 +184,32 @@ The additional checks confirm that:
 
 The catalogue is deliberately current-state only. It has no effective-from or effective-to dates, so it cannot yet represent a historical price change or a mid-agreement plan change.
 
+## Day 14 zero-activity reporting
+
+The monthly mart keeps the same month, product and billing-frequency grain, but it is no longer limited to months containing a billing event. A row is eligible when at least one agreement on that plan overlaps the calendar month.
+
+`active_agreement_count` counts agreements active for at least one day in the month. If an eligible plan month has no billing attempt, attempt and collection counts, amounts and the attempt-based collection rate are set to zero.
+
+This population rule avoids two misleading alternatives:
+
+- An event-only aggregate hides months with no activity.
+- A full date-by-plan cross join implies that every current plan existed in every historical month.
+
+The additional controls confirm that:
+
+- Every eligible plan month appears exactly once.
+- Active agreement counts match the agreement-date overlap rule.
+- Zero-attempt rows contain zero counts, amounts and rate.
+- Non-zero rows retain the expected rate calculation.
+- All event counts and monetary totals still reconcile to the billing fact.
+
 ## Questions for the next few days
 
 - When should a plan become effective-dated rather than current-state only?
 - Which dates need to be event dates and which are reporting dates?
 - How will I represent a refund or reversed payment?
 - Should a failed attempt followed by a retry be linked through a billing-cycle identifier?
-- Should zero-activity reporting include all four plans in every month, or only plans valid in that month?
+- Should active agreements be measured by any monthly overlap, month end or both?
 - What should happen when an account has no matching customer?
 
 These questions are intentionally left open. I will answer them when the generated data and models make the trade-offs clearer.

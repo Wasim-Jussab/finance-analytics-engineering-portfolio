@@ -68,6 +68,12 @@ Agreements reference plans by key. The monthly aggregate takes product and billi
 
 This is a current-state reference table, not a historical pricing model. Effective dating and plan changes remain separate modelling work.
 
+## Day 14 addition
+
+The monthly mart now starts from eligible plan months rather than billing events. It combines the date dimension with agreement start and cancellation dates, retaining a plan month only when at least one agreement overlaps it. Billing metrics are then left joined and missing activity is converted to explicit zeros.
+
+This prevents a quiet gap in a trend chart without inventing rows for plans that have no agreement population. The model also exposes the active-agreement count behind each plan month, so a zero means "agreements existed but no attempt occurred" rather than "the plan may not have existed".
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.

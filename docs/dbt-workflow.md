@@ -48,7 +48,7 @@ The generated `target/` directory is local output and is not committed.
 | `dim_subscription` | One row per subscription agreement | Subscription key, customer relationship, accepted values, chronology and row-count reconciliation |
 | `fct_payment` | One row per payment | Payment key not null and unique; account relationship |
 | `fct_subscription_payment` | One row per subscription billing attempt | Payment key, subscription relationship, accepted values, chronology, positive amount and collection reconciliation |
-| `agg_subscription_monthly` | One row per month, product and billing frequency | Compound grain, metric consistency and reconciliation to the billing fact |
+| `agg_subscription_monthly` | One row per eligible month, product and billing frequency | Active-plan coverage, compound grain, zero handling, metric consistency and fact reconciliation |
 
 The singular test `reconcile_completed_payments` compares completed-payment totals in three places:
 
@@ -67,6 +67,8 @@ This is a deliberately small control, but it reflects the type of check I would 
 `date_dimension_bounds` checks the configured start, fixed end and expected number of dates. `date_dimension_continuity` uses the previous date in sequence to detect gaps inside those bounds. Billing fact and monthly aggregate relationship tests confirm that both daily and month-start dates resolve to the calendar.
 
 `subscription_agreement_matches_plan` checks that the product and billing frequency retained on each agreement agree with its referenced plan. `subscription_payment_matches_plan_amount` follows the agreement-to-plan relationship and rejects billing attempts with a different amount.
+
+`subscription_monthly_active_plan_coverage` independently rebuilds the agreement-overlap population and compares both its keys and active-agreement counts with the monthly mart. The metric-consistency control separately verifies that zero-attempt rows contain zero counts, amounts and collection rate.
 
 ## Local setup decision
 

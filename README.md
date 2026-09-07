@@ -26,7 +26,7 @@ Everything runs locally with no cloud account, credentials or paid service.
 |---|---|
 | Data generation | Deterministic customers, loans, subscription plans, agreements and payment attempts using a fixed seed |
 | Ingestion | Python loader creates typed DuckDB tables in the `raw` schema |
-| Transformation | dbt materialises customer, loan, subscription, transaction and monthly aggregate models in the `mart` schema |
+| Transformation | dbt materialises customer, loan, subscription, transaction and zero-filled monthly reporting models in the `mart` schema |
 | Data quality | Key, relationship, required-field, accepted-value and chronology tests |
 | Financial control | Loan payments and subscription collections reconcile to source; billed amounts agree with the governed synthetic plan catalogue |
 | Documentation | dbt source/model descriptions, architecture notes, data contract and daily decision log |
@@ -43,7 +43,7 @@ Everything runs locally with no cloud account, credentials or paid service.
 | `mart.dim_subscription` | One row per subscription agreement | Adds cancellation date, current status and completed active months |
 | `mart.fct_payment` | One row per payment attempt | Retains successful and failed attempts and derives a success flag |
 | `mart.fct_subscription_payment` | One row per subscription billing attempt | Retains completed and failed attempts and derives a collected flag |
-| `mart.agg_subscription_monthly` | One row per month, product and billing frequency | Summarises attempts, failures, collections and attempt-based collection rate |
+| `mart.agg_subscription_monthly` | One row per eligible month, product and billing frequency | Adds active-agreement context and explicit zeros where an active plan has no billing attempt |
 
 Failed payments are deliberately retained. Filtering them out during transformation would make the reporting totals look cleaner while removing useful operational evidence.
 
@@ -60,15 +60,16 @@ The current seed-42 run produced:
 | Loan payment attempts | 99 |
 | Subscription billing attempts | 150 |
 | Completed subscription collections | 125 / £3,648.00 |
-| Monthly aggregate rows | 54 |
+| Monthly aggregate rows | 82 |
+| Zero-activity plan months | 28 |
 | Calendar dates | 731 |
 | dbt models | 8 passed |
-| dbt data tests | 107 passed |
-| Total dbt resources | 115 passed |
+| dbt data tests | 109 passed |
+| Total dbt resources | 117 passed |
 | Python tests | 14 passed |
 | Ruff | Passed |
 
-Controlled failure checks have detected an invalid loan-payment status, a subscription start date after the reporting date, a non-positive payment amount, a duplicate monthly grain, a missing calendar day and a billed amount that disagreed with its plan. Each targeted test returned exactly one offending result and a non-zero exit code before the clean model was rebuilt.
+Controlled failure checks have detected an invalid loan-payment status, a subscription start date after the reporting date, a non-positive payment amount, a duplicate monthly grain, a missing calendar day, a billed amount that disagreed with its plan and a missing zero-activity reporting row. Each targeted test returned exactly one offending result and a non-zero exit code before the clean model was rebuilt.
 
 The full evidence and remaining limitations are recorded in [docs/validation.md](docs/validation.md).
 
@@ -110,6 +111,7 @@ Generated CSVs, DuckDB files, dbt output and logs are excluded from Git.
 - **Aggregate grain is explicit:** monthly performance is grouped by billing month, product and billing frequency, with a compound-grain test.
 - **Collection rate is attempt-based:** completed attempts are divided by all attempts; this is not an amount-weighted recovery rate.
 - **Calendar range is controlled:** the date dimension starts from a dbt variable and ends at the fixed reporting date, with bounds and continuity tests.
+- **Zeros have a defined population:** the monthly mart includes a plan only when at least one related agreement overlaps that month; it does not cross join every plan to every date.
 - **No false freshness claim:** source freshness is deferred because the raw tables do not yet contain a genuine ingestion timestamp.
 
 ## Known gaps
@@ -119,7 +121,7 @@ This is a working project, not a finished platform.
 - The models currently rebuild as tables rather than incrementally.
 - Subscription refunds, retries, plan changes and revenue-recognition rules are not modelled.
 - Subscription plan prices are not effective-dated, so historical price changes are not represented.
-- The monthly aggregate is not yet zero-filled from the date dimension, so months without billing events remain absent.
+- Monthly active agreement counts use any overlap with the calendar month; daily or month-end-only populations are not yet separate measures.
 - The calendar start date is configuration rather than source-system metadata.
 - Source freshness needs real ingestion metadata.
 - The dataset is intentionally small and has not been performance-tested.
@@ -155,5 +157,6 @@ The daily notes record what changed, what failed and what remains unresolved. Th
 - [Day 11: monthly subscription performance](notes/day-11.md)
 - [Day 12: tested date dimension](notes/day-12.md)
 - [Day 13: governed subscription plans](notes/day-13.md)
+- [Day 14: zero-activity monthly reporting](notes/day-14.md)
 
 This repository demonstrates how I structure and validate analytics-engineering work. My production experience with Redshift, AWS Glue/Python, Power BI, regulatory reporting and financial reconciliations is described separately in my professional profile.

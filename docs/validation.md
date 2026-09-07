@@ -136,12 +136,34 @@ For a controlled contract failure, I increased one temporary billing attempt by 
 
 The first documentation run hit a local DuckDB write-ahead-log replay conflict after the build. The database itself had passed all 115 resources. I rebuilt the disposable database, checkpointed it cleanly and generated the dbt catalogue successfully. `*.wal` is now explicitly excluded from Git so a local recovery file cannot be committed accidentally.
 
+## Zero-activity monthly run — 7 September 2026
+
+The monthly mart was rebuilt from agreement-calendar overlap before billing metrics were left joined.
+
+| Check | Result |
+|---|---:|
+| Eligible monthly plan rows | 82 |
+| Rows with billing attempts | 54 |
+| Explicit zero-activity rows | 28 |
+| Zero-activity rows on annual plans | 28 |
+| Reconciled billing attempts | 150 |
+| Reconciled completed / failed attempts | 125 / 25 |
+| Reconciled attempted amount | £4,680.00 |
+| Reconciled collected amount | £3,648.00 |
+| dbt table models | 8 passed |
+| dbt data tests | 109 passed |
+| Total dbt resources | 117 passed |
+| Python tests | 14 passed |
+| Ruff | Passed |
+
+For a controlled coverage failure, I deleted the temporary April 2024 row for the SUB-1 annual plan. That plan had an active agreement but no billing attempt in the month. `subscription_monthly_active_plan_coverage` returned exactly one missing row and dbt exited with code 1. Rebuilding the aggregate restored all 82 eligible rows and the complete suite passed.
+
 ## Known gaps
 
 - Source freshness is not enabled because the raw tables do not yet contain a genuine ingestion timestamp.
 - The dbt models currently rebuild as tables rather than incrementally.
 - Subscription refunds, retries, plan changes and revenue-recognition rules are not yet represented.
 - The subscription plan catalogue has no effective dates, so price history is not yet represented.
-- The date dimension exists, but the monthly aggregate does not yet zero-fill product/frequency combinations with no events.
+- Monthly active agreement counts currently use any agreement overlap with the month; month-end populations are not a separate measure.
 - The calendar start date is a project variable rather than source-system metadata.
 - The current dataset is intentionally small; scale and performance behaviour have not been tested.
