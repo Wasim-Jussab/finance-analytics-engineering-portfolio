@@ -280,6 +280,9 @@ models:
           - accepted_values:
               arguments:
                 values: ['Monthly', 'Annual']
+      - name: active_agreement_count
+        description: "Agreements active for at least one day in the month and assigned to the plan."
+        tests: [not_null]
       - name: payment_attempt_count
         description: "Number of billing attempts in the group."
         tests: [not_null]
@@ -296,5 +299,5 @@ models:
         description: "Total synthetic amount on completed billing attempts; not recognised revenue."
         tests: [not_null]
       - name: collection_rate
-        description: "Completed attempts divided by all attempts in the group."
+        description: "Completed attempts divided by all attempts; zero when the month has no attempts."
         tests: [not_null]
