@@ -301,3 +301,43 @@ models:
       - name: collection_rate
         description: "Completed attempts divided by all attempts; zero when the month has no attempts."
         tests: [not_null]
+  - name: agg_subscription_movement_monthly
+    description: "Monthly agreement opening, start, cancellation and closing movement by plan."
+    columns:
+      - name: reporting_month
+        description: "First day of the reporting calendar month."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: calendar_date
+      - name: product_code
+        description: "Synthetic subscription product code."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['SUB-1', 'SUB-2']
+      - name: billing_frequency
+        description: "Contracted billing frequency for the plan."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Monthly', 'Annual']
+      - name: opening_agreement_count
+        description: "Agreements open immediately before the month starts."
+        tests: [not_null]
+      - name: started_agreement_count
+        description: "Agreements starting during the month."
+        tests: [not_null]
+      - name: cancelled_agreement_count
+        description: "Agreements with a cancellation date during the month."
+        tests: [not_null]
+      - name: net_agreement_change
+        description: "Starts minus cancellations during the month."
+        tests: [not_null]
+      - name: closing_agreement_count
+        description: "Agreements open after month-end cancellations are applied."
+        tests: [not_null]
