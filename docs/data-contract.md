@@ -203,13 +203,37 @@ The additional controls confirm that:
 - Non-zero rows retain the expected rate calculation.
 - All event counts and monetary totals still reconcile to the billing fact.
 
+## Day 15 monthly agreement movement
+
+A second monthly aggregate keeps agreement population movement separate from billing performance:
+
+| Output | Grain | Purpose |
+|---|---|---|
+| agg_subscription_movement_monthly | One row per reporting month, product code and billing frequency | Opening agreements, starts, cancellations, net movement and closing agreements |
+
+The reporting series begins with the first observed agreement for each plan and continues to the fixed reporting date. It does not create historical rows before a plan has any observed agreement.
+
+The movement equation is:
+
+`closing agreements = opening agreements + starts - cancellations`
+
+The cancellation date is treated as the event date on which the agreement leaves the closing population. An agreement cancelled on the first day of a month is therefore in that month's opening count and cancellation count, but not its closing count.
+
+The additional controls confirm that:
+
+- Month and plan remain unique.
+- Every expected month exists from the plan's first observed agreement onward.
+- Starts and cancellations reconcile to the agreement dimension.
+- Counts are non-negative and the movement equation balances.
+- A month's closing population equals the next month's opening population.
+
 ## Questions for the next few days
 
 - When should a plan become effective-dated rather than current-state only?
 - Which dates need to be event dates and which are reporting dates?
 - How will I represent a refund or reversed payment?
 - Should a failed attempt followed by a retry be linked through a billing-cycle identifier?
-- Should active agreements be measured by any monthly overlap, month end or both?
+- Would a future status-event source require pause and reactivation movements as separate categories?
 - What should happen when an account has no matching customer?
 
 These questions are intentionally left open. I will answer them when the generated data and models make the trade-offs clearer.

@@ -49,6 +49,7 @@ The generated `target/` directory is local output and is not committed.
 | `fct_payment` | One row per payment | Payment key not null and unique; account relationship |
 | `fct_subscription_payment` | One row per subscription billing attempt | Payment key, subscription relationship, accepted values, chronology, positive amount and collection reconciliation |
 | `agg_subscription_monthly` | One row per eligible month, product and billing frequency | Active-plan coverage, compound grain, zero handling, metric consistency and fact reconciliation |
+| `agg_subscription_movement_monthly` | One row per month, product and billing frequency | Complete month coverage, movement equation, roll-forward and agreement reconciliation |
 
 The singular test `reconcile_completed_payments` compares completed-payment totals in three places:
 
@@ -69,6 +70,8 @@ This is a deliberately small control, but it reflects the type of check I would 
 `subscription_agreement_matches_plan` checks that the product and billing frequency retained on each agreement agree with its referenced plan. `subscription_payment_matches_plan_amount` follows the agreement-to-plan relationship and rejects billing attempts with a different amount.
 
 `subscription_monthly_active_plan_coverage` independently rebuilds the agreement-overlap population and compares both its keys and active-agreement counts with the monthly mart. The metric-consistency control separately verifies that zero-attempt rows contain zero counts, amounts and collection rate.
+
+`reconcile_subscription_movements` confirms that starts and cancellations appear once in the movement series. Separate controls prove the month-plan grain, complete calendar coverage, within-month movement equation and closing-to-next-opening roll-forward.
 
 ## Local setup decision
 

@@ -158,12 +158,31 @@ The monthly mart was rebuilt from agreement-calendar overlap before billing metr
 
 For a controlled coverage failure, I deleted the temporary April 2024 row for the SUB-1 annual plan. That plan had an active agreement but no billing attempt in the month. `subscription_monthly_active_plan_coverage` returned exactly one missing row and dbt exited with code 1. Rebuilding the aggregate restored all 82 eligible rows and the complete suite passed.
 
+## Agreement movement run — 8 September 2026
+
+The agreement population was modelled separately from billing activity.
+
+| Check | Result |
+|---|---:|
+| Monthly plan rows | 83 |
+| Reporting range | March 2024 to December 2025 |
+| Reconciled agreement starts | 20 |
+| Reconciled cancellations | 6 |
+| December closing agreements | 14 |
+| dbt table models | 9 passed |
+| dbt data tests | 125 passed |
+| Total dbt resources | 134 passed |
+| Python tests | 14 passed |
+| Ruff | Passed |
+
+For a controlled movement failure, I increased one temporary December closing count by one. `subscription_movement_metric_consistency` returned exactly one unbalanced row and dbt exited with code 1. Rebuilding the model restored the closing population of 14 and the complete suite passed.
+
 ## Known gaps
 
 - Source freshness is not enabled because the raw tables do not yet contain a genuine ingestion timestamp.
 - The dbt models currently rebuild as tables rather than incrementally.
 - Subscription refunds, retries, plan changes and revenue-recognition rules are not yet represented.
 - The subscription plan catalogue has no effective dates, so price history is not yet represented.
-- Monthly active agreement counts currently use any agreement overlap with the month; month-end populations are not a separate measure.
+- Agreement history has no pause, reactivation or status-event records, so the movement model is limited to starts and cancellations.
 - The calendar start date is a project variable rather than source-system metadata.
 - The current dataset is intentionally small; scale and performance behaviour have not been tested.

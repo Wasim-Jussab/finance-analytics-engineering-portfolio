@@ -74,6 +74,12 @@ The monthly mart now starts from eligible plan months rather than billing events
 
 This prevents a quiet gap in a trend chart without inventing rows for plans that have no agreement population. The model also exposes the active-agreement count behind each plan month, so a zero means "agreements existed but no attempt occurred" rather than "the plan may not have existed".
 
+## Day 15 addition
+
+`mart.agg_subscription_movement_monthly` is separate from the billing aggregate. It builds a complete month series for each plan from its first observed agreement, then derives opening, started, cancelled and closing populations from agreement dates.
+
+Keeping movement separate avoids mixing transaction activity with account population. The model can answer a month-end agreement question without changing the "active at any point in the month" definition used to qualify zero-activity billing rows.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.
