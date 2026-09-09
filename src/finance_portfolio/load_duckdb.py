@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import TypeAlias
 
@@ -69,40 +69,70 @@ def _read_csv(path: Path) -> list[Row]:
 
 def _create_raw_table(connection: duckdb.DuckDBPyConnection, table: str) -> None:
     columns = ", ".join(f"{name} {data_type}" for name, data_type in RAW_TABLES[table])
-    connection.execute(f"CREATE OR REPLACE TABLE raw.{table} ({columns})")
+    connection.execute(
+        f"CREATE OR REPLACE TABLE raw.{table} "
+        f"({columns}, loaded_at TIMESTAMPTZ NOT NULL)"
+    )
 
 
-def load_raw_tables(connection: duckdb.DuckDBPyConnection, raw_dir: Path) -> dict[str, int]:
+def load_raw_tables(
+    connection: duckdb.DuckDBPyConnection,
+    raw_dir: Path,
+    loaded_at: datetime | None = None,
+) -> dict[str, int]:
     """Replace the raw tables from a directory of generated CSV files."""
 
     connection.execute("CREATE SCHEMA IF NOT EXISTS raw")
+    load_timestamp = loaded_at or datetime.now(UTC)
     row_counts: dict[str, int] = {}
     for table, columns in RAW_TABLES.items():
         rows = _read_csv(raw_dir / f"{table}.csv")
         _create_raw_table(connection, table)
         column_names = [name for name, _ in columns]
-        placeholders = ", ".join("?" for _ in column_names)
+        insert_columns = [*column_names, "loaded_at"]
+        placeholders = ", ".join("?" for _ in insert_columns)
         values = [
-            tuple(row[name] if row[name] != "" else None for name in column_names)
+            (
+                *(row[name] if row[name] != "" else None for name in column_names),
+                load_timestamp,
+            )
             for row in rows
         ]
         if values:
-            connection.executemany(f"INSERT INTO raw.{table} VALUES ({placeholders})", values)
+            connection.executemany(
+                f"INSERT INTO raw.{table} ({', '.join(insert_columns)}) "
+                f"VALUES ({placeholders})",
+                values,
+            )
         row_counts[table] = len(rows)
     return row_counts
 
 
-def _set_run_parameters(connection: duckdb.DuckDBPyConnection, as_of_date: date) -> None:
-    connection.execute("CREATE OR REPLACE TABLE raw.run_parameters (as_of_date DATE)")
-    connection.execute("INSERT INTO raw.run_parameters VALUES (?)", [as_of_date.isoformat()])
+def _set_run_parameters(
+    connection: duckdb.DuckDBPyConnection,
+    as_of_date: date,
+    loaded_at: datetime | None = None,
+) -> None:
+    load_timestamp = loaded_at or datetime.now(UTC)
+    connection.execute(
+        "CREATE OR REPLACE TABLE raw.run_parameters "
+        "(as_of_date DATE, loaded_at TIMESTAMPTZ NOT NULL)"
+    )
+    connection.execute(
+        "INSERT INTO raw.run_parameters VALUES (?, ?)",
+        [as_of_date.isoformat(), load_timestamp],
+    )
 
 
 def run_sql_models(
-    connection: duckdb.DuckDBPyConnection, sql_path: Path, as_of_date: date
+    connection: duckdb.DuckDBPyConnection,
+    sql_path: Path,
+    as_of_date: date,
+    loaded_at: datetime | None = None,
 ) -> None:
     """Run the SQL models with a fixed as-of date for reproducible results."""
 
-    _set_run_parameters(connection, as_of_date)
+    _set_run_parameters(connection, as_of_date, loaded_at)
     connection.execute(sql_path.read_text(encoding="utf-8"))
 
 
@@ -171,8 +201,9 @@ def build_database(
 
     database_path.parent.mkdir(parents=True, exist_ok=True)
     with duckdb.connect(str(database_path)) as connection:
-        load_raw_tables(connection, raw_dir)
-        run_sql_models(connection, sql_path, as_of_date)
+        loaded_at = datetime.now(UTC)
+        load_raw_tables(connection, raw_dir, loaded_at)
+        run_sql_models(connection, sql_path, as_of_date, loaded_at)
         errors = validate_database(connection)
         if errors:
             raise ValueError("Database validation failed:\n- " + "\n- ".join(errors))

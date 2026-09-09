@@ -177,9 +177,29 @@ The agreement population was modelled separately from billing activity.
 
 For a controlled movement failure, I increased one temporary December closing count by one. `subscription_movement_metric_consistency` returned exactly one unbalanced row and dbt exited with code 1. Rebuilding the model restored the closing population of 14 and the complete suite passed.
 
+## Source freshness run — 9 September 2026
+
+The loader now records a single UTC ingestion timestamp across every raw table in a run. The pipeline checks that timestamp before building reporting models.
+
+| Check | Result |
+|---|---:|
+| Raw sources checked | 7 |
+| Fresh sources | 7 |
+| dbt table models | 9 passed |
+| dbt data tests | 125 passed |
+| dbt model and data-test resources | 134 passed |
+| DuckDB checkpoint hook | Passed |
+| Python tests | 15 passed |
+| Ruff | Passed |
+| dbt documentation generation | Passed |
+
+For a controlled freshness failure, I moved the temporary `raw.payments.loaded_at` value back by 25 hours. The selected source returned one `ERROR STALE` result and dbt exited with code 1. Reloading the raw tables restored the current batch timestamp and all seven source checks passed.
+
+My first attempt to change the post-build database hit the DuckDB write-ahead-log replay conflict previously seen during documentation generation. That run did not reach the freshness query, so I did not count it as a successful failure test. I recreated the disposable database, moved the timestamp before transformation and obtained the expected single stale-source error. I also changed the DuckDB-only end-of-run hook to force a checkpoint. The clean build left no recovery file, and the following documentation command completed successfully.
+
 ## Known gaps
 
-- Source freshness is not enabled because the raw tables do not yet contain a genuine ingestion timestamp.
+- The freshness timestamp begins at the local DuckDB load; it cannot prove when an upstream system extracted or published the data.
 - The dbt models currently rebuild as tables rather than incrementally.
 - Subscription refunds, retries, plan changes and revenue-recognition rules are not yet represented.
 - The subscription plan catalogue has no effective dates, so price history is not yet represented.

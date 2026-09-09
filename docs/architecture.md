@@ -80,6 +80,12 @@ This prevents a quiet gap in a trend chart without inventing rows for plans that
 
 Keeping movement separate avoids mixing transaction activity with account population. The model can answer a month-end agreement question without changing the "active at any point in the month" definition used to qualify zero-activity billing rows.
 
+## Day 16 addition
+
+The Python load now stamps every raw row, including the run parameters, with one UTC `loaded_at` value for the batch. dbt checks the maximum timestamp on each source before it builds the marts.
+
+This separates two different ideas: business event dates describe when a payment or agreement event happened, while `loaded_at` describes when this pipeline received the record. A production ingestion layer would normally retain upstream extraction and batch identifiers as well; the local project can only prove freshness from the point at which it loads DuckDB.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.

@@ -3,6 +3,10 @@ sources:
   - name: raw
     description: "Typed tables loaded from the generated CSV files."
     schema: raw
+    loaded_at_field: loaded_at
+    freshness:
+      warn_after: {count: 1, period: hour}
+      error_after: {count: 24, period: hour}
     tables:
       - name: subscription_plans
         description: "Four synthetic product and billing-frequency plan definitions."

@@ -8,7 +8,7 @@ from finance_portfolio.generate_data import (
     generate_dataset,
     write_dataset,
 )
-from finance_portfolio.load_duckdb import build_database, validate_database
+from finance_portfolio.load_duckdb import RAW_TABLES, build_database, validate_database
 
 SQL_PATH = Path(__file__).parents[1] / "sql/duckdb/marts.sql"
 
@@ -69,3 +69,28 @@ def test_duckdb_as_of_date_is_explicit(tmp_path) -> None:
         ).fetchone()[0]
 
     assert second_age >= first_age
+
+
+def test_raw_tables_record_one_load_timestamp(tmp_path) -> None:
+    raw_dir = tmp_path / "raw"
+    database_path = tmp_path / "finance.duckdb"
+    write_dataset(generate_dataset(GeneratorConfig(seed=42, customer_count=5)), raw_dir)
+
+    build_database(
+        raw_dir,
+        database_path,
+        SQL_PATH,
+        date(2025, 12, 31),
+    )
+
+    with duckdb.connect(str(database_path)) as connection:
+        timestamps = {
+            connection.execute(f"SELECT DISTINCT loaded_at FROM raw.{table}").fetchone()[0]
+            for table in RAW_TABLES
+        }
+        timestamps.add(
+            connection.execute("SELECT loaded_at FROM raw.run_parameters").fetchone()[0]
+        )
+
+    assert None not in timestamps
+    assert len(timestamps) == 1

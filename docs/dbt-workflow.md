@@ -10,7 +10,8 @@ The database path is deliberately passed through `FINANCE_DUCKDB_PATH`. This mat
 flowchart LR
     A[Generated CSVs] --> B[Python loader]
     B --> C[(raw schema)]
-    C --> D[dbt models]
+    C --> G[dbt source freshness]
+    G --> D[dbt models]
     D --> E[(mart schema)]
     E --> F[dbt tests]
 ```
@@ -24,10 +25,15 @@ python -m pip install -e ".[dev]"
 PYTHONPATH=src python -m finance_portfolio.generate_data
 PYTHONPATH=src python -m finance_portfolio.load_duckdb
 FINANCE_DUCKDB_PATH=data/finance.duckdb dbt debug --project-dir . --profiles-dir config
+FINANCE_DUCKDB_PATH=data/finance.duckdb dbt source freshness --project-dir . --profiles-dir config --target local --no-partial-parse
 FINANCE_DUCKDB_PATH=data/finance.duckdb dbt build --project-dir . --profiles-dir config --target local --no-partial-parse
 ```
 
-`dbt build` materialises the eight mart models and runs the model tests and singular controls. The `--no-partial-parse` option is useful while changing the project because it makes the command parse the files currently on disk.
+`dbt build` materialises the nine mart models and runs the model tests and singular controls. The `--no-partial-parse` option is useful while changing the project because it makes the command parse the files currently on disk.
+
+`dbt source freshness` is a separate operational check. It runs after the raw load and before transformation. All seven sources use the batch `loaded_at` timestamp rather than a business event date, with a one-hour warning and a 24-hour error threshold.
+
+The local DuckDB target runs a forced checkpoint at the end of dbt commands. This was added after a completed build left a recovery file that conflicted with the next connection. The hook is adapter-specific and does not represent a warehouse-wide production pattern.
 
 To generate the local documentation site:
 
