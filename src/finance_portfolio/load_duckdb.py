@@ -7,6 +7,7 @@ import csv
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import TypeAlias
+from uuid import uuid4
 
 import duckdb
 
@@ -71,7 +72,7 @@ def _create_raw_table(connection: duckdb.DuckDBPyConnection, table: str) -> None
     columns = ", ".join(f"{name} {data_type}" for name, data_type in RAW_TABLES[table])
     connection.execute(
         f"CREATE OR REPLACE TABLE raw.{table} "
-        f"({columns}, loaded_at TIMESTAMPTZ NOT NULL)"
+        f"({columns}, load_id VARCHAR NOT NULL, loaded_at TIMESTAMPTZ NOT NULL)"
     )
 
 
@@ -79,21 +80,24 @@ def load_raw_tables(
     connection: duckdb.DuckDBPyConnection,
     raw_dir: Path,
     loaded_at: datetime | None = None,
+    load_id: str | None = None,
 ) -> dict[str, int]:
     """Replace the raw tables from a directory of generated CSV files."""
 
     connection.execute("CREATE SCHEMA IF NOT EXISTS raw")
     load_timestamp = loaded_at or datetime.now(UTC)
+    batch_id = load_id or str(uuid4())
     row_counts: dict[str, int] = {}
     for table, columns in RAW_TABLES.items():
         rows = _read_csv(raw_dir / f"{table}.csv")
         _create_raw_table(connection, table)
         column_names = [name for name, _ in columns]
-        insert_columns = [*column_names, "loaded_at"]
+        insert_columns = [*column_names, "load_id", "loaded_at"]
         placeholders = ", ".join("?" for _ in insert_columns)
         values = [
             (
                 *(row[name] if row[name] != "" else None for name in column_names),
+                batch_id,
                 load_timestamp,
             )
             for row in rows
@@ -112,15 +116,17 @@ def _set_run_parameters(
     connection: duckdb.DuckDBPyConnection,
     as_of_date: date,
     loaded_at: datetime | None = None,
+    load_id: str | None = None,
 ) -> None:
     load_timestamp = loaded_at or datetime.now(UTC)
+    batch_id = load_id or str(uuid4())
     connection.execute(
         "CREATE OR REPLACE TABLE raw.run_parameters "
-        "(as_of_date DATE, loaded_at TIMESTAMPTZ NOT NULL)"
+        "(as_of_date DATE, load_id VARCHAR NOT NULL, loaded_at TIMESTAMPTZ NOT NULL)"
     )
     connection.execute(
-        "INSERT INTO raw.run_parameters VALUES (?, ?)",
-        [as_of_date.isoformat(), load_timestamp],
+        "INSERT INTO raw.run_parameters VALUES (?, ?, ?)",
+        [as_of_date.isoformat(), batch_id, load_timestamp],
     )
 
 
@@ -129,17 +135,93 @@ def run_sql_models(
     sql_path: Path,
     as_of_date: date,
     loaded_at: datetime | None = None,
+    load_id: str | None = None,
 ) -> None:
     """Run the SQL models with a fixed as-of date for reproducible results."""
 
-    _set_run_parameters(connection, as_of_date, loaded_at)
+    _set_run_parameters(connection, as_of_date, loaded_at, load_id)
     connection.execute(sql_path.read_text(encoding="utf-8"))
+
+
+def _write_ingestion_audit(
+    connection: duckdb.DuckDBPyConnection,
+    row_counts: dict[str, int],
+    load_id: str,
+    loaded_at: datetime,
+) -> None:
+    connection.execute(
+        """
+        CREATE OR REPLACE TABLE raw.ingestion_audit (
+            load_id VARCHAR NOT NULL,
+            source_name VARCHAR NOT NULL,
+            source_file VARCHAR,
+            source_row_count INTEGER NOT NULL,
+            load_status VARCHAR NOT NULL,
+            loaded_at TIMESTAMPTZ NOT NULL
+        )
+        """
+    )
+    audit_rows = [
+        (
+            load_id,
+            table,
+            f"{table}.csv",
+            row_count,
+            "Loaded" if row_count > 0 else "Empty",
+            loaded_at,
+        )
+        for table, row_count in row_counts.items()
+    ]
+    audit_rows.append((load_id, "run_parameters", None, 1, "Loaded", loaded_at))
+    connection.executemany(
+        "INSERT INTO raw.ingestion_audit VALUES (?, ?, ?, ?, ?, ?)",
+        audit_rows,
+    )
+
+
+def _validate_ingestion_audit(connection: duckdb.DuckDBPyConnection) -> list[str]:
+    errors: list[str] = []
+    audit_record_count = connection.execute(
+        "SELECT COUNT(*) FROM raw.ingestion_audit"
+    ).fetchone()[0]
+    audit_rows = {
+        row[0]: row[1:]
+        for row in connection.execute(
+            """
+            SELECT source_name, source_row_count, load_status
+            FROM raw.ingestion_audit
+            """
+        ).fetchall()
+    }
+    expected_sources = [*RAW_TABLES, "run_parameters"]
+    if audit_record_count != len(expected_sources) or set(audit_rows) != set(
+        expected_sources
+    ):
+        errors.append("raw.ingestion_audit does not contain exactly one expected source record")
+
+    for source_name in expected_sources:
+        if source_name not in audit_rows:
+            continue
+        actual_count = connection.execute(
+            f"SELECT COUNT(*) FROM raw.{source_name}"
+        ).fetchone()[0]
+        audited_count, load_status = audit_rows[source_name]
+        if audited_count != actual_count:
+            errors.append(
+                f"raw.{source_name} row count does not match ingestion audit: "
+                f"actual={actual_count} audited={audited_count}"
+            )
+        if actual_count == 0:
+            errors.append(f"raw.{source_name} is empty")
+        if load_status != ("Loaded" if actual_count > 0 else "Empty"):
+            errors.append(f"raw.{source_name} has an incorrect ingestion status")
+    return errors
 
 
 def validate_database(connection: duckdb.DuckDBPyConnection) -> list[str]:
     """Return data-quality errors found after loading and modelling."""
 
-    errors: list[str] = []
+    errors = _validate_ingestion_audit(connection)
     key_fields = {
         "mart.dim_customer": "customer_id",
         "mart.dim_loan": "account_id",
@@ -202,26 +284,36 @@ def build_database(
     database_path.parent.mkdir(parents=True, exist_ok=True)
     with duckdb.connect(str(database_path)) as connection:
         loaded_at = datetime.now(UTC)
-        load_raw_tables(connection, raw_dir, loaded_at)
-        run_sql_models(connection, sql_path, as_of_date, loaded_at)
-        errors = validate_database(connection)
-        if errors:
-            raise ValueError("Database validation failed:\n- " + "\n- ".join(errors))
+        load_id = str(uuid4())
+        connection.execute("BEGIN TRANSACTION")
+        try:
+            raw_counts = load_raw_tables(connection, raw_dir, loaded_at, load_id)
+            run_sql_models(connection, sql_path, as_of_date, loaded_at, load_id)
+            _write_ingestion_audit(connection, raw_counts, load_id, loaded_at)
+            errors = validate_database(connection)
+            if errors:
+                raise ValueError("Database validation failed:\n- " + "\n- ".join(errors))
 
-        return {
-            table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-            for table in (
-                "raw.subscription_plans",
-                "raw.customers",
-                "raw.loans",
-                "raw.subscriptions",
-                "raw.subscription_payments",
-                "raw.payments",
-                "mart.dim_customer",
-                "mart.dim_loan",
-                "mart.fct_payment",
-            )
-        }
+            counts = {
+                table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                for table in (
+                    "raw.subscription_plans",
+                    "raw.customers",
+                    "raw.loans",
+                    "raw.subscriptions",
+                    "raw.subscription_payments",
+                    "raw.payments",
+                    "raw.ingestion_audit",
+                    "mart.dim_customer",
+                    "mart.dim_loan",
+                    "mart.fct_payment",
+                )
+            }
+            connection.execute("COMMIT")
+        except Exception:
+            connection.execute("ROLLBACK")
+            raise
+        return counts
 
 
 def main() -> None:

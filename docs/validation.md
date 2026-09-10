@@ -197,9 +197,35 @@ For a controlled freshness failure, I moved the temporary `raw.payments.loaded_a
 
 My first attempt to change the post-build database hit the DuckDB write-ahead-log replay conflict previously seen during documentation generation. That run did not reach the freshness query, so I did not count it as a successful failure test. I recreated the disposable database, moved the timestamp before transformation and obtained the expected single stale-source error. I also changed the DuckDB-only end-of-run hook to force a checkpoint. The clean build left no recovery file, and the following documentation command completed successfully.
 
+## Atomic ingestion run — 10 September 2026
+
+The full-refresh loader now assigns one batch identifier to all raw tables and validates a source-level audit manifest before committing.
+
+| Check | Result |
+|---|---:|
+| Expected source audit rows | 7 / 7 |
+| Distinct load identifiers | 1 |
+| Audited source counts matching raw tables | 7 / 7 |
+| Fresh raw sources | 8 / 8 |
+| dbt table models | 9 passed |
+| dbt data tests | 133 passed |
+| dbt model and data-test resources | 142 passed |
+| DuckDB checkpoint hook | Passed |
+| Python tests | 16 passed |
+| Ruff | Passed |
+| dbt documentation generation | Passed |
+
+For a controlled reconciliation failure, I increased the recorded payment row count by one without changing `raw.payments`. `reconcile_ingestion_audit` returned exactly one mismatch and dbt exited with code 1. I then recreated the database and reran the clean pipeline.
+
+The rollback test starts with a valid five-customer batch, then attempts a seven-customer replacement after removing its required `payments.csv` file. The second load raises `FileNotFoundError`; the original batch identifier and five customer rows remain in the database. This proves that the replacement does not leave a mixture of old and new source tables.
+
+My first attempt to modify the database after a complete dbt build again encountered the local DuckDB recovery-file conflict before the audit query ran. I excluded that attempt from the failure evidence and ran the controlled mismatch against a freshly loaded and checkpointed database. The issue remains a limitation of this local multi-process workflow despite the existing dbt end hook.
+
 ## Known gaps
 
 - The freshness timestamp begins at the local DuckDB load; it cannot prove when an upstream system extracted or published the data.
+- The batch audit records only the current full refresh; it does not retain run history, upstream extract IDs or file checksums.
+- Empty raw sources are currently rejected; there is no source-specific policy for a legitimate zero-row extract.
 - The dbt models currently rebuild as tables rather than incrementally.
 - Subscription refunds, retries, plan changes and revenue-recognition rules are not yet represented.
 - The subscription plan catalogue has no effective dates, so price history is not yet represented.

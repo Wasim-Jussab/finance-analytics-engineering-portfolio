@@ -15,6 +15,7 @@ Before generating data, I wrote down the grain I think each entity should have. 
 | Payment | One row per payment transaction against a loan account | payment_id |
 | Portfolio snapshot | One row per account and reporting date | account_id plus snapshot_date |
 | Reporting exclusion | One row per account, run and exclusion reason | run_id plus account_id plus exclusion_code |
+| Ingestion audit | One row per expected source in the current load | source_name |
 
 ## Rules I want to keep visible
 
@@ -239,7 +240,31 @@ The loader creates one timestamp per run and applies it to every raw row and the
 
 dbt treats the seven raw sources as fresh when their latest `loaded_at` value is no more than one hour old, warns after one hour and errors after 24 hours. This threshold is deliberately short for a pipeline that is rebuilt on demand. It is not presented as a production service-level agreement.
 
-The current full-refresh loader replaces each table, so a successful load refreshes every source together. A future incremental design would need a batch identifier, upstream extraction time and explicit handling for an empty or partially loaded source.
+The Day 16 implementation could show that individual tables were recent, but it could not identify which tables belonged to the same load or prove that the replacement was complete.
+
+## Day 17 ingestion batch contract
+
+Every raw table now contains these pipeline-managed fields:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `load_id` | String UUID | Identifier shared by every table in the current load |
+| `loaded_at` | Timestamp with time zone | UTC timestamp at which the batch was loaded into DuckDB |
+
+`raw.ingestion_audit` has one row for each of the six CSV sources and one for `run_parameters`:
+
+| Field | Meaning |
+|---|---|
+| `load_id` | Batch identifier shared with the loaded rows |
+| `source_name` | Expected raw table name |
+| `source_file` | CSV filename, or NULL for generated run parameters |
+| `source_row_count` | Number of rows loaded for that source |
+| `load_status` | `Loaded` for the current accepted batch |
+| `loaded_at` | Shared UTC batch timestamp |
+
+The current contract requires all seven expected source records exactly once, a positive row count and a matching physical-table count. The full-refresh transaction is committed only after those checks and the existing mart reconciliations pass. An empty source is therefore rejected rather than assumed to be a valid zero-row extract.
+
+This audit describes the current local batch only because the full refresh replaces the audit table. A production version would normally retain run history, upstream extract identifiers, file checksums and an explicit policy for legitimately empty sources.
 
 ## Questions for the next few days
 
@@ -249,6 +274,6 @@ The current full-refresh loader replaces each table, so a successful load refres
 - Should a failed attempt followed by a retry be linked through a billing-cycle identifier?
 - Would a future status-event source require pause and reactivation movements as separate categories?
 - What should happen when an account has no matching customer?
-- How should a batch audit record distinguish an empty valid source from a failed extract?
+- Which sources, if any, should be allowed to complete with zero rows?
 
 These questions are intentionally left open. I will answer them when the generated data and models make the trade-offs clearer.
