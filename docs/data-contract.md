@@ -15,7 +15,9 @@ Before generating data, I wrote down the grain I think each entity should have. 
 | Payment | One row per payment transaction against a loan account | payment_id |
 | Portfolio snapshot | One row per account and reporting date | account_id plus snapshot_date |
 | Reporting exclusion | One row per account, run and exclusion reason | run_id plus account_id plus exclusion_code |
-| Ingestion audit | One row per expected source in the current load | source_name |
+| Current ingestion audit | One row per expected source in the current load | source_name |
+| Ingestion run history | One row per successfully committed load | load_id |
+| Ingestion source history | One row per source in each successful load | load_id plus source_name |
 
 ## Rules I want to keep visible
 
@@ -264,7 +266,22 @@ Every raw table now contains these pipeline-managed fields:
 
 The current contract requires all seven expected source records exactly once, a positive row count and a matching physical-table count. The full-refresh transaction is committed only after those checks and the existing mart reconciliations pass. An empty source is therefore rejected rather than assumed to be a valid zero-row extract.
 
-This audit describes the current local batch only because the full refresh replaces the audit table. A production version would normally retain run history, upstream extract identifiers, file checksums and an explicit policy for legitimately empty sources.
+This current manifest is still replaced by each full refresh. Day 18 adds separate history tables so successful prior runs are not lost.
+
+## Day 18 ingestion history contract
+
+`audit.ingestion_runs` has one row per successfully committed batch. It records `load_id`, load time, reporting date, `Success` status, expected source count and total source rows.
+
+`audit.ingestion_sources` has one row per source within each successful batch. It retains the current-manifest fields plus two file controls:
+
+| Field | Meaning |
+|---|---|
+| `source_file_size_bytes` | Size of the input CSV in bytes |
+| `source_file_sha256` | Lowercase 64-character SHA-256 digest of the input file |
+
+Both fields are NULL for `run_parameters` because that record is created by the loader rather than read from a file. The six CSV sources require a positive size and valid digest. History controls confirm seven sources per run, one shared timestamp, run-level totals equal to source-level totals, and the current manifest agrees with its matching history rows.
+
+The history contains successful loads only. It is stored in the same DuckDB file and is not presented as an immutable operational ledger. A production contract would also define upstream extraction IDs, retention, access controls and how failed attempts are captured outside the data transaction.
 
 ## Questions for the next few days
 

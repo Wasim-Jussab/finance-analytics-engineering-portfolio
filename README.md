@@ -12,6 +12,7 @@ I am building this project to make my move from data analysis into analytics eng
 flowchart LR
     A["Synthetic finance data"] --> B["Python generation and validation"]
     B --> C[("DuckDB raw tables + batch audit")]
+    C --> I[("Persistent run and source history")]
     C --> H["dbt source freshness"]
     H --> D["dbt transformations"]
     D --> E[("Reporting marts")]
@@ -26,7 +27,7 @@ Everything runs locally with no cloud account, credentials or paid service.
 | Area | Current implementation |
 |---|---|
 | Data generation | Deterministic customers, loans, subscription plans, agreements and payment attempts using a fixed seed |
-| Ingestion | Python loads typed DuckDB tables in one transaction and records a shared batch ID, load time, source status and row count |
+| Ingestion | Python loads typed DuckDB tables in one transaction and records batch, row-count and SHA-256 source history |
 | Transformation | dbt materialises customer, loan, subscription, transaction, billing and agreement-movement models in the `mart` schema |
 | Data quality | Key, relationship, required-field, accepted-value and chronology tests |
 | Financial control | Loan payments and subscription collections reconcile to source; billed amounts agree with the governed synthetic plan catalogue |
@@ -69,15 +70,17 @@ The current seed-42 run produced:
 | December closing agreements | 14 |
 | Calendar dates | 731 |
 | Audited source records | 7 |
+| Fingerprinted CSV sources | 6 of 6 |
+| Successful run/source history rows | 1 / 7 |
 | dbt models | 9 passed |
-| dbt data tests | 133 passed |
-| dbt model and data-test resources | 142 passed |
+| dbt data tests | 151 passed |
+| dbt model and data-test resources | 160 passed |
 | DuckDB checkpoint hook | Passed |
 | Raw sources within freshness threshold | 8 of 8 |
-| Python tests | 16 passed |
+| Python tests | 17 passed |
 | Ruff | Passed |
 
-Controlled failure checks have detected invalid values, broken chronology, duplicate grains, missing calendar and reporting rows, payment-to-plan disagreement, an incorrect agreement closing balance and a mismatched ingestion count. Each targeted test returned exactly one offending result and a non-zero exit code before the clean model was rebuilt. A separate missing-file test also proves that an incomplete replacement load rolls back to the preceding valid batch.
+Controlled failure checks have detected invalid values, broken chronology, duplicate grains, missing calendar and reporting rows, payment-to-plan disagreement, an incorrect agreement closing balance, a mismatched ingestion count and a history fingerprint that no longer agrees with the current batch. Each targeted test returned exactly one offending result and a non-zero exit code before the clean model was rebuilt. A separate missing-file test also proves that an incomplete replacement load rolls back to the preceding valid batch.
 
 The full evidence and remaining limitations are recorded in [docs/validation.md](docs/validation.md).
 
@@ -125,6 +128,8 @@ Generated CSVs, DuckDB files, dbt output and logs are excluded from Git.
 - **Freshness uses ingestion time:** every raw row receives the timestamp of the batch that loaded it; source event dates are not misused as arrival metadata.
 - **One auditable load batch:** every raw table shares one generated `load_id`, while the audit table records each expected source, row count, status and timestamp.
 - **Atomic replacement:** raw loading, the retained SQL comparison models and ingestion validation run in one transaction; a missing source rolls the whole attempt back.
+- **Successful history is retained:** committed runs and their source records append to a separate `audit` schema instead of disappearing with the next full refresh.
+- **Files are fingerprinted:** each CSV records its byte size and SHA-256 digest, allowing identical and changed inputs to be distinguished without storing a second copy.
 - **Local recovery is visible:** a DuckDB-only end-of-run hook requests a forced checkpoint; the validation log records that a recovery-file conflict can still occur between separate processes.
 
 ## Known gaps
@@ -137,7 +142,9 @@ This is a working project, not a finished platform.
 - The agreement data has no pause, reactivation or status-history events; the movement mart uses only start and cancellation dates.
 - The calendar start date is configuration rather than source-system metadata.
 - `loaded_at` records the local DuckDB load, not the extraction time of an upstream production system.
-- The audit currently treats an empty source as invalid and does not store an upstream extract ID or file checksum.
+- The audit currently treats an empty source as invalid and has no upstream extract ID.
+- Failed load attempts are rolled back but not written to the successful-run history.
+- The audit history lives in the same local DuckDB file as the data, so it is evidence for this workflow rather than an immutable external control log.
 - The dataset is intentionally small and has not been performance-tested.
 - The cloud architecture is documented as a possible production mapping, not presented as a deployed AWS system.
 
@@ -175,5 +182,6 @@ The daily notes record what changed, what failed and what remains unresolved. Th
 - [Day 15: monthly agreement movement](notes/day-15.md)
 - [Day 16: source freshness from ingestion metadata](notes/day-16.md)
 - [Day 17: atomic and auditable batch loading](notes/day-17.md)
+- [Day 18: persistent run history and source fingerprints](notes/day-18.md)
 
 This repository demonstrates how I structure and validate analytics-engineering work. My production experience with Redshift, AWS Glue/Python, Power BI, regulatory reporting and financial reconciliations is described separately in my professional profile.

@@ -221,10 +221,34 @@ The rollback test starts with a valid five-customer batch, then attempts a seven
 
 My first attempt to modify the database after a complete dbt build again encountered the local DuckDB recovery-file conflict before the audit query ran. I excluded that attempt from the failure evidence and ran the controlled mismatch against a freshly loaded and checkpointed database. The issue remains a limitation of this local multi-process workflow despite the existing dbt end hook.
 
+## Ingestion history run — 11 September 2026
+
+Successful load and source metadata now persists separately from the current full-refresh manifest. All six CSV inputs receive a byte size and SHA-256 fingerprint.
+
+| Check | Result |
+|---|---:|
+| Current source audit rows | 7 / 7 |
+| Successful run history rows | 1 |
+| Source history rows | 7 |
+| CSV files with valid fingerprints | 6 / 6 |
+| Fresh raw sources | 8 / 8 |
+| Declared dbt sources | 10 |
+| dbt table models | 9 passed |
+| dbt data tests | 151 passed |
+| dbt model and data-test resources | 160 passed |
+| DuckDB checkpoint hook | Passed |
+| Python tests | 17 passed |
+| Ruff | Passed |
+
+A two-run Python test produced two distinct batch IDs and fourteen source-history rows. Because the input files were unchanged, the customer source retained one distinct SHA-256 digest. The existing missing-file test also confirmed that a failed replacement did not add a second success record.
+
+For a controlled history failure, I replaced the persisted payment digest with a different valid 64-character value while leaving the current manifest unchanged. `current_ingestion_matches_history` returned exactly one row and dbt exited with code 1. I then recreated the database and reran the clean pipeline.
+
 ## Known gaps
 
 - The freshness timestamp begins at the local DuckDB load; it cannot prove when an upstream system extracted or published the data.
-- The batch audit records only the current full refresh; it does not retain run history, upstream extract IDs or file checksums.
+- The history has no upstream extraction identifier and is stored in the same local database rather than an immutable control store.
+- Failed attempts are rolled back but are not retained in the successful-run history.
 - Empty raw sources are currently rejected; there is no source-specific policy for a legitimate zero-row extract.
 - The dbt models currently rebuild as tables rather than incrementally.
 - Subscription refunds, retries, plan changes and revenue-recognition rules are not yet represented.

@@ -92,6 +92,14 @@ The loader now gives every raw row one generated `load_id` and writes a seven-ro
 
 The full replacement load runs inside one DuckDB transaction. Raw tables, the retained SQL comparison marts, the run parameters and the audit manifest are committed together only after Python validation succeeds. If a required source file is missing, the transaction rolls back and the previous valid batch remains available. This is still a local full-refresh pattern; it does not provide an upstream extraction guarantee or a multi-run audit history.
 
+## Day 18 addition
+
+The current-batch manifest still lives in `raw.ingestion_audit`, but each successful commit now also appends to `audit.ingestion_runs` and `audit.ingestion_sources`. The first table has one row per accepted run; the second keeps the seven source records for each run. This separates current operational state from historical evidence without changing the reporting marts.
+
+Before replacing any raw table, Python calculates the byte size and SHA-256 digest of all six required CSV files. Those fingerprints are stored in both the current manifest and source history. They identify whether two runs used identical file content; they do not prove who produced a file or when an upstream extraction occurred.
+
+Only successful runs are retained. A failed replacement is rolled back without adding a success record. Recording failed attempts durably would need a control store outside the transaction, and ideally outside the analytical database itself.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.

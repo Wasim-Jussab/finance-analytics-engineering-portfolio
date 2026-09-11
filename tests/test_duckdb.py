@@ -1,4 +1,5 @@
 from datetime import date
+from hashlib import sha256
 from pathlib import Path
 
 import duckdb
@@ -32,6 +33,8 @@ def test_duckdb_build_loads_raw_and_reporting_tables(tmp_path) -> None:
     assert counts["raw.loans"] == 10
     assert counts["raw.subscription_payments"] > 0
     assert counts["raw.ingestion_audit"] == 7
+    assert counts["audit.ingestion_runs"] == 1
+    assert counts["audit.ingestion_sources"] == 7
     assert counts["mart.dim_customer"] == 10
     assert counts["mart.dim_loan"] == 10
     assert counts["mart.fct_payment"] > 0
@@ -104,12 +107,66 @@ def test_raw_tables_record_one_load_timestamp(tmp_path) -> None:
             FROM raw.ingestion_audit
             """
         ).fetchone()
+        file_audit = connection.execute(
+            """
+            SELECT source_file, source_file_size_bytes, source_file_sha256
+            FROM raw.ingestion_audit
+            WHERE source_name = 'customers'
+            """
+        ).fetchone()
 
     assert None not in timestamps
     assert len(timestamps) == 1
     assert None not in load_ids
     assert len(load_ids) == 1
     assert audit_summary == (7, 1, 1)
+    customer_file = raw_dir / "customers.csv"
+    assert file_audit == (
+        "customers.csv",
+        customer_file.stat().st_size,
+        sha256(customer_file.read_bytes()).hexdigest(),
+    )
+
+
+def test_successful_loads_retain_batch_history(tmp_path) -> None:
+    raw_dir = tmp_path / "raw"
+    database_path = tmp_path / "finance.duckdb"
+    write_dataset(generate_dataset(GeneratorConfig(seed=42, customer_count=5)), raw_dir)
+
+    build_database(raw_dir, database_path, SQL_PATH, date(2025, 12, 31))
+    build_database(raw_dir, database_path, SQL_PATH, date(2026, 1, 31))
+
+    with duckdb.connect(str(database_path)) as connection:
+        run_summary = connection.execute(
+            """
+            SELECT COUNT(*), COUNT(DISTINCT load_id), SUM(source_count)
+            FROM audit.ingestion_runs
+            """
+        ).fetchone()
+        source_summary = connection.execute(
+            """
+            SELECT COUNT(*), COUNT(DISTINCT load_id)
+            FROM audit.ingestion_sources
+            """
+        ).fetchone()
+        current_load_id = connection.execute(
+            "SELECT DISTINCT load_id FROM raw.ingestion_audit"
+        ).fetchone()[0]
+        latest_history_load_id = connection.execute(
+            "SELECT load_id FROM audit.ingestion_runs ORDER BY loaded_at DESC LIMIT 1"
+        ).fetchone()[0]
+        customer_hash_count = connection.execute(
+            """
+            SELECT COUNT(DISTINCT source_file_sha256)
+            FROM audit.ingestion_sources
+            WHERE source_name = 'customers'
+            """
+        ).fetchone()[0]
+
+    assert run_summary == (2, 2, 14)
+    assert source_summary == (14, 2)
+    assert current_load_id == latest_history_load_id
+    assert customer_hash_count == 1
 
 
 def test_failed_load_rolls_back_to_previous_batch(tmp_path) -> None:
@@ -136,6 +193,10 @@ def test_failed_load_rolls_back_to_previous_batch(tmp_path) -> None:
         retained_customer_count = connection.execute(
             "SELECT COUNT(*) FROM raw.customers"
         ).fetchone()[0]
+        retained_history_count = connection.execute(
+            "SELECT COUNT(*) FROM audit.ingestion_runs"
+        ).fetchone()[0]
 
     assert retained_load_id == first_load_id
     assert retained_customer_count == 5
+    assert retained_history_count == 1

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import TypeAlias
@@ -12,6 +13,7 @@ from uuid import uuid4
 import duckdb
 
 Row: TypeAlias = dict[str, str]
+FileMetadata: TypeAlias = dict[str, tuple[int, str]]
 
 RAW_TABLES: dict[str, list[tuple[str, str]]] = {
     "subscription_plans": [
@@ -66,6 +68,20 @@ RAW_TABLES: dict[str, list[tuple[str, str]]] = {
 def _read_csv(path: Path) -> list[Row]:
     with path.open(encoding="utf-8", newline="") as file:
         return list(csv.DictReader(file))
+
+
+def _fingerprint_source_files(raw_dir: Path) -> FileMetadata:
+    """Return file size and SHA-256 metadata for every required CSV source."""
+
+    metadata: FileMetadata = {}
+    for table in RAW_TABLES:
+        source_path = raw_dir / f"{table}.csv"
+        digest = hashlib.sha256()
+        with source_path.open("rb") as source_file:
+            for chunk in iter(lambda: source_file.read(64 * 1024), b""):
+                digest.update(chunk)
+        metadata[table] = (source_path.stat().st_size, digest.hexdigest())
+    return metadata
 
 
 def _create_raw_table(connection: duckdb.DuckDBPyConnection, table: str) -> None:
@@ -146,8 +162,10 @@ def run_sql_models(
 def _write_ingestion_audit(
     connection: duckdb.DuckDBPyConnection,
     row_counts: dict[str, int],
+    file_metadata: FileMetadata,
     load_id: str,
     loaded_at: datetime,
+    as_of_date: date,
 ) -> None:
     connection.execute(
         """
@@ -156,6 +174,8 @@ def _write_ingestion_audit(
             source_name VARCHAR NOT NULL,
             source_file VARCHAR,
             source_row_count INTEGER NOT NULL,
+            source_file_size_bytes BIGINT,
+            source_file_sha256 VARCHAR,
             load_status VARCHAR NOT NULL,
             loaded_at TIMESTAMPTZ NOT NULL
         )
@@ -167,14 +187,73 @@ def _write_ingestion_audit(
             table,
             f"{table}.csv",
             row_count,
+            file_metadata[table][0],
+            file_metadata[table][1],
             "Loaded" if row_count > 0 else "Empty",
             loaded_at,
         )
         for table, row_count in row_counts.items()
     ]
-    audit_rows.append((load_id, "run_parameters", None, 1, "Loaded", loaded_at))
+    audit_rows.append((load_id, "run_parameters", None, 1, None, None, "Loaded", loaded_at))
     connection.executemany(
-        "INSERT INTO raw.ingestion_audit VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO raw.ingestion_audit VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        audit_rows,
+    )
+    _append_ingestion_history(connection, audit_rows, load_id, loaded_at, as_of_date)
+
+
+def _append_ingestion_history(
+    connection: duckdb.DuckDBPyConnection,
+    audit_rows: list[tuple[object, ...]],
+    load_id: str,
+    loaded_at: datetime,
+    as_of_date: date,
+) -> None:
+    """Retain successful run and source metadata across full refreshes."""
+
+    connection.execute("CREATE SCHEMA IF NOT EXISTS audit")
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS audit.ingestion_runs (
+            load_id VARCHAR PRIMARY KEY,
+            loaded_at TIMESTAMPTZ NOT NULL,
+            as_of_date DATE NOT NULL,
+            run_status VARCHAR NOT NULL,
+            source_count INTEGER NOT NULL,
+            total_source_row_count BIGINT NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS audit.ingestion_sources (
+            load_id VARCHAR NOT NULL,
+            source_name VARCHAR NOT NULL,
+            source_file VARCHAR,
+            source_row_count INTEGER NOT NULL,
+            source_file_size_bytes BIGINT,
+            source_file_sha256 VARCHAR,
+            load_status VARCHAR NOT NULL,
+            loaded_at TIMESTAMPTZ NOT NULL,
+            PRIMARY KEY (load_id, source_name)
+        )
+        """
+    )
+    connection.execute(
+        """
+        INSERT INTO audit.ingestion_runs
+        VALUES (?, ?, ?, 'Success', ?, ?)
+        """,
+        [
+            load_id,
+            loaded_at,
+            as_of_date.isoformat(),
+            len(audit_rows),
+            sum(int(row[3]) for row in audit_rows),
+        ],
+    )
+    connection.executemany(
+        "INSERT INTO audit.ingestion_sources VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         audit_rows,
     )
 
@@ -287,9 +366,17 @@ def build_database(
         load_id = str(uuid4())
         connection.execute("BEGIN TRANSACTION")
         try:
+            file_metadata = _fingerprint_source_files(raw_dir)
             raw_counts = load_raw_tables(connection, raw_dir, loaded_at, load_id)
             run_sql_models(connection, sql_path, as_of_date, loaded_at, load_id)
-            _write_ingestion_audit(connection, raw_counts, load_id, loaded_at)
+            _write_ingestion_audit(
+                connection,
+                raw_counts,
+                file_metadata,
+                load_id,
+                loaded_at,
+                as_of_date,
+            )
             errors = validate_database(connection)
             if errors:
                 raise ValueError("Database validation failed:\n- " + "\n- ".join(errors))
@@ -304,6 +391,8 @@ def build_database(
                     "raw.subscription_payments",
                     "raw.payments",
                     "raw.ingestion_audit",
+                    "audit.ingestion_runs",
+                    "audit.ingestion_sources",
                     "mart.dim_customer",
                     "mart.dim_loan",
                     "mart.fct_payment",
