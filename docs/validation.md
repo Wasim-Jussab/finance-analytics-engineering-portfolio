@@ -244,11 +244,36 @@ A two-run Python test produced two distinct batch IDs and fourteen source-histor
 
 For a controlled history failure, I replaced the persisted payment digest with a different valid 64-character value while leaving the current manifest unchanged. `current_ingestion_matches_history` returned exactly one row and dbt exited with code 1. I then recreated the database and reran the clean pipeline.
 
+## Failed-attempt history run — 12 September 2026
+
+The loader now preserves a rejected attempt after rolling back the transaction that replaces the raw data.
+
+| Check | Result |
+|---|---:|
+| Successful / failed run history rows | 1 / 1 |
+| Accepted source-history rows | 7 |
+| Failure-detail rows | 1 |
+| Raw payment rows retained after failure | 99 |
+| Fresh raw sources on clean run | 8 / 8 |
+| Declared dbt sources | 11 |
+| dbt table models | 9 passed |
+| dbt data tests | 158 passed |
+| dbt model and data-test resources | 167 passed |
+| DuckDB checkpoint hook | Passed |
+| Python tests | 18 passed |
+| Ruff | Passed |
+
+I removed `payments.csv` after a valid load and reran ingestion. The second command exited with code 1. The database retained the previous 99 payment rows and seven accepted source records, while the control history added one `Failed` run and one `FileNotFoundError` detail. The stored message was `Required source file not found: payments.csv`, without the local path. All three ingestion-history reconciliation tests passed against this mixed success/failure history.
+
+For a controlled audit failure, I removed the temporary failure-detail row but left its `Failed` run header. `ingestion_failure_consistency` returned exactly one result and dbt exited with code 1. I then recreated the generated files and database before the final clean run.
+
+An earlier attempt to run this scenario immediately after the full dbt build encountered the documented DuckDB write-ahead-log replay conflict before the loader reached the missing file. I did not count that as failure-history evidence. Repeating the scenario on a freshly loaded database isolated the loader behaviour and produced the expected result.
+
 ## Known gaps
 
 - The freshness timestamp begins at the local DuckDB load; it cannot prove when an upstream system extracted or published the data.
 - The history has no upstream extraction identifier and is stored in the same local database rather than an immutable control store.
-- Failed attempts are rolled back but are not retained in the successful-run history.
+- Failed attempts retain run-level error detail but no source-level history, retries or alerts.
 - Empty raw sources are currently rejected; there is no source-specific policy for a legitimate zero-row extract.
 - The dbt models currently rebuild as tables rather than incrementally.
 - Subscription refunds, retries, plan changes and revenue-recognition rules are not yet represented.

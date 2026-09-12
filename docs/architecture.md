@@ -98,7 +98,15 @@ The current-batch manifest still lives in `raw.ingestion_audit`, but each succes
 
 Before replacing any raw table, Python calculates the byte size and SHA-256 digest of all six required CSV files. Those fingerprints are stored in both the current manifest and source history. They identify whether two runs used identical file content; they do not prove who produced a file or when an upstream extraction occurred.
 
-Only successful runs are retained. A failed replacement is rolled back without adding a success record. Recording failed attempts durably would need a control store outside the transaction, and ideally outside the analytical database itself.
+Only successful runs are retained in the source-level history. A failed replacement is rolled back without adding a false success record.
+
+## Day 19 addition
+
+Failed attempts now have a separate path. The loader first rolls back the transaction that was replacing raw data. It then opens a small control transaction that writes a `Failed` run header and a related row in `audit.ingestion_failures`. This ordering matters: writing the failure before the rollback would undo the evidence, while committing it inside the replacement transaction could also commit part of a bad batch.
+
+The failure detail contains the exception type, failure time and a sanitised message. For a missing file, the message keeps the filename but removes the local path. No source-level history is written for a rejected batch because the sources were not accepted as a complete load.
+
+This is useful local operational evidence, not an independent audit ledger. Both data and controls still live in one DuckDB file, and the loader has no retry or alerting mechanism.
 
 ## What I already know
 

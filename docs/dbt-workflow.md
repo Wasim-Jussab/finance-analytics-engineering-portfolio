@@ -10,7 +10,8 @@ The database path is deliberately passed through `FINANCE_DUCKDB_PATH`. This mat
 flowchart LR
     A[Generated CSVs] --> B[Python loader]
     B --> C[(raw schema + current batch audit)]
-    C --> H[(persistent audit history)]
+    C --> H[(successful source history)]
+    B --> I[(failed-attempt history)]
     C --> G[dbt source freshness]
     G --> D[dbt models]
     D --> E[(mart schema)]
@@ -82,7 +83,7 @@ This is a deliberately small control, but it reflects the type of check I would 
 
 `reconcile_ingestion_audit` independently compares every audit row with the physical raw table count. Source tests also require one audit row per source name, a batch identifier, timestamp and `Loaded` status. Python performs the same count checks before committing the transaction, so an incomplete batch is rejected before dbt begins.
 
-The `audit` source exposes successful run and source history without applying freshness rules to old records. `ingestion_history_consistency` reconciles each run header to its seven source rows and totals. `current_ingestion_matches_history` confirms the current raw manifest has an identical persisted history record, including file size and SHA-256 digest. `ingestion_audit_file_metadata` requires valid fingerprints for the six CSV sources and NULL file metadata for generated run parameters.
+The `audit` source exposes run, source and failure history without applying freshness rules to old records. `ingestion_history_consistency` requires a successful run to reconcile to seven source rows and requires a failed run to have zero accepted sources. `ingestion_failure_consistency` checks that every failed run has one failure detail, successful runs have none, and failure timestamps and messages are valid. `current_ingestion_matches_history` confirms the current raw manifest still agrees with its successful history record, including file size and SHA-256 digest. `ingestion_audit_file_metadata` requires valid fingerprints for the six accepted CSV sources and NULL file metadata for generated run parameters.
 
 ## Local setup decision
 

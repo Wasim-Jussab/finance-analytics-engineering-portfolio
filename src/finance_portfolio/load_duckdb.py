@@ -211,6 +211,29 @@ def _append_ingestion_history(
 ) -> None:
     """Retain successful run and source metadata across full refreshes."""
 
+    _ensure_ingestion_history_tables(connection)
+    connection.execute(
+        """
+        INSERT INTO audit.ingestion_runs
+        VALUES (?, ?, ?, 'Success', ?, ?)
+        """,
+        [
+            load_id,
+            loaded_at,
+            as_of_date.isoformat(),
+            len(audit_rows),
+            sum(int(row[3]) for row in audit_rows),
+        ],
+    )
+    connection.executemany(
+        "INSERT INTO audit.ingestion_sources VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        audit_rows,
+    )
+
+
+def _ensure_ingestion_history_tables(connection: duckdb.DuckDBPyConnection) -> None:
+    """Create the persistent control tables when the database is first used."""
+
     connection.execute("CREATE SCHEMA IF NOT EXISTS audit")
     connection.execute(
         """
@@ -241,21 +264,58 @@ def _append_ingestion_history(
     )
     connection.execute(
         """
-        INSERT INTO audit.ingestion_runs
-        VALUES (?, ?, ?, 'Success', ?, ?)
-        """,
-        [
-            load_id,
-            loaded_at,
-            as_of_date.isoformat(),
-            len(audit_rows),
-            sum(int(row[3]) for row in audit_rows),
-        ],
+        CREATE TABLE IF NOT EXISTS audit.ingestion_failures (
+            load_id VARCHAR PRIMARY KEY,
+            failed_at TIMESTAMPTZ NOT NULL,
+            error_type VARCHAR NOT NULL,
+            error_message VARCHAR NOT NULL
+        )
+        """
     )
-    connection.executemany(
-        "INSERT INTO audit.ingestion_sources VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        audit_rows,
-    )
+
+
+def _safe_failure_message(error: Exception) -> str:
+    if isinstance(error, FileNotFoundError):
+        missing_file = Path(error.filename).name if error.filename else "unknown file"
+        return f"Required source file not found: {missing_file}"
+    return str(error)[:500] or type(error).__name__
+
+
+def _record_failed_ingestion(
+    connection: duckdb.DuckDBPyConnection,
+    load_id: str,
+    loaded_at: datetime,
+    as_of_date: date,
+    error: Exception,
+) -> None:
+    """Record a failed attempt after the data transaction has rolled back."""
+
+    connection.execute("BEGIN TRANSACTION")
+    try:
+        _ensure_ingestion_history_tables(connection)
+        connection.execute(
+            """
+            INSERT INTO audit.ingestion_runs
+            VALUES (?, ?, ?, 'Failed', 0, 0)
+            """,
+            [load_id, loaded_at, as_of_date.isoformat()],
+        )
+        connection.execute(
+            """
+            INSERT INTO audit.ingestion_failures
+            VALUES (?, ?, ?, ?)
+            """,
+            [
+                load_id,
+                datetime.now(UTC),
+                type(error).__name__,
+                _safe_failure_message(error),
+            ],
+        )
+        connection.execute("COMMIT")
+    except Exception:
+        connection.execute("ROLLBACK")
+        raise
 
 
 def _validate_ingestion_audit(connection: duckdb.DuckDBPyConnection) -> list[str]:
@@ -393,14 +453,16 @@ def build_database(
                     "raw.ingestion_audit",
                     "audit.ingestion_runs",
                     "audit.ingestion_sources",
+                    "audit.ingestion_failures",
                     "mart.dim_customer",
                     "mart.dim_loan",
                     "mart.fct_payment",
                 )
             }
             connection.execute("COMMIT")
-        except Exception:
+        except Exception as error:
             connection.execute("ROLLBACK")
+            _record_failed_ingestion(connection, load_id, loaded_at, as_of_date, error)
             raise
         return counts
 

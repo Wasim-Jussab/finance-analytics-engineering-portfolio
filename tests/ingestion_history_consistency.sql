@@ -16,9 +16,22 @@ select
     summary.total_source_row_count as actual_row_count
 from {{ source('audit', 'ingestion_runs') }} as runs
 left join source_summary as summary using (load_id)
-where summary.load_id is null
-    or runs.source_count <> summary.source_count
-    or runs.total_source_row_count <> summary.total_source_row_count
-    or summary.loaded_at_count <> 1
-    or runs.loaded_at <> summary.loaded_at
-    or runs.source_count <> 7
+where (
+        runs.run_status = 'Success'
+        and (
+            summary.load_id is null
+            or runs.source_count <> summary.source_count
+            or runs.total_source_row_count <> summary.total_source_row_count
+            or summary.loaded_at_count <> 1
+            or runs.loaded_at <> summary.loaded_at
+            or runs.source_count <> 7
+        )
+    )
+    or (
+        runs.run_status = 'Failed'
+        and (
+            summary.load_id is not null
+            or runs.source_count <> 0
+            or runs.total_source_row_count <> 0
+        )
+    )

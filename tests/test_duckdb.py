@@ -35,6 +35,7 @@ def test_duckdb_build_loads_raw_and_reporting_tables(tmp_path) -> None:
     assert counts["raw.ingestion_audit"] == 7
     assert counts["audit.ingestion_runs"] == 1
     assert counts["audit.ingestion_sources"] == 7
+    assert counts["audit.ingestion_failures"] == 0
     assert counts["mart.dim_customer"] == 10
     assert counts["mart.dim_loan"] == 10
     assert counts["mart.fct_payment"] > 0
@@ -193,10 +194,68 @@ def test_failed_load_rolls_back_to_previous_batch(tmp_path) -> None:
         retained_customer_count = connection.execute(
             "SELECT COUNT(*) FROM raw.customers"
         ).fetchone()[0]
-        retained_history_count = connection.execute(
-            "SELECT COUNT(*) FROM audit.ingestion_runs"
+        run_statuses = connection.execute(
+            """
+            SELECT run_status, COUNT(*)
+            FROM audit.ingestion_runs
+            GROUP BY run_status
+            ORDER BY run_status
+            """
+        ).fetchall()
+        retained_source_history_count = connection.execute(
+            "SELECT COUNT(*) FROM audit.ingestion_sources"
         ).fetchone()[0]
+        failure = connection.execute(
+            """
+            SELECT error_type, error_message
+            FROM audit.ingestion_failures
+            """
+        ).fetchone()
 
     assert retained_load_id == first_load_id
     assert retained_customer_count == 5
-    assert retained_history_count == 1
+    assert run_statuses == [("Failed", 1), ("Success", 1)]
+    assert retained_source_history_count == 7
+    assert failure == (
+        "FileNotFoundError",
+        "Required source file not found: payments.csv",
+    )
+
+
+def test_first_failed_load_creates_only_failure_history(tmp_path) -> None:
+    raw_dir = tmp_path / "raw"
+    database_path = tmp_path / "finance.duckdb"
+    write_dataset(generate_dataset(GeneratorConfig(seed=42, customer_count=5)), raw_dir)
+    (raw_dir / "loans.csv").unlink()
+
+    with pytest.raises(FileNotFoundError):
+        build_database(raw_dir, database_path, SQL_PATH, date(2025, 12, 31))
+
+    with duckdb.connect(str(database_path)) as connection:
+        run = connection.execute(
+            """
+            SELECT run_status, source_count, total_source_row_count
+            FROM audit.ingestion_runs
+            """
+        ).fetchone()
+        failure = connection.execute(
+            "SELECT error_type, error_message FROM audit.ingestion_failures"
+        ).fetchone()
+        source_history_count = connection.execute(
+            "SELECT COUNT(*) FROM audit.ingestion_sources"
+        ).fetchone()[0]
+        raw_schema_count = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM information_schema.schemata
+            WHERE schema_name = 'raw'
+            """
+        ).fetchone()[0]
+
+    assert run == ("Failed", 0, 0)
+    assert failure == (
+        "FileNotFoundError",
+        "Required source file not found: loans.csv",
+    )
+    assert source_history_count == 0
+    assert raw_schema_count == 0

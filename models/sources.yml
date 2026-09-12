@@ -45,11 +45,11 @@ sources:
             tests: [not_null]
 
   - name: audit
-    description: "Persistent metadata for successful local ingestion runs."
+    description: "Persistent metadata for successful and failed local ingestion attempts."
     schema: audit
     tables:
       - name: ingestion_runs
-        description: "One row per successfully committed load batch."
+        description: "One row per load attempt, whether committed or rolled back."
         columns:
           - name: load_id
             tests: [not_null, unique]
@@ -62,7 +62,7 @@ sources:
               - not_null
               - accepted_values:
                   arguments:
-                    values: ['Success']
+                    values: ['Success', 'Failed']
           - name: source_count
             tests: [not_null]
           - name: total_source_row_count
@@ -88,4 +88,21 @@ sources:
                   arguments:
                     values: ['Loaded']
           - name: loaded_at
+            tests: [not_null]
+      - name: ingestion_failures
+        description: "One sanitised error record per failed load attempt."
+        columns:
+          - name: load_id
+            tests:
+              - not_null
+              - unique
+              - relationships:
+                  arguments:
+                    to: source('audit', 'ingestion_runs')
+                    field: load_id
+          - name: failed_at
+            tests: [not_null]
+          - name: error_type
+            tests: [not_null]
+          - name: error_message
             tests: [not_null]

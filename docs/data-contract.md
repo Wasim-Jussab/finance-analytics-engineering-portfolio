@@ -16,8 +16,9 @@ Before generating data, I wrote down the grain I think each entity should have. 
 | Portfolio snapshot | One row per account and reporting date | account_id plus snapshot_date |
 | Reporting exclusion | One row per account, run and exclusion reason | run_id plus account_id plus exclusion_code |
 | Current ingestion audit | One row per expected source in the current load | source_name |
-| Ingestion run history | One row per successfully committed load | load_id |
+| Ingestion run history | One row per successful or failed load attempt | load_id |
 | Ingestion source history | One row per source in each successful load | load_id plus source_name |
+| Ingestion failure history | One row per failed load attempt | load_id |
 
 ## Rules I want to keep visible
 
@@ -270,7 +271,7 @@ This current manifest is still replaced by each full refresh. Day 18 adds separa
 
 ## Day 18 ingestion history contract
 
-`audit.ingestion_runs` has one row per successfully committed batch. It records `load_id`, load time, reporting date, `Success` status, expected source count and total source rows.
+`audit.ingestion_runs` has one row per load attempt. A committed batch records `Success`, seven expected sources and their total rows. A rejected batch records `Failed` with zero accepted sources and zero accepted rows.
 
 `audit.ingestion_sources` has one row per source within each successful batch. It retains the current-manifest fields plus two file controls:
 
@@ -281,7 +282,13 @@ This current manifest is still replaced by each full refresh. Day 18 adds separa
 
 Both fields are NULL for `run_parameters` because that record is created by the loader rather than read from a file. The six CSV sources require a positive size and valid digest. History controls confirm seven sources per run, one shared timestamp, run-level totals equal to source-level totals, and the current manifest agrees with its matching history rows.
 
-The history contains successful loads only. It is stored in the same DuckDB file and is not presented as an immutable operational ledger. A production contract would also define upstream extraction IDs, retention, access controls and how failed attempts are captured outside the data transaction.
+## Day 19 failure-history contract
+
+`audit.ingestion_failures` has one row for each failed run. It records the `load_id`, failure time, exception type and sanitised error message. Its run ID must resolve to a `Failed` row in `audit.ingestion_runs`; a successful run must not have failure detail.
+
+Failed runs have no rows in `audit.ingestion_sources`. Those records describe accepted sources, so creating them for an incomplete batch would make the history ambiguous. The current raw manifest also stays on the last valid load ID after a failure.
+
+The failure record is committed only after the source transaction has rolled back. Missing-file messages contain the filename but not the machine-specific path. The history is stored in the same DuckDB file and is not presented as an immutable operational ledger. A production contract would also define upstream extraction IDs, retention, access controls, severity, retry policy and alert routing.
 
 ## Questions for the next few days
 
