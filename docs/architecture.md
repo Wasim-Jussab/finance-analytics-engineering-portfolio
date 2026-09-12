@@ -80,6 +80,34 @@ This prevents a quiet gap in a trend chart without inventing rows for plans that
 
 Keeping movement separate avoids mixing transaction activity with account population. The model can answer a month-end agreement question without changing the "active at any point in the month" definition used to qualify zero-activity billing rows.
 
+## Day 16 addition
+
+The Python load now stamps every raw row, including the run parameters, with one UTC `loaded_at` value for the batch. dbt checks the maximum timestamp on each source before it builds the marts.
+
+This separates two different ideas: business event dates describe when a payment or agreement event happened, while `loaded_at` describes when this pipeline received the record. A production ingestion layer would normally retain upstream extraction and batch identifiers as well; the local project can only prove freshness from the point at which it loads DuckDB.
+
+## Day 17 addition
+
+The loader now gives every raw row one generated `load_id` and writes a seven-row `raw.ingestion_audit` manifest covering the six CSV sources and the run parameters. The audit records the source file, row count, status and shared UTC load time. A dbt reconciliation test compares those recorded counts with the physical raw tables.
+
+The full replacement load runs inside one DuckDB transaction. Raw tables, the retained SQL comparison marts, the run parameters and the audit manifest are committed together only after Python validation succeeds. If a required source file is missing, the transaction rolls back and the previous valid batch remains available. This is still a local full-refresh pattern; it does not provide an upstream extraction guarantee or a multi-run audit history.
+
+## Day 18 addition
+
+The current-batch manifest still lives in `raw.ingestion_audit`, but each successful commit now also appends to `audit.ingestion_runs` and `audit.ingestion_sources`. The first table has one row per accepted run; the second keeps the seven source records for each run. This separates current operational state from historical evidence without changing the reporting marts.
+
+Before replacing any raw table, Python calculates the byte size and SHA-256 digest of all six required CSV files. Those fingerprints are stored in both the current manifest and source history. They identify whether two runs used identical file content; they do not prove who produced a file or when an upstream extraction occurred.
+
+Only successful runs are retained in the source-level history. A failed replacement is rolled back without adding a false success record.
+
+## Day 19 addition
+
+Failed attempts now have a separate path. The loader first rolls back the transaction that was replacing raw data. It then opens a small control transaction that writes a `Failed` run header and a related row in `audit.ingestion_failures`. This ordering matters: writing the failure before the rollback would undo the evidence, while committing it inside the replacement transaction could also commit part of a bad batch.
+
+The failure detail contains the exception type, failure time and a sanitised message. For a missing file, the message keeps the filename but removes the local path. No source-level history is written for a rejected batch because the sources were not accepted as a complete load.
+
+This is useful local operational evidence, not an independent audit ledger. Both data and controls still live in one DuckDB file, and the loader has no retry or alerting mechanism.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.

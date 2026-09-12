@@ -15,6 +15,10 @@ Before generating data, I wrote down the grain I think each entity should have. 
 | Payment | One row per payment transaction against a loan account | payment_id |
 | Portfolio snapshot | One row per account and reporting date | account_id plus snapshot_date |
 | Reporting exclusion | One row per account, run and exclusion reason | run_id plus account_id plus exclusion_code |
+| Current ingestion audit | One row per expected source in the current load | source_name |
+| Ingestion run history | One row per successful or failed load attempt | load_id |
+| Ingestion source history | One row per source in each successful load | load_id plus source_name |
+| Ingestion failure history | One row per failed load attempt | load_id |
 
 ## Rules I want to keep visible
 
@@ -227,6 +231,65 @@ The additional controls confirm that:
 - Counts are non-negative and the movement equation balances.
 - A month's closing population equals the next month's opening population.
 
+## Day 16 ingestion metadata
+
+Every raw table now adds one pipeline-managed field that is not present in the generated CSV files:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `loaded_at` | Timestamp with time zone | UTC timestamp at which the current batch was loaded into DuckDB |
+
+The loader creates one timestamp per run and applies it to every raw row and the run-parameters record. Event dates remain business fields and are not used as a substitute for arrival time.
+
+dbt treats the seven raw sources as fresh when their latest `loaded_at` value is no more than one hour old, warns after one hour and errors after 24 hours. This threshold is deliberately short for a pipeline that is rebuilt on demand. It is not presented as a production service-level agreement.
+
+The Day 16 implementation could show that individual tables were recent, but it could not identify which tables belonged to the same load or prove that the replacement was complete.
+
+## Day 17 ingestion batch contract
+
+Every raw table now contains these pipeline-managed fields:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `load_id` | String UUID | Identifier shared by every table in the current load |
+| `loaded_at` | Timestamp with time zone | UTC timestamp at which the batch was loaded into DuckDB |
+
+`raw.ingestion_audit` has one row for each of the six CSV sources and one for `run_parameters`:
+
+| Field | Meaning |
+|---|---|
+| `load_id` | Batch identifier shared with the loaded rows |
+| `source_name` | Expected raw table name |
+| `source_file` | CSV filename, or NULL for generated run parameters |
+| `source_row_count` | Number of rows loaded for that source |
+| `load_status` | `Loaded` for the current accepted batch |
+| `loaded_at` | Shared UTC batch timestamp |
+
+The current contract requires all seven expected source records exactly once, a positive row count and a matching physical-table count. The full-refresh transaction is committed only after those checks and the existing mart reconciliations pass. An empty source is therefore rejected rather than assumed to be a valid zero-row extract.
+
+This current manifest is still replaced by each full refresh. Day 18 adds separate history tables so successful prior runs are not lost.
+
+## Day 18 ingestion history contract
+
+`audit.ingestion_runs` has one row per load attempt. A committed batch records `Success`, seven expected sources and their total rows. A rejected batch records `Failed` with zero accepted sources and zero accepted rows.
+
+`audit.ingestion_sources` has one row per source within each successful batch. It retains the current-manifest fields plus two file controls:
+
+| Field | Meaning |
+|---|---|
+| `source_file_size_bytes` | Size of the input CSV in bytes |
+| `source_file_sha256` | Lowercase 64-character SHA-256 digest of the input file |
+
+Both fields are NULL for `run_parameters` because that record is created by the loader rather than read from a file. The six CSV sources require a positive size and valid digest. History controls confirm seven sources per run, one shared timestamp, run-level totals equal to source-level totals, and the current manifest agrees with its matching history rows.
+
+## Day 19 failure-history contract
+
+`audit.ingestion_failures` has one row for each failed run. It records the `load_id`, failure time, exception type and sanitised error message. Its run ID must resolve to a `Failed` row in `audit.ingestion_runs`; a successful run must not have failure detail.
+
+Failed runs have no rows in `audit.ingestion_sources`. Those records describe accepted sources, so creating them for an incomplete batch would make the history ambiguous. The current raw manifest also stays on the last valid load ID after a failure.
+
+The failure record is committed only after the source transaction has rolled back. Missing-file messages contain the filename but not the machine-specific path. The history is stored in the same DuckDB file and is not presented as an immutable operational ledger. A production contract would also define upstream extraction IDs, retention, access controls, severity, retry policy and alert routing.
+
 ## Questions for the next few days
 
 - When should a plan become effective-dated rather than current-state only?
@@ -235,5 +298,6 @@ The additional controls confirm that:
 - Should a failed attempt followed by a retry be linked through a billing-cycle identifier?
 - Would a future status-event source require pause and reactivation movements as separate categories?
 - What should happen when an account has no matching customer?
+- Which sources, if any, should be allowed to complete with zero rows?
 
 These questions are intentionally left open. I will answer them when the generated data and models make the trade-offs clearer.

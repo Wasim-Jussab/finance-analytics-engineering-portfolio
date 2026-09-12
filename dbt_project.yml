@@ -7,6 +7,8 @@ test-paths: ["tests"]
 macro-paths: ["macros"]
 vars:
   calendar_start_date: "2024-01-01"
+on-run-end:
+  - "{{ checkpoint_duckdb() }}"
 models:
   finance_portfolio:
     marts:

@@ -1,14 +1,16 @@
 from datetime import date
+from hashlib import sha256
 from pathlib import Path
 
 import duckdb
+import pytest
 
 from finance_portfolio.generate_data import (
     GeneratorConfig,
     generate_dataset,
     write_dataset,
 )
-from finance_portfolio.load_duckdb import build_database, validate_database
+from finance_portfolio.load_duckdb import RAW_TABLES, build_database, validate_database
 
 SQL_PATH = Path(__file__).parents[1] / "sql/duckdb/marts.sql"
 
@@ -30,6 +32,10 @@ def test_duckdb_build_loads_raw_and_reporting_tables(tmp_path) -> None:
     assert counts["raw.customers"] == 10
     assert counts["raw.loans"] == 10
     assert counts["raw.subscription_payments"] > 0
+    assert counts["raw.ingestion_audit"] == 7
+    assert counts["audit.ingestion_runs"] == 1
+    assert counts["audit.ingestion_sources"] == 7
+    assert counts["audit.ingestion_failures"] == 0
     assert counts["mart.dim_customer"] == 10
     assert counts["mart.dim_loan"] == 10
     assert counts["mart.fct_payment"] > 0
@@ -69,3 +75,187 @@ def test_duckdb_as_of_date_is_explicit(tmp_path) -> None:
         ).fetchone()[0]
 
     assert second_age >= first_age
+
+
+def test_raw_tables_record_one_load_timestamp(tmp_path) -> None:
+    raw_dir = tmp_path / "raw"
+    database_path = tmp_path / "finance.duckdb"
+    write_dataset(generate_dataset(GeneratorConfig(seed=42, customer_count=5)), raw_dir)
+
+    build_database(
+        raw_dir,
+        database_path,
+        SQL_PATH,
+        date(2025, 12, 31),
+    )
+
+    with duckdb.connect(str(database_path)) as connection:
+        timestamps = {
+            connection.execute(f"SELECT DISTINCT loaded_at FROM raw.{table}").fetchone()[0]
+            for table in RAW_TABLES
+        }
+        timestamps.add(
+            connection.execute("SELECT loaded_at FROM raw.run_parameters").fetchone()[0]
+        )
+        load_ids = {
+            connection.execute(f"SELECT DISTINCT load_id FROM raw.{table}").fetchone()[0]
+            for table in RAW_TABLES
+        }
+        load_ids.add(connection.execute("SELECT load_id FROM raw.run_parameters").fetchone()[0])
+        audit_summary = connection.execute(
+            """
+            SELECT COUNT(*), COUNT(DISTINCT load_id), COUNT(DISTINCT loaded_at)
+            FROM raw.ingestion_audit
+            """
+        ).fetchone()
+        file_audit = connection.execute(
+            """
+            SELECT source_file, source_file_size_bytes, source_file_sha256
+            FROM raw.ingestion_audit
+            WHERE source_name = 'customers'
+            """
+        ).fetchone()
+
+    assert None not in timestamps
+    assert len(timestamps) == 1
+    assert None not in load_ids
+    assert len(load_ids) == 1
+    assert audit_summary == (7, 1, 1)
+    customer_file = raw_dir / "customers.csv"
+    assert file_audit == (
+        "customers.csv",
+        customer_file.stat().st_size,
+        sha256(customer_file.read_bytes()).hexdigest(),
+    )
+
+
+def test_successful_loads_retain_batch_history(tmp_path) -> None:
+    raw_dir = tmp_path / "raw"
+    database_path = tmp_path / "finance.duckdb"
+    write_dataset(generate_dataset(GeneratorConfig(seed=42, customer_count=5)), raw_dir)
+
+    build_database(raw_dir, database_path, SQL_PATH, date(2025, 12, 31))
+    build_database(raw_dir, database_path, SQL_PATH, date(2026, 1, 31))
+
+    with duckdb.connect(str(database_path)) as connection:
+        run_summary = connection.execute(
+            """
+            SELECT COUNT(*), COUNT(DISTINCT load_id), SUM(source_count)
+            FROM audit.ingestion_runs
+            """
+        ).fetchone()
+        source_summary = connection.execute(
+            """
+            SELECT COUNT(*), COUNT(DISTINCT load_id)
+            FROM audit.ingestion_sources
+            """
+        ).fetchone()
+        current_load_id = connection.execute(
+            "SELECT DISTINCT load_id FROM raw.ingestion_audit"
+        ).fetchone()[0]
+        latest_history_load_id = connection.execute(
+            "SELECT load_id FROM audit.ingestion_runs ORDER BY loaded_at DESC LIMIT 1"
+        ).fetchone()[0]
+        customer_hash_count = connection.execute(
+            """
+            SELECT COUNT(DISTINCT source_file_sha256)
+            FROM audit.ingestion_sources
+            WHERE source_name = 'customers'
+            """
+        ).fetchone()[0]
+
+    assert run_summary == (2, 2, 14)
+    assert source_summary == (14, 2)
+    assert current_load_id == latest_history_load_id
+    assert customer_hash_count == 1
+
+
+def test_failed_load_rolls_back_to_previous_batch(tmp_path) -> None:
+    first_raw_dir = tmp_path / "first_raw"
+    broken_raw_dir = tmp_path / "broken_raw"
+    database_path = tmp_path / "finance.duckdb"
+    write_dataset(generate_dataset(GeneratorConfig(seed=42, customer_count=5)), first_raw_dir)
+    write_dataset(generate_dataset(GeneratorConfig(seed=7, customer_count=7)), broken_raw_dir)
+
+    build_database(first_raw_dir, database_path, SQL_PATH, date(2025, 12, 31))
+    with duckdb.connect(str(database_path)) as connection:
+        first_load_id = connection.execute(
+            "SELECT DISTINCT load_id FROM raw.ingestion_audit"
+        ).fetchone()[0]
+
+    (broken_raw_dir / "payments.csv").unlink()
+    with pytest.raises(FileNotFoundError):
+        build_database(broken_raw_dir, database_path, SQL_PATH, date(2025, 12, 31))
+
+    with duckdb.connect(str(database_path)) as connection:
+        retained_load_id = connection.execute(
+            "SELECT DISTINCT load_id FROM raw.ingestion_audit"
+        ).fetchone()[0]
+        retained_customer_count = connection.execute(
+            "SELECT COUNT(*) FROM raw.customers"
+        ).fetchone()[0]
+        run_statuses = connection.execute(
+            """
+            SELECT run_status, COUNT(*)
+            FROM audit.ingestion_runs
+            GROUP BY run_status
+            ORDER BY run_status
+            """
+        ).fetchall()
+        retained_source_history_count = connection.execute(
+            "SELECT COUNT(*) FROM audit.ingestion_sources"
+        ).fetchone()[0]
+        failure = connection.execute(
+            """
+            SELECT error_type, error_message
+            FROM audit.ingestion_failures
+            """
+        ).fetchone()
+
+    assert retained_load_id == first_load_id
+    assert retained_customer_count == 5
+    assert run_statuses == [("Failed", 1), ("Success", 1)]
+    assert retained_source_history_count == 7
+    assert failure == (
+        "FileNotFoundError",
+        "Required source file not found: payments.csv",
+    )
+
+
+def test_first_failed_load_creates_only_failure_history(tmp_path) -> None:
+    raw_dir = tmp_path / "raw"
+    database_path = tmp_path / "finance.duckdb"
+    write_dataset(generate_dataset(GeneratorConfig(seed=42, customer_count=5)), raw_dir)
+    (raw_dir / "loans.csv").unlink()
+
+    with pytest.raises(FileNotFoundError):
+        build_database(raw_dir, database_path, SQL_PATH, date(2025, 12, 31))
+
+    with duckdb.connect(str(database_path)) as connection:
+        run = connection.execute(
+            """
+            SELECT run_status, source_count, total_source_row_count
+            FROM audit.ingestion_runs
+            """
+        ).fetchone()
+        failure = connection.execute(
+            "SELECT error_type, error_message FROM audit.ingestion_failures"
+        ).fetchone()
+        source_history_count = connection.execute(
+            "SELECT COUNT(*) FROM audit.ingestion_sources"
+        ).fetchone()[0]
+        raw_schema_count = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM information_schema.schemata
+            WHERE schema_name = 'raw'
+            """
+        ).fetchone()[0]
+
+    assert run == ("Failed", 0, 0)
+    assert failure == (
+        "FileNotFoundError",
+        "Required source file not found: loans.csv",
+    )
+    assert source_history_count == 0
+    assert raw_schema_count == 0

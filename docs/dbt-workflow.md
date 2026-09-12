@@ -9,8 +9,11 @@ The database path is deliberately passed through `FINANCE_DUCKDB_PATH`. This mat
 ```mermaid
 flowchart LR
     A[Generated CSVs] --> B[Python loader]
-    B --> C[(raw schema)]
-    C --> D[dbt models]
+    B --> C[(raw schema + current batch audit)]
+    C --> H[(successful source history)]
+    B --> I[(failed-attempt history)]
+    C --> G[dbt source freshness]
+    G --> D[dbt models]
     D --> E[(mart schema)]
     E --> F[dbt tests]
 ```
@@ -24,10 +27,15 @@ python -m pip install -e ".[dev]"
 PYTHONPATH=src python -m finance_portfolio.generate_data
 PYTHONPATH=src python -m finance_portfolio.load_duckdb
 FINANCE_DUCKDB_PATH=data/finance.duckdb dbt debug --project-dir . --profiles-dir config
+FINANCE_DUCKDB_PATH=data/finance.duckdb dbt source freshness --project-dir . --profiles-dir config --target local --no-partial-parse
 FINANCE_DUCKDB_PATH=data/finance.duckdb dbt build --project-dir . --profiles-dir config --target local --no-partial-parse
 ```
 
-`dbt build` materialises the eight mart models and runs the model tests and singular controls. The `--no-partial-parse` option is useful while changing the project because it makes the command parse the files currently on disk.
+`dbt build` materialises the nine mart models and runs the model tests and singular controls. The `--no-partial-parse` option is useful while changing the project because it makes the command parse the files currently on disk.
+
+`dbt source freshness` is a separate operational check. It runs after the raw load and before transformation. All eight sources, including the ingestion audit, use the batch `loaded_at` timestamp rather than a business event date, with a one-hour warning and a 24-hour error threshold.
+
+The local DuckDB target requests a forced checkpoint at the end of dbt commands. This was added after a completed build left a recovery file that conflicted with the next connection. The conflict has still recurred after a later full build, so the hook is treated as a mitigation rather than a guarantee. It is adapter-specific and does not represent a warehouse-wide production pattern.
 
 To generate the local documentation site:
 
@@ -72,6 +80,10 @@ This is a deliberately small control, but it reflects the type of check I would 
 `subscription_monthly_active_plan_coverage` independently rebuilds the agreement-overlap population and compares both its keys and active-agreement counts with the monthly mart. The metric-consistency control separately verifies that zero-attempt rows contain zero counts, amounts and collection rate.
 
 `reconcile_subscription_movements` confirms that starts and cancellations appear once in the movement series. Separate controls prove the month-plan grain, complete calendar coverage, within-month movement equation and closing-to-next-opening roll-forward.
+
+`reconcile_ingestion_audit` independently compares every audit row with the physical raw table count. Source tests also require one audit row per source name, a batch identifier, timestamp and `Loaded` status. Python performs the same count checks before committing the transaction, so an incomplete batch is rejected before dbt begins.
+
+The `audit` source exposes run, source and failure history without applying freshness rules to old records. `ingestion_history_consistency` requires a successful run to reconcile to seven source rows and requires a failed run to have zero accepted sources. `ingestion_failure_consistency` checks that every failed run has one failure detail, successful runs have none, and failure timestamps and messages are valid. `current_ingestion_matches_history` confirms the current raw manifest still agrees with its successful history record, including file size and SHA-256 digest. `ingestion_audit_file_metadata` requires valid fingerprints for the six accepted CSV sources and NULL file metadata for generated run parameters.
 
 ## Local setup decision
 
