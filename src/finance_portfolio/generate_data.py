@@ -17,51 +17,10 @@ from decimal import Decimal
 from pathlib import Path
 from typing import TypeAlias
 
+from finance_portfolio.source_contract import TABLE_COLUMNS
+
 Row: TypeAlias = dict[str, str]
 Dataset: TypeAlias = dict[str, list[Row]]
-
-TABLE_COLUMNS = {
-    "subscription_plans": [
-        "subscription_plan_id",
-        "product_code",
-        "billing_frequency",
-        "billing_amount",
-    ],
-    "customers": ["customer_id", "first_name", "last_name", "date_of_birth", "postcode"],
-    "loans": [
-        "account_id",
-        "customer_id",
-        "product_code",
-        "origination_date",
-        "original_balance",
-        "status",
-    ],
-    "subscriptions": [
-        "subscription_id",
-        "customer_id",
-        "product_code",
-        "subscription_plan_id",
-        "start_date",
-        "cancellation_date",
-        "billing_frequency",
-        "status",
-    ],
-    "subscription_payments": [
-        "subscription_payment_id",
-        "subscription_id",
-        "billing_date",
-        "amount",
-        "payment_status",
-    ],
-    "payments": [
-        "payment_id",
-        "account_id",
-        "payment_date",
-        "amount",
-        "payment_status",
-        "payment_method",
-    ],
-}
 
 FIRST_NAMES = ["Aisha", "Ben", "Daniel", "Fatima", "Hannah", "Imran", "Leah", "Maya"]
 LAST_NAMES = ["Ahmed", "Clarke", "Davies", "Khan", "Patel", "Roberts", "Smith", "Taylor"]

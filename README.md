@@ -10,10 +10,11 @@ I am building this project to make my move from data analysis into analytics eng
 
 ```mermaid
 flowchart LR
-    A["Synthetic finance data"] --> B["Python generation and validation"]
-    B --> C[("DuckDB raw tables + batch audit")]
-    C --> I[("Persistent run, source and failure history")]
-    C --> H["dbt source freshness"]
+    A["Synthetic finance data"] --> B["Shared CSV column contract"]
+    B --> C["Python validation and typed load"]
+    C --> J[("DuckDB raw tables + batch audit")]
+    J --> I[("Persistent run, source and failure history")]
+    J --> H["dbt source freshness"]
     H --> D["dbt transformations"]
     D --> E[("Reporting marts")]
     E --> F["dbt tests and reconciliation"]
@@ -27,7 +28,7 @@ Everything runs locally with no cloud account, credentials or paid service.
 | Area | Current implementation |
 |---|---|
 | Data generation | Deterministic customers, loans, subscription plans, agreements and payment attempts using a fixed seed |
-| Ingestion | Python loads typed DuckDB tables in one transaction, retains successful source fingerprints and records failed attempts separately |
+| Ingestion | Python validates a shared CSV column contract, loads typed DuckDB tables atomically, fingerprints accepted files and records failures |
 | Transformation | dbt materialises customer, loan, subscription, transaction, billing and agreement-movement models in the `mart` schema |
 | Data quality | Key, relationship, required-field, accepted-value and chronology tests |
 | Financial control | Loan payments and subscription collections reconcile to source; billed amounts agree with the governed synthetic plan catalogue |
@@ -78,10 +79,10 @@ The current seed-42 run produced:
 | dbt model and data-test resources | 167 passed |
 | DuckDB checkpoint hook | Passed |
 | Raw sources within freshness threshold | 8 of 8 |
-| Python tests | 18 passed |
+| Python tests | 20 passed |
 | Ruff | Passed |
 
-Controlled failure checks have detected invalid values, broken chronology, duplicate grains, missing calendar and reporting rows, payment-to-plan disagreement, an incorrect agreement closing balance, a mismatched ingestion count and inconsistent run history. Each targeted test returned exactly one offending result and a non-zero exit code before the clean model was rebuilt. A missing-file test also proves that an incomplete replacement load leaves the preceding valid batch in place and records a sanitised failure separately.
+Controlled failure checks have detected invalid values, broken chronology, duplicate grains, missing calendar and reporting rows, payment-to-plan disagreement, an incorrect agreement closing balance, a mismatched ingestion count, inconsistent run history and CSV schema drift. Each targeted test returned a non-zero exit code before the clean model was rebuilt. Missing-file and renamed-column tests also prove that an incomplete replacement leaves the preceding valid batch in place and records a sanitised failure separately.
 
 The full evidence and remaining limitations are recorded in [docs/validation.md](docs/validation.md).
 
@@ -133,6 +134,8 @@ Generated CSVs, DuckDB files, dbt output and logs are excluded from Git.
 - **Files are fingerprinted:** each CSV records its byte size and SHA-256 digest, allowing identical and changed inputs to be distinguished without storing a second copy.
 - **Failure logging is separate from data replacement:** a rejected load rolls back the raw-table transaction first, then writes a small failure record in its own control transaction so a bad batch cannot become current data.
 - **Failure details are limited:** the audit stores the exception type and a sanitised message; missing-file errors retain the filename but not the local filesystem path.
+- **One executable source contract:** generation and ingestion share the expected CSV columns and DuckDB types, preventing two separate definitions from drifting unnoticed.
+- **Header order is not a contract:** missing, unexpected and duplicate column names fail the load, but harmless column reordering is accepted because ingestion maps values by name.
 - **Local recovery is visible:** a DuckDB-only end-of-run hook requests a forced checkpoint; the validation log records that a recovery-file conflict can still occur between separate processes.
 
 ## Known gaps
@@ -147,8 +150,8 @@ This is a working project, not a finished platform.
 - `loaded_at` records the local DuckDB load, not the extraction time of an upstream production system.
 - The audit currently treats an empty source as invalid and has no upstream extract ID.
 - Failed attempts retain only run-level error metadata; they do not have source-level fingerprints because the batch was not accepted.
-- Failure logging and analytical data share one local DuckDB file, so the control record is not independent of database loss or corruption.
-- The audit history lives in the same local DuckDB file as the data, so it is evidence for this workflow rather than an immutable external control log.
+- The audit history and analytical data share one local DuckDB file, so the control record is evidence for this workflow rather than an immutable external log.
+- The source contract checks column presence but is not versioned and does not yet define nullable fields or source-specific empty-file policies.
 - The dataset is intentionally small and has not been performance-tested.
 - The cloud architecture is documented as a possible production mapping, not presented as a deployed AWS system.
 
@@ -188,5 +191,6 @@ The daily notes record what changed, what failed and what remains unresolved. Th
 - [Day 17: atomic and auditable batch loading](notes/day-17.md)
 - [Day 18: persistent run history and source fingerprints](notes/day-18.md)
 - [Day 19: retaining failed ingestion attempts](notes/day-19.md)
+- [Day 20: enforcing the CSV column contract](notes/day-20.md)
 
 This repository demonstrates how I structure and validate analytics-engineering work. My production experience with Redshift, AWS Glue/Python, Power BI, regulatory reporting and financial reconciliations is described separately in my professional profile.

@@ -8,7 +8,8 @@ The database path is deliberately passed through `FINANCE_DUCKDB_PATH`. This mat
 
 ```mermaid
 flowchart LR
-    A[Generated CSVs] --> B[Python loader]
+    A[Generated CSVs] --> V[Shared column contract]
+    V --> B[Python loader]
     B --> C[(raw schema + current batch audit)]
     C --> H[(successful source history)]
     B --> I[(failed-attempt history)]
@@ -44,6 +45,8 @@ FINANCE_DUCKDB_PATH=data/finance.duckdb dbt docs generate --project-dir . --prof
 ```
 
 The generated `target/` directory is local output and is not committed.
+
+The source contract runs before the raw-table replacement. It belongs in Python rather than dbt because dbt starts after ingestion and should not be the first place a malformed input schema is discovered. dbt source and model tests remain responsible for the loaded relational data.
 
 ## Models and checks
 

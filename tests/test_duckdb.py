@@ -1,3 +1,4 @@
+import csv
 from datetime import date
 from hashlib import sha256
 from pathlib import Path
@@ -10,7 +11,12 @@ from finance_portfolio.generate_data import (
     generate_dataset,
     write_dataset,
 )
-from finance_portfolio.load_duckdb import RAW_TABLES, build_database, validate_database
+from finance_portfolio.load_duckdb import (
+    RAW_TABLES,
+    SourceContractError,
+    build_database,
+    validate_database,
+)
 
 SQL_PATH = Path(__file__).parents[1] / "sql/duckdb/marts.sql"
 
@@ -259,3 +265,68 @@ def test_first_failed_load_creates_only_failure_history(tmp_path) -> None:
     )
     assert source_history_count == 0
     assert raw_schema_count == 0
+
+
+def test_source_contract_rejects_changed_columns_without_replacing_raw_data(
+    tmp_path,
+) -> None:
+    raw_dir = tmp_path / "raw"
+    database_path = tmp_path / "finance.duckdb"
+    write_dataset(generate_dataset(GeneratorConfig(seed=42, customer_count=5)), raw_dir)
+    build_database(raw_dir, database_path, SQL_PATH, date(2025, 12, 31))
+
+    customer_file = raw_dir / "customers.csv"
+    with customer_file.open(encoding="utf-8", newline="") as file:
+        rows = list(csv.DictReader(file))
+    changed_columns = [
+        "customer_id",
+        "first_name",
+        "last_name",
+        "date_of_birth",
+        "email",
+    ]
+    for row in rows:
+        row["email"] = row.pop("postcode")
+    with customer_file.open("w", encoding="utf-8", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=changed_columns)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    expected_message = (
+        "Source contract failed for customers.csv: "
+        "missing columns [postcode]; unexpected columns [email]"
+    )
+    with pytest.raises(SourceContractError) as error:
+        build_database(raw_dir, database_path, SQL_PATH, date(2025, 12, 31))
+
+    with duckdb.connect(str(database_path)) as connection:
+        retained_customer_count = connection.execute(
+            "SELECT COUNT(*) FROM raw.customers"
+        ).fetchone()[0]
+        failure = connection.execute(
+            "SELECT error_type, error_message FROM audit.ingestion_failures"
+        ).fetchone()
+
+    assert str(error.value) == expected_message
+    assert retained_customer_count == 5
+    assert failure == ("SourceContractError", expected_message)
+
+
+def test_source_contract_allows_column_reordering(tmp_path) -> None:
+    raw_dir = tmp_path / "raw"
+    database_path = tmp_path / "finance.duckdb"
+    write_dataset(generate_dataset(GeneratorConfig(seed=42, customer_count=5)), raw_dir)
+
+    customer_file = raw_dir / "customers.csv"
+    with customer_file.open(encoding="utf-8", newline="") as file:
+        reader = csv.DictReader(file)
+        rows = list(reader)
+        reordered_columns = list(reversed(reader.fieldnames or []))
+    with customer_file.open("w", encoding="utf-8", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=reordered_columns)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    counts = build_database(raw_dir, database_path, SQL_PATH, date(2025, 12, 31))
+
+    assert counts["raw.customers"] == 5

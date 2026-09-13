@@ -269,12 +269,32 @@ For a controlled audit failure, I removed the temporary failure-detail row but l
 
 An earlier attempt to run this scenario immediately after the full dbt build encountered the documented DuckDB write-ahead-log replay conflict before the loader reached the missing file. I did not count that as failure-history evidence. Repeating the scenario on a freshly loaded database isolated the loader behaviour and produced the expected result.
 
+## Source-contract run — 13 September 2026
+
+The generator and loader now use one executable definition for the six CSV column sets and their DuckDB types.
+
+| Check | Result |
+|---|---:|
+| Contracted CSV sources | 6 / 6 |
+| Fresh raw sources | 8 / 8 |
+| dbt table models | 9 passed |
+| dbt data tests | 158 passed |
+| dbt model and data-test resources | 167 passed |
+| DuckDB checkpoint hook | Passed |
+| Python tests | 20 passed |
+| Ruff | Passed |
+
+For a controlled schema-drift failure, I renamed the temporary `customers.csv` header from `postcode` to `email`. The second load exited non-zero with one `SourceContractError` identifying the missing and unexpected columns. The previous 25-customer raw table remained current, and the rejected attempt appeared once in failure history.
+
+A separate test writes the customer columns in reverse order and loads all five test customers successfully. This confirms that the contract is based on column identity rather than file position. Missing, unexpected and duplicate column names are rejected.
+
 ## Known gaps
 
 - The freshness timestamp begins at the local DuckDB load; it cannot prove when an upstream system extracted or published the data.
 - The history has no upstream extraction identifier and is stored in the same local database rather than an immutable control store.
 - Failed attempts retain run-level error detail but no source-level history, retries or alerts.
 - Empty raw sources are currently rejected; there is no source-specific policy for a legitimate zero-row extract.
+- The column contract is not versioned and does not yet declare nullability or compatibility rules for schema changes.
 - The dbt models currently rebuild as tables rather than incrementally.
 - Subscription refunds, retries, plan changes and revenue-recognition rules are not yet represented.
 - The subscription plan catalogue has no effective dates, so price history is not yet represented.

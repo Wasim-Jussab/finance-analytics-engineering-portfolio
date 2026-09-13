@@ -108,6 +108,14 @@ The failure detail contains the exception type, failure time and a sanitised mes
 
 This is useful local operational evidence, not an independent audit ledger. Both data and controls still live in one DuckDB file, and the loader has no retry or alerting mechanism.
 
+## Day 20 addition
+
+The generator and loader now import the same executable source definition. It lists the expected columns for each of the six CSV files and the DuckDB type used at ingestion. This removes the two separate column lists that had existed in generation and loading code.
+
+Before changing the raw schema, Python reads and checks every CSV header. Missing, unexpected or duplicate names raise a `SourceContractError`; the normal rollback and failure-history path then records the rejected attempt. Column order is allowed to change because the loader maps values by name rather than position.
+
+This is intentionally a narrow first contract. DuckDB still performs the value-to-type conversion, and the definition has no version identifier, nullable-field rules or compatibility policy for adding a column.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.

@@ -290,6 +290,19 @@ Failed runs have no rows in `audit.ingestion_sources`. Those records describe ac
 
 The failure record is committed only after the source transaction has rolled back. Missing-file messages contain the filename but not the machine-specific path. The history is stored in the same DuckDB file and is not presented as an immutable operational ledger. A production contract would also define upstream extraction IDs, retention, access controls, severity, retry policy and alert routing.
 
+## Day 20 executable source contract
+
+`source_contract.py` is the shared definition used by both the synthetic generator and DuckDB loader. For each CSV source, it defines the expected column names and target DuckDB types.
+
+Before a replacement begins, all six headers must satisfy these rules:
+
+- Every expected column appears exactly once.
+- No undeclared column is present.
+- Column order may change because ingestion maps values by name.
+- A missing, unexpected or duplicate column rejects the complete batch.
+
+A rejected contract creates a `SourceContractError` failure record and leaves the previous raw batch current. This first version checks structure only. Type conversion still happens during the typed DuckDB insert, and nullable fields, contract versioning and backward-compatible changes are not yet formalised.
+
 ## Questions for the next few days
 
 - When should a plan become effective-dated rather than current-state only?

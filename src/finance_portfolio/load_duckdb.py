@@ -12,62 +12,39 @@ from uuid import uuid4
 
 import duckdb
 
+from finance_portfolio.source_contract import RAW_TABLES
+
 Row: TypeAlias = dict[str, str]
 FileMetadata: TypeAlias = dict[str, tuple[int, str]]
 
-RAW_TABLES: dict[str, list[tuple[str, str]]] = {
-    "subscription_plans": [
-        ("subscription_plan_id", "VARCHAR"),
-        ("product_code", "VARCHAR"),
-        ("billing_frequency", "VARCHAR"),
-        ("billing_amount", "DECIMAL(12, 2)"),
-    ],
-    "customers": [
-        ("customer_id", "VARCHAR"),
-        ("first_name", "VARCHAR"),
-        ("last_name", "VARCHAR"),
-        ("date_of_birth", "DATE"),
-        ("postcode", "VARCHAR"),
-    ],
-    "loans": [
-        ("account_id", "VARCHAR"),
-        ("customer_id", "VARCHAR"),
-        ("product_code", "VARCHAR"),
-        ("origination_date", "DATE"),
-        ("original_balance", "DECIMAL(12, 2)"),
-        ("status", "VARCHAR"),
-    ],
-    "subscriptions": [
-        ("subscription_id", "VARCHAR"),
-        ("customer_id", "VARCHAR"),
-        ("product_code", "VARCHAR"),
-        ("subscription_plan_id", "VARCHAR"),
-        ("start_date", "DATE"),
-        ("cancellation_date", "DATE"),
-        ("billing_frequency", "VARCHAR"),
-        ("status", "VARCHAR"),
-    ],
-    "subscription_payments": [
-        ("subscription_payment_id", "VARCHAR"),
-        ("subscription_id", "VARCHAR"),
-        ("billing_date", "DATE"),
-        ("amount", "DECIMAL(12, 2)"),
-        ("payment_status", "VARCHAR"),
-    ],
-    "payments": [
-        ("payment_id", "VARCHAR"),
-        ("account_id", "VARCHAR"),
-        ("payment_date", "DATE"),
-        ("amount", "DECIMAL(12, 2)"),
-        ("payment_status", "VARCHAR"),
-        ("payment_method", "VARCHAR"),
-    ],
-}
+class SourceContractError(ValueError):
+    """Raised when a source CSV header does not match its declared contract."""
 
 
-def _read_csv(path: Path) -> list[Row]:
+def _read_csv(path: Path, expected_columns: list[str]) -> list[Row]:
     with path.open(encoding="utf-8", newline="") as file:
-        return list(csv.DictReader(file))
+        reader = csv.DictReader(file)
+        actual_columns = reader.fieldnames
+        if actual_columns is None:
+            raise SourceContractError(f"Source contract failed for {path.name}: header is missing")
+
+        duplicate_columns = sorted(
+            {column for column in actual_columns if actual_columns.count(column) > 1}
+        )
+        missing_columns = [column for column in expected_columns if column not in actual_columns]
+        unexpected_columns = [column for column in actual_columns if column not in expected_columns]
+        issues = []
+        if missing_columns:
+            issues.append(f"missing columns [{', '.join(missing_columns)}]")
+        if unexpected_columns:
+            issues.append(f"unexpected columns [{', '.join(unexpected_columns)}]")
+        if duplicate_columns:
+            issues.append(f"duplicate columns [{', '.join(duplicate_columns)}]")
+        if issues:
+            raise SourceContractError(
+                f"Source contract failed for {path.name}: {'; '.join(issues)}"
+            )
+        return list(reader)
 
 
 def _fingerprint_source_files(raw_dir: Path) -> FileMetadata:
@@ -100,14 +77,22 @@ def load_raw_tables(
 ) -> dict[str, int]:
     """Replace the raw tables from a directory of generated CSV files."""
 
-    connection.execute("CREATE SCHEMA IF NOT EXISTS raw")
     load_timestamp = loaded_at or datetime.now(UTC)
     batch_id = load_id or str(uuid4())
+    source_rows = {
+        table: _read_csv(
+            raw_dir / f"{table}.csv",
+            [column_name for column_name, _ in columns],
+        )
+        for table, columns in RAW_TABLES.items()
+    }
+
+    connection.execute("CREATE SCHEMA IF NOT EXISTS raw")
     row_counts: dict[str, int] = {}
     for table, columns in RAW_TABLES.items():
-        rows = _read_csv(raw_dir / f"{table}.csv")
-        _create_raw_table(connection, table)
         column_names = [name for name, _ in columns]
+        rows = source_rows[table]
+        _create_raw_table(connection, table)
         insert_columns = [*column_names, "load_id", "loaded_at"]
         placeholders = ", ".join("?" for _ in insert_columns)
         values = [
