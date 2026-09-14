@@ -116,6 +116,21 @@ Before changing the raw schema, Python reads and checks every CSV header. Missin
 
 This is intentionally a narrow first contract. DuckDB still performs the value-to-type conversion, and the definition has no version identifier, nullable-field rules or compatibility policy for adding a column.
 
+## Day 21 addition
+
+The current subscription-plan source is now snapshotted into
+`history.subscription_plan_history`. dbt uses the stable plan ID and checks only the
+definition fields: product code, billing frequency and synthetic amount. A changed
+definition closes the old row and creates a new current row.
+
+The snapshot records system observation time. It does not invent a contractual
+effective date. Existing marts continue to use the current plan dimension, so this
+addition preserves their published totals while adding an auditable change path.
+
+A repeatable scenario copies the built DuckDB database to a temporary location,
+changes one synthetic amount by £0.01, runs the snapshot and verifies four current
+versions plus one closed version. The normal database is not altered.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.
