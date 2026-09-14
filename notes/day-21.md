@@ -13,6 +13,8 @@ I also added controls for:
 - exact agreement between the current snapshot rows and the current source;
 - unique dbt version identifiers.
 
+My first CI run caught a genuine error in the change-check helper: I assumed the plan key had a `PLAN-` prefix instead of reading the generated key exactly. The clean dbt build had passed, but the scenario failed before making its change. I corrected the constant to `SUB-1-MONTHLY` and kept the failed run visible in the PR history.
+
 The repeatable change check works on a temporary copy of the database. It adds £0.01 to one synthetic monthly plan, runs the snapshot again and expects five versions in total: four current rows and one closed row. The normal local database and committed synthetic inputs are not changed.
 
 The important limitation is that `dbt_valid_from` means “when this pipeline observed the change”. It is not a contractual effective date. I should not use it to claim historical pricing before the first snapshot run, and I have kept the existing reporting marts on the current plan definitions for now.
