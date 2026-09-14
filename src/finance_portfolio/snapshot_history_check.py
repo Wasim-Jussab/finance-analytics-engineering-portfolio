@@ -12,7 +12,7 @@ from pathlib import Path
 
 import duckdb
 
-PLAN_ID = "PLAN-SUB-1-MONTHLY"
+PLAN_ID = "SUB-1-MONTHLY"
 CHANGE_AMOUNT = Decimal("0.01")
 
 
