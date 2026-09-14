@@ -88,6 +88,15 @@ This is a deliberately small control, but it reflects the type of check I would 
 
 The `audit` source exposes run, source and failure history without applying freshness rules to old records. `ingestion_history_consistency` requires a successful run to reconcile to seven source rows and requires a failed run to have zero accepted sources. `ingestion_failure_consistency` checks that every failed run has one failure detail, successful runs have none, and failure timestamps and messages are valid. `current_ingestion_matches_history` confirms the current raw manifest still agrees with its successful history record, including file size and SHA-256 digest. `ingestion_audit_file_metadata` requires valid fingerprints for the six accepted CSV sources and NULL file metadata for generated run parameters.
 
+The subscription plan snapshot runs as part of `dbt build`. It uses the check
+strategy because the synthetic source does not provide an update timestamp. Three
+singular controls require one current row per plan, reject invalid or overlapping
+validity windows, and reconcile the current version back to the source.
+
+`make snapshot-history-check` performs a separate change scenario against a
+temporary database copy. It is intentionally outside the main data build so proof of
+versioning does not alter the clean seed-42 reporting output.
+
 ## Local setup decision
 
 The profile is kept in `config/profiles.yml` rather than the default dbt user directory. That makes the project self-contained and avoids requiring a local profile to be created manually. It only contains a local DuckDB path and no credentials.
