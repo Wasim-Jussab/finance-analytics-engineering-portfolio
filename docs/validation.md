@@ -288,6 +288,36 @@ For a controlled schema-drift failure, I renamed the temporary `customers.csv` h
 
 A separate test writes the customer columns in reverse order and loads all five test customers successfully. This confirms that the contract is based on column identity rather than file position. Missing, unexpected and duplicate column names are rejected.
 
+## Subscription plan history run — 14 September 2026
+
+The clean seed-42 pipeline created one current snapshot version for each of the four
+subscription plans. The existing reporting totals did not change.
+
+| Check | Result |
+|---|---:|
+| dbt table models | 9 passed |
+| dbt snapshots | 1 passed |
+| Clean current / closed plan versions | 4 / 0 |
+| dbt data tests | 170 passed |
+| Model, snapshot and data-test resources | 180 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 181 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| GitHub Actions | Passed |
+
+The controlled scenario copied the built database, increased
+`SUB-1-MONTHLY` by £0.01 and ran the snapshot again. It produced five total
+versions: four current rows and one closed row. The copied database was then
+discarded.
+
+The first CI attempt exposed a wrong assumption in the helper: I used a
+`PLAN-` prefix that does not exist in the generated key. The clean dbt build had
+already passed, but the scenario stopped before making a change. After correcting
+the key to `SUB-1-MONTHLY`, the complete workflow passed. This failure remains
+visible in the pull-request checks.
+
 ## Known gaps
 
 - The freshness timestamp begins at the local DuckDB load; it cannot prove when an upstream system extracted or published the data.
@@ -297,7 +327,7 @@ A separate test writes the customer columns in reverse order and loads all five 
 - The column contract is not versioned and does not yet declare nullability or compatibility rules for schema changes.
 - The dbt models currently rebuild as tables rather than incrementally.
 - Subscription refunds, retries, plan changes and revenue-recognition rules are not yet represented.
-- The subscription plan catalogue has no effective dates, so price history is not yet represented.
+- The plan snapshot records observation time, not a contractual business-effective date; it cannot reconstruct changes from before the first snapshot run.
 - Agreement history has no pause, reactivation or status-event records, so the movement model is limited to starts and cancellations.
 - The calendar start date is a project variable rather than source-system metadata.
 - The current dataset is intentionally small; scale and performance behaviour have not been tested.
