@@ -34,6 +34,9 @@ jobs:
       - name: Build local database
         run: make load
 
+      - name: Check raw source freshness
+        run: make dbt-freshness
+
       - name: Build and test dbt models
         run: make dbt-build
 

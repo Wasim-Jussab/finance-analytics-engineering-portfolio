@@ -3,6 +3,10 @@ sources:
   - name: raw
     description: "Typed tables loaded from the generated CSV files."
     schema: raw
+    loaded_at_field: loaded_at
+    freshness:
+      warn_after: {count: 1, period: hour}
+      error_after: {count: 24, period: hour}
     tables:
       - name: subscription_plans
         description: "Four synthetic product and billing-frequency plan definitions."
@@ -18,3 +22,87 @@ sources:
         description: "One row per scheduled synthetic subscription payment attempt."
       - name: run_parameters
         description: "One row containing the fixed as-of date for the run."
+      - name: ingestion_audit
+        description: "One row per expected source recording the current atomic load batch."
+        columns:
+          - name: load_id
+            tests: [not_null]
+          - name: source_name
+            tests: [not_null, unique]
+          - name: source_row_count
+            tests: [not_null]
+          - name: source_file_size_bytes
+            description: "CSV size in bytes; NULL for generated run parameters."
+          - name: source_file_sha256
+            description: "SHA-256 fingerprint of the CSV; NULL for generated run parameters."
+          - name: load_status
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ['Loaded']
+          - name: loaded_at
+            tests: [not_null]
+
+  - name: audit
+    description: "Persistent metadata for successful and failed local ingestion attempts."
+    schema: audit
+    tables:
+      - name: ingestion_runs
+        description: "One row per load attempt, whether committed or rolled back."
+        columns:
+          - name: load_id
+            tests: [not_null, unique]
+          - name: loaded_at
+            tests: [not_null]
+          - name: as_of_date
+            tests: [not_null]
+          - name: run_status
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ['Success', 'Failed']
+          - name: source_count
+            tests: [not_null]
+          - name: total_source_row_count
+            tests: [not_null]
+      - name: ingestion_sources
+        description: "One row per source within each successful load batch."
+        columns:
+          - name: load_id
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('audit', 'ingestion_runs')
+                    field: load_id
+          - name: source_name
+            tests: [not_null]
+          - name: source_row_count
+            tests: [not_null]
+          - name: load_status
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ['Loaded']
+          - name: loaded_at
+            tests: [not_null]
+      - name: ingestion_failures
+        description: "One sanitised error record per failed load attempt."
+        columns:
+          - name: load_id
+            tests:
+              - not_null
+              - unique
+              - relationships:
+                  arguments:
+                    to: source('audit', 'ingestion_runs')
+                    field: load_id
+          - name: failed_at
+            tests: [not_null]
+          - name: error_type
+            tests: [not_null]
+          - name: error_message
+            tests: [not_null]
