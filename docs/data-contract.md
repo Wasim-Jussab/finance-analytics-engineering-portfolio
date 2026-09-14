@@ -303,6 +303,23 @@ Before a replacement begins, all six headers must satisfy these rules:
 
 A rejected contract creates a `SourceContractError` failure record and leaves the previous raw batch current. This first version checks structure only. Type conversion still happens during the typed DuckDB insert, and nullable fields, contract versioning and backward-compatible changes are not yet formalised.
 
+## Day 21 subscription plan history
+
+`history.subscription_plan_history` has one row per observed version of a
+`subscription_plan_id`. The dbt-generated `dbt_scd_id` uniquely identifies the
+version; `dbt_valid_from` is required and `dbt_valid_to` is NULL only for the
+current version.
+
+A version changes when product code, billing frequency or billing amount changes.
+The ingestion `load_id` and `loaded_at` are retained for traceability but excluded
+from change detection. A routine reload of unchanged content must not create a new
+business version.
+
+The validity timestamps describe when this pipeline observed the source state. They
+are not promised as contractual price-effective dates. Exactly one current version
+must exist for every current source plan, and that version must agree with the source
+definition.
+
 ## Questions for the next few days
 
 - When should a plan become effective-dated rather than current-state only?
