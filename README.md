@@ -77,15 +77,17 @@ The current seed-42 run produced:
 | Fingerprinted CSV sources | 6 of 6 |
 | Successful run/source history rows | 1 / 7 |
 | Failed run/failure detail rows | 0 / 0 |
-| dbt models | 9 passed |
-| dbt data tests | 158 passed |
-| dbt model and data-test resources | 167 passed |
+| dbt table models | 9 passed |
+| dbt snapshots | 1 passed |
+| Clean plan-history versions | 4 current / 0 closed |
+| dbt data tests | 170 passed |
+| dbt model, snapshot and data-test resources | 180 passed |
 | DuckDB checkpoint hook | Passed |
 | Raw sources within freshness threshold | 8 of 8 |
 | Python tests | 20 passed |
 | Ruff | Passed |
 
-Controlled failure checks have detected invalid values, broken chronology, duplicate grains, missing calendar and reporting rows, payment-to-plan disagreement, an incorrect agreement closing balance, a mismatched ingestion count, inconsistent run history and CSV schema drift. Each targeted test returned a non-zero exit code before the clean model was rebuilt. Missing-file and renamed-column tests also prove that an incomplete replacement leaves the preceding valid batch in place and records a sanitised failure separately.
+Controlled failure checks have detected invalid values, broken chronology, duplicate grains, missing calendar and reporting rows, payment-to-plan disagreement, an incorrect agreement closing balance, a mismatched ingestion count, inconsistent run history and CSV schema drift. A separate temporary-database scenario changed one synthetic plan by £0.01 and produced five history versions: four current and one closed. Each targeted test returned a non-zero exit code before the clean model was rebuilt. Missing-file and renamed-column tests also prove that an incomplete replacement leaves the preceding valid batch in place and records a sanitised failure separately.
 
 The full evidence and remaining limitations are recorded in [docs/validation.md](docs/validation.md).
 
