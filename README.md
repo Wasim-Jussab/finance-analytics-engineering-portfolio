@@ -15,8 +15,10 @@ flowchart LR
     C --> J[("DuckDB raw tables + batch audit")]
     J --> I[("Persistent run, source and failure history")]
     J --> H["dbt source freshness"]
+    J --> K[("dbt plan history snapshot")]
     H --> D["dbt transformations"]
     D --> E[("Reporting marts")]
+    K --> F["dbt tests and reconciliation"]
     E --> F["dbt tests and reconciliation"]
     F --> G["GitHub Actions"]
 ```
@@ -29,8 +31,8 @@ Everything runs locally with no cloud account, credentials or paid service.
 |---|---|
 | Data generation | Deterministic customers, loans, subscription plans, agreements and payment attempts using a fixed seed |
 | Ingestion | Python validates a shared CSV column contract, loads typed DuckDB tables atomically, fingerprints accepted files and records failures |
-| Transformation | dbt materialises customer, loan, subscription, transaction, billing and agreement-movement models in the `mart` schema |
-| Data quality | Key, relationship, required-field, accepted-value and chronology tests |
+| Transformation | dbt materialises reporting models in `mart` and keeps observed subscription-plan changes as SCD Type 2 history |
+| Data quality | Key, relationship, required-field, accepted-value, chronology, history-window and current-state reconciliation tests |
 | Financial control | Loan payments and subscription collections reconcile to source; billed amounts agree with the governed synthetic plan catalogue |
 | Documentation | dbt source/model descriptions, architecture notes, data contract and daily decision log |
 | Automation | GitHub Actions reruns source freshness, the dbt build, Python tests and linting |
@@ -42,7 +44,8 @@ Everything runs locally with no cloud account, credentials or paid service.
 | `mart.dim_customer` | One row per customer | Combines customer attributes into a reporting dimension |
 | `mart.dim_date` | One row per calendar date | Provides tested calendar, month, quarter and weekend attributes |
 | `mart.dim_loan` | One row per loan account | Adds completed-payment count, value and latest completed-payment date |
-| `mart.dim_subscription_plan` | One row per product and billing frequency | Holds the visible synthetic billing amount used by agreements and payment controls |
+| `mart.dim_subscription_plan` | One row per product and billing frequency | Holds the current synthetic billing amount used by agreements and payment controls |
+| `history.subscription_plan_history` | One row per observed plan version | Closes an old version when dbt detects a change to product, frequency or amount |
 | `mart.dim_subscription` | One row per subscription agreement | Adds cancellation date, current status and completed active months |
 | `mart.fct_payment` | One row per payment attempt | Retains successful and failed attempts and derives a success flag |
 | `mart.fct_subscription_payment` | One row per subscription billing attempt | Retains completed and failed attempts and derives a collected flag |
@@ -106,6 +109,7 @@ make load
 make dbt-debug
 make dbt-freshness
 make dbt-build
+make snapshot-history-check
 make dbt-docs
 ```
 
@@ -121,6 +125,7 @@ Generated CSVs, DuckDB files, dbt output and logs are excluded from Git.
 - **Reconciliation before presentation:** completed-payment values are compared at raw, fact and account-summary level.
 - **Separate agreement and event grains:** subscription attributes remain in the dimension while billing attempts have their own fact table.
 - **Governed synthetic pricing:** agreements reference a four-row plan catalogue, and every billed amount is tested against it. The values were invented for this project and do not represent an employer's pricing.
+- **Observed plan history:** a dbt check snapshot versions plan-definition changes. Ingestion fields are excluded from change detection so an unchanged reload does not create false history.
 - **Collections are not revenue:** a completed synthetic billing attempt supports a cash-collected measure, but revenue recognition remains out of scope.
 - **Aggregate grain is explicit:** monthly performance is grouped by billing month, product and billing frequency, with a compound-grain test.
 - **Collection rate is attempt-based:** completed attempts are divided by all attempts; this is not an amount-weighted recovery rate.
@@ -144,7 +149,7 @@ This is a working project, not a finished platform.
 
 - The models currently rebuild as tables rather than incrementally.
 - Subscription refunds, retries, plan changes and revenue-recognition rules are not modelled.
-- Subscription plan prices are not effective-dated, so historical price changes are not represented.
+- Plan history starts when dbt first observes a change; the source still has no contractual business-effective date, so earlier pricing cannot be reconstructed.
 - The agreement data has no pause, reactivation or status-history events; the movement mart uses only start and cancellation dates.
 - The calendar start date is configuration rather than source-system metadata.
 - `loaded_at` records the local DuckDB load, not the extraction time of an upstream production system.
@@ -161,6 +166,7 @@ This is a working project, not a finished platform.
 config/                 Local dbt profile with no credentials
 docs/                   Architecture, data contract, workflow and validation evidence
 models/                 dbt sources and reporting models
+snapshots/              dbt SCD Type 2 history definitions
 notes/                  Daily learning and decision log
 src/finance_portfolio/  Python generation and loading code
 sql/duckdb/             Earlier SQL implementation retained for comparison
@@ -192,5 +198,6 @@ The daily notes record what changed, what failed and what remains unresolved. Th
 - [Day 18: persistent run history and source fingerprints](notes/day-18.md)
 - [Day 19: retaining failed ingestion attempts](notes/day-19.md)
 - [Day 20: enforcing the CSV column contract](notes/day-20.md)
+- [Day 21: observed subscription plan history](notes/day-21.md)
 
 This repository demonstrates how I structure and validate analytics-engineering work. My production experience with Redshift, AWS Glue/Python, Power BI, regulatory reporting and financial reconciliations is described separately in my professional profile.
