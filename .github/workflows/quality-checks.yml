@@ -43,5 +43,8 @@ jobs:
       - name: Prove SCD Type 2 plan versioning
         run: make snapshot-history-check
 
+      - name: Prove SCD Type 2 agreement versioning
+        run: make subscription-history-check
+
       - name: Run Python tests and linting
         run: make check
