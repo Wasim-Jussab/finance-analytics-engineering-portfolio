@@ -131,6 +131,23 @@ A repeatable scenario copies the built DuckDB database to a temporary location,
 changes one synthetic amount by £0.01, runs the snapshot and verifies four current
 versions plus one closed version. The normal database is not altered.
 
+## Day 22 addition
+
+A second snapshot now stores observed versions of subscription agreements in
+`history.subscription_agreement_history`. It checks the agreement's customer,
+plan, start date, cancellation date, billing frequency and status while ignoring
+routine ingestion metadata.
+
+The source's `cancellation_date` and dbt's validity timestamps answer different
+questions. The former is the synthetic business event date; the latter records when
+this pipeline observed a source version. Keeping both avoids presenting load time as
+if it were an operational event.
+
+The plan and agreement failure checks now share one helper for checkpointing and
+copying the clean database, running dbt and disposing of the temporary scenario.
+The agreement scenario chooses an active record from the generated data rather than
+depending on a hard-coded agreement key.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.
