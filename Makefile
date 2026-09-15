@@ -1,4 +1,4 @@
-.PHONY: test lint format generate load dbt-debug dbt-freshness dbt-build dbt-docs snapshot-history-check pipeline check
+.PHONY: test lint format generate load dbt-debug dbt-freshness dbt-build dbt-docs snapshot-history-check subscription-history-check pipeline check
 
 DBT_DATABASE ?= data/finance.duckdb
 DBT_FLAGS = --project-dir . --profiles-dir config --target local
@@ -32,6 +32,9 @@ dbt-docs:
 
 snapshot-history-check:
 	PYTHONPATH=src python -m finance_portfolio.snapshot_history_check --database $(DBT_DATABASE)
+
+subscription-history-check:
+	PYTHONPATH=src python -m finance_portfolio.subscription_history_check --database $(DBT_DATABASE)
 
 pipeline: generate load dbt-freshness dbt-build
 
