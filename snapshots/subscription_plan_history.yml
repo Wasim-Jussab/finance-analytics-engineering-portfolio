@@ -1,0 +1,33 @@
+version: 2
+
+snapshots:
+  - name: subscription_plan_history
+    description: >
+      Technical SCD Type 2 history for synthetic subscription plans. Validity starts
+      when this pipeline observes a changed definition; it is not a business-effective
+      pricing date.
+    columns:
+      - name: subscription_plan_id
+        description: "Stable natural key for the synthetic plan."
+        tests: [not_null]
+      - name: dbt_scd_id
+        description: "dbt-generated identifier for one historical version."
+        tests: [not_null, unique]
+      - name: dbt_valid_from
+        description: "Timestamp when dbt first observed this version."
+        tests: [not_null]
+      - name: product_code
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['SUB-1', 'SUB-2']
+      - name: billing_frequency
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Monthly', 'Annual']
+      - name: billing_amount
+        description: "Synthetic contractual amount for this observed version."
+        tests: [not_null]

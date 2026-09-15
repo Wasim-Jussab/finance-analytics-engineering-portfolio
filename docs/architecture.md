@@ -116,6 +116,38 @@ Before changing the raw schema, Python reads and checks every CSV header. Missin
 
 This is intentionally a narrow first contract. DuckDB still performs the value-to-type conversion, and the definition has no version identifier, nullable-field rules or compatibility policy for adding a column.
 
+## Day 21 addition
+
+The current subscription-plan source is now snapshotted into
+`history.subscription_plan_history`. dbt uses the stable plan ID and checks only the
+definition fields: product code, billing frequency and synthetic amount. A changed
+definition closes the old row and creates a new current row.
+
+The snapshot records system observation time. It does not invent a contractual
+effective date. Existing marts continue to use the current plan dimension, so this
+addition preserves their published totals while adding an auditable change path.
+
+A repeatable scenario copies the built DuckDB database to a temporary location,
+changes one synthetic amount by £0.01, runs the snapshot and verifies four current
+versions plus one closed version. The normal database is not altered.
+
+## Day 22 addition
+
+A second snapshot now stores observed versions of subscription agreements in
+`history.subscription_agreement_history`. It checks the agreement's customer,
+plan, start date, cancellation date, billing frequency and status while ignoring
+routine ingestion metadata.
+
+The source's `cancellation_date` and dbt's validity timestamps answer different
+questions. The former is the synthetic business event date; the latter records when
+this pipeline observed a source version. Keeping both avoids presenting load time as
+if it were an operational event.
+
+The plan and agreement failure checks now share one helper for checkpointing and
+copying the clean database, running dbt and disposing of the temporary scenario.
+The agreement scenario chooses an active record from the generated data rather than
+depending on a hard-coded agreement key.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.
