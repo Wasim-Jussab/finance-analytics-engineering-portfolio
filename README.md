@@ -15,7 +15,7 @@ flowchart LR
     C --> J[("DuckDB raw tables + batch audit")]
     J --> I[("Persistent run, source and failure history")]
     J --> H["dbt source freshness"]
-    J --> K[("dbt plan history snapshot")]
+    J --> K[("dbt plan and agreement history")]
     H --> D["dbt transformations"]
     D --> E[("Reporting marts")]
     K --> F["dbt tests and reconciliation"]
@@ -31,7 +31,7 @@ Everything runs locally with no cloud account, credentials or paid service.
 |---|---|
 | Data generation | Deterministic customers, loans, subscription plans, agreements and payment attempts using a fixed seed |
 | Ingestion | Python validates a shared CSV column contract, loads typed DuckDB tables atomically, fingerprints accepted files and records failures |
-| Transformation | dbt materialises reporting models in `mart` and keeps observed subscription-plan changes as SCD Type 2 history |
+| Transformation | dbt materialises reporting models in `mart` and keeps observed plan and agreement changes as SCD Type 2 history |
 | Data quality | Key, relationship, required-field, accepted-value, chronology, history-window and current-state reconciliation tests |
 | Financial control | Loan payments and subscription collections reconcile to source; billed amounts agree with the governed synthetic plan catalogue |
 | Documentation | dbt source/model descriptions, architecture notes, data contract and daily decision log |
@@ -46,6 +46,7 @@ Everything runs locally with no cloud account, credentials or paid service.
 | `mart.dim_loan` | One row per loan account | Adds completed-payment count, value and latest completed-payment date |
 | `mart.dim_subscription_plan` | One row per product and billing frequency | Holds the current synthetic billing amount used by agreements and payment controls |
 | `history.subscription_plan_history` | One row per observed plan version | Closes an old version when dbt detects a change to product, frequency or amount |
+| `history.subscription_agreement_history` | One row per observed agreement version | Preserves detected plan, status and cancellation changes without replacing the prior state |
 | `mart.dim_subscription` | One row per subscription agreement | Adds cancellation date, current status and completed active months |
 | `mart.fct_payment` | One row per payment attempt | Retains successful and failed attempts and derives a success flag |
 | `mart.fct_subscription_payment` | One row per subscription billing attempt | Retains completed and failed attempts and derives a collected flag |
@@ -78,16 +79,17 @@ The current seed-42 run produced:
 | Successful run/source history rows | 1 / 7 |
 | Failed run/failure detail rows | 0 / 0 |
 | dbt table models | 9 passed |
-| dbt snapshots | 1 passed |
+| dbt snapshots | 2 passed |
 | Clean plan-history versions | 4 current / 0 closed |
-| dbt data tests | 170 passed |
-| dbt model, snapshot and data-test resources | 180 passed |
+| Clean agreement-history versions | 20 current / 0 closed |
+| dbt data tests | 187 passed |
+| dbt model, snapshot and data-test resources | 198 passed |
 | DuckDB checkpoint hook | Passed |
 | Raw sources within freshness threshold | 8 of 8 |
 | Python tests | 20 passed |
 | Ruff | Passed |
 
-Controlled failure checks have detected invalid values, broken chronology, duplicate grains, missing calendar and reporting rows, payment-to-plan disagreement, an incorrect agreement closing balance, a mismatched ingestion count, inconsistent run history and CSV schema drift. A separate temporary-database scenario changed one synthetic plan by £0.01 and produced five history versions: four current and one closed. Each targeted test returned a non-zero exit code before the clean model was rebuilt. Missing-file and renamed-column tests also prove that an incomplete replacement leaves the preceding valid batch in place and records a sanitised failure separately.
+Controlled failure checks have detected invalid values, broken chronology, duplicate grains, missing calendar and reporting rows, payment-to-plan disagreement, an incorrect agreement closing balance, a mismatched ingestion count, inconsistent run history and CSV schema drift. A separate temporary-database scenario changed one synthetic plan by £0.01 and produced five plan-history versions: four current and one closed. A second scenario cancelled one active synthetic agreement and produced 21 agreement-history versions: 20 current and one closed. Each targeted test returned a non-zero exit code before the clean model was rebuilt. Missing-file and renamed-column tests also prove that an incomplete replacement leaves the preceding valid batch in place and records a sanitised failure separately.
 
 The full evidence and remaining limitations are recorded in [docs/validation.md](docs/validation.md).
 
@@ -112,6 +114,7 @@ make dbt-debug
 make dbt-freshness
 make dbt-build
 make snapshot-history-check
+make subscription-history-check
 make dbt-docs
 ```
 
@@ -128,6 +131,7 @@ Generated CSVs, DuckDB files, dbt output and logs are excluded from Git.
 - **Separate agreement and event grains:** subscription attributes remain in the dimension while billing attempts have their own fact table.
 - **Governed synthetic pricing:** agreements reference a four-row plan catalogue, and every billed amount is tested against it. The values were invented for this project and do not represent an employer's pricing.
 - **Observed plan history:** a dbt check snapshot versions plan-definition changes. Ingestion fields are excluded from change detection so an unchanged reload does not create false history.
+- **Event time is separate from observation time:** agreement snapshots retain detected status changes, while `cancellation_date` remains the synthetic business event date. dbt validity timestamps only show when the pipeline saw a version.
 - **Collections are not revenue:** a completed synthetic billing attempt supports a cash-collected measure, but revenue recognition remains out of scope.
 - **Aggregate grain is explicit:** monthly performance is grouped by billing month, product and billing frequency, with a compound-grain test.
 - **Collection rate is attempt-based:** completed attempts are divided by all attempts; this is not an amount-weighted recovery rate.
@@ -201,5 +205,6 @@ The daily notes record what changed, what failed and what remains unresolved. Th
 - [Day 19: retaining failed ingestion attempts](notes/day-19.md)
 - [Day 20: enforcing the CSV column contract](notes/day-20.md)
 - [Day 21: observed subscription plan history](notes/day-21.md)
+- [Day 22: agreement status history and event time](notes/day-22.md)
 
 This repository demonstrates how I structure and validate analytics-engineering work. My production experience with Redshift, AWS Glue/Python, Power BI, regulatory reporting and financial reconciliations is described separately in my professional profile.
