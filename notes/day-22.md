@@ -11,7 +11,7 @@ I kept two timelines separate:
 
 They are not interchangeable. A late-arriving cancellation could have an earlier event date than the time it was loaded, and this local project still has no upstream change timestamp.
 
-The controlled check selects an active agreement from the generated data instead of assuming a particular key. It changes that agreement to Cancelled in a temporary database, uses the fixed reporting date as the cancellation event date and runs both snapshots again. The expected result is 21 agreement versions: 20 current and one closed.
+The controlled check selects an active agreement from the generated data instead of assuming a particular key. It changes that agreement to Cancelled in a temporary database, uses the fixed reporting date as the cancellation event date and runs both snapshots again. GitHub Actions produced 21 agreement versions as expected: 20 current and one closed. The existing plan-change scenario also remained green after the helper refactor.
 
 I also moved the common database-copy and dbt command into a shared helper. The plan and agreement checks now use the same isolated setup rather than carrying two copies of the subprocess and temporary-file logic.
 
