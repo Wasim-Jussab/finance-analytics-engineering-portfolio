@@ -318,6 +318,34 @@ already passed, but the scenario stopped before making a change. After correctin
 the key to `SUB-1-MONTHLY`, the complete workflow passed. This failure remains
 visible in the pull-request checks.
 
+## Subscription agreement history run — 15 September 2026
+
+The clean pipeline created one current snapshot version for each of the 20 synthetic
+agreements. No reporting totals changed.
+
+| Check | Result |
+|---|---:|
+| dbt table models | 9 passed |
+| dbt snapshots | 2 passed |
+| Clean current / closed agreement versions | 20 / 0 |
+| dbt data tests | 187 passed |
+| Model, snapshot and data-test resources | 198 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 199 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| GitHub Actions | Passed |
+
+The controlled agreement scenario selected the first active agreement, changed its
+status to Cancelled and set its synthetic cancellation event date to the fixed
+reporting date. The temporary database then contained 21 agreement versions: 20
+current rows and one closed row. The existing plan-change scenario also passed with
+five plan versions, four current and one closed.
+
+The common checkpoint, temporary-copy and dbt subprocess logic was moved into one
+helper and exercised by both scenarios.
+
 ## Known gaps
 
 - The freshness timestamp begins at the local DuckDB load; it cannot prove when an upstream system extracted or published the data.
@@ -328,6 +356,6 @@ visible in the pull-request checks.
 - The dbt models currently rebuild as tables rather than incrementally.
 - Subscription refunds, retries, plan changes and revenue-recognition rules are not yet represented.
 - The plan snapshot records observation time, not a contractual business-effective date; it cannot reconstruct changes from before the first snapshot run.
-- Agreement history has no pause, reactivation or status-event records, so the movement model is limited to starts and cancellations.
+- Agreement snapshots retain observed current-row changes, but there is still no source event stream for pauses, reactivations or retroactive corrections; the movement model remains limited to starts and cancellations.
 - The calendar start date is a project variable rather than source-system metadata.
 - The current dataset is intentionally small; scale and performance behaviour have not been tested.
