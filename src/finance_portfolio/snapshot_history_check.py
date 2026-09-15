@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import argparse
-import os
-import shutil
-import subprocess
-import tempfile
 from decimal import Decimal
 from pathlib import Path
 
 import duckdb
+
+from finance_portfolio.snapshot_scenario import run_snapshots, temporary_database_copy
 
 PLAN_ID = "SUB-1-MONTHLY"
 CHANGE_AMOUNT = Decimal("0.01")
@@ -27,26 +25,6 @@ def parse_args() -> argparse.Namespace:
         help="DuckDB database produced by the normal pipeline.",
     )
     return parser.parse_args()
-
-
-def run_snapshot(database: Path) -> None:
-    env = os.environ.copy()
-    env["FINANCE_DUCKDB_PATH"] = str(database)
-    subprocess.run(
-        [
-            "dbt",
-            "snapshot",
-            "--project-dir",
-            ".",
-            "--profiles-dir",
-            "config",
-            "--target",
-            "local",
-            "--no-partial-parse",
-        ],
-        check=True,
-        env=env,
-    )
 
 
 def verify_changed_version(database: Path, baseline_amount: Decimal) -> None:
@@ -94,25 +72,15 @@ def verify_changed_version(database: Path, baseline_amount: Decimal) -> None:
         )
 
     print(
-        "Snapshot change check passed: "
+        "Plan snapshot check passed: "
         "5 total plan versions, 4 current versions and 1 closed version."
     )
 
 
 def main() -> None:
-    source_database = parse_args().database.resolve()
-    if not source_database.exists():
-        raise FileNotFoundError(
-            f"Database not found: {source_database}. Run 'make pipeline' first."
-        )
+    source_database = parse_args().database
 
-    with duckdb.connect(str(source_database)) as connection:
-        connection.execute("force checkpoint")
-
-    with tempfile.TemporaryDirectory(prefix="finance-snapshot-") as temp_directory:
-        scenario_database = Path(temp_directory) / "finance.duckdb"
-        shutil.copy2(source_database, scenario_database)
-
+    with temporary_database_copy(source_database, "finance-plan-snapshot-") as scenario_database:
         with duckdb.connect(str(scenario_database)) as connection:
             row = connection.execute(
                 """
@@ -135,7 +103,7 @@ def main() -> None:
                 [CHANGE_AMOUNT, PLAN_ID],
             )
 
-        run_snapshot(scenario_database)
+        run_snapshots(scenario_database)
         verify_changed_version(scenario_database, baseline_amount)
 
 
