@@ -97,6 +97,15 @@ validity windows, and reconcile the current version back to the source.
 temporary database copy. It is intentionally outside the main data build so proof of
 versioning does not alter the clean seed-42 reporting output.
 
+The agreement snapshot applies the same observation-time approach to current
+subscription rows. Its tests require one current version per agreement, valid
+non-overlapping windows, consistent status and cancellation fields, and exact
+reconciliation of the current snapshot to the current source.
+
+Both controlled scenarios use a shared Python helper. Each starts from a checkpointed
+copy of the clean database, changes one synthetic row and reruns the snapshots. This
+keeps the evidence repeatable without contaminating the normal seed-42 output.
+
 ## Local setup decision
 
 The profile is kept in `config/profiles.yml` rather than the default dbt user directory. That makes the project self-contained and avoids requiring a local profile to be created manually. It only contains a local DuckDB path and no credentials.
