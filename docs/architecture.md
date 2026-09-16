@@ -148,6 +148,22 @@ copying the clean database, running dbt and disposing of the temporary scenario.
 The agreement scenario chooses an active record from the generated data rather than
 depending on a hard-coded agreement key.
 
+## Day 23 addition
+
+`mart.fct_subscription_status_change` is the first reporting model built from the
+agreement snapshot. It orders versions per agreement, compares each status with the
+previous status and emits a row only when the two differ.
+
+The clean first snapshot produces no rows because it contains states but no
+transitions. The controlled cancellation scenario updates one temporary source row,
+reruns the snapshots, then rebuilds and tests the fact. This creates one
+Active-to-Cancelled transition without adding invented history to the committed
+dataset.
+
+The fact stores the source cancellation date, snapshot observation timestamp and
+their day difference. It does not assume that ingestion time is the business event
+time.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.
