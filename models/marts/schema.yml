@@ -341,3 +341,40 @@ models:
       - name: closing_agreement_count
         description: "Agreements open after month-end cancellations are applied."
         tests: [not_null]
+  - name: fct_subscription_status_change
+    description: >
+      One row per status transition observed between consecutive agreement snapshot
+      versions. The clean first snapshot contains no transitions.
+    columns:
+      - name: status_change_id
+        description: "dbt version identifier for the new side of the transition."
+        tests: [not_null, unique]
+      - name: subscription_id
+        description: "Agreement whose observed status changed."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_subscription')
+                field: subscription_id
+      - name: previous_status
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Active', 'Cancelled']
+      - name: new_status
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Active', 'Cancelled']
+      - name: observed_at
+        description: "Timestamp when the pipeline first observed the new version."
+        tests: [not_null]
+      - name: business_event_date
+        description: "Synthetic cancellation event date when supplied by the source."
+      - name: observation_delay_days
+        description: >
+          Calendar days between the business event date and pipeline observation;
+          negative values would represent a future-dated event known in advance.
