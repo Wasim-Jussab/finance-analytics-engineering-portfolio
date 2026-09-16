@@ -346,6 +346,31 @@ five plan versions, four current and one closed.
 The common checkpoint, temporary-copy and dbt subprocess logic was moved into one
 helper and exercised by both scenarios.
 
+## Observed subscription status-change run — 16 September 2026
+
+The clean seed-42 build contains zero status-change facts. This is expected because
+the first snapshot contains no prior version to compare.
+
+| Check | Result |
+|---|---:|
+| dbt table models | 10 passed |
+| dbt snapshots | 2 passed |
+| Clean observed status-change rows | 0 |
+| dbt data tests | 198 passed |
+| Model, snapshot and data-test resources | 210 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 211 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| GitHub Actions | Passed |
+
+The controlled agreement scenario reran the snapshots after changing one Active
+agreement to Cancelled, then rebuilt the status-change fact with eleven selected
+tests. It produced exactly one transition with the expected agreement ID,
+Active-to-Cancelled statuses, cancellation event date, observation timestamp and
+calculated day difference. The plan scenario remained green.
+
 ## Known gaps
 
 - The freshness timestamp begins at the local DuckDB load; it cannot prove when an upstream system extracted or published the data.
@@ -354,7 +379,7 @@ helper and exercised by both scenarios.
 - Empty raw sources are currently rejected; there is no source-specific policy for a legitimate zero-row extract.
 - The column contract is not versioned and does not yet declare nullability or compatibility rules for schema changes.
 - The dbt models currently rebuild as tables rather than incrementally.
-- Subscription refunds, retries, plan changes and revenue-recognition rules are not yet represented.
+- Subscription refunds, billing retries and revenue-recognition rules are not yet represented. Plan and agreement changes are retained only from the point the local snapshots begin.
 - The plan snapshot records observation time, not a contractual business-effective date; it cannot reconstruct changes from before the first snapshot run.
 - Agreement snapshots retain observed current-row changes, but there is still no source event stream for pauses, reactivations or retroactive corrections; the movement model remains limited to starts and cancellations.
 - The calendar start date is a project variable rather than source-system metadata.
