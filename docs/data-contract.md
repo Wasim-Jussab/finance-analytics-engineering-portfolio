@@ -336,6 +336,22 @@ status and cancellation fields consistent.
 contract does not claim to reconstruct agreement states from before the first
 snapshot run.
 
+## Day 23 observed status-change fact
+
+`mart.fct_subscription_status_change` has one row per status transition between
+consecutive observed agreement versions. `status_change_id` is the dbt SCD
+identifier of the new version and is the row key.
+
+Required fields are agreement ID, previous status, new status and observation
+timestamp. A transition to Cancelled requires a business event date. The
+`observation_delay_days` value must equal the calendar-day difference between the
+event date and observation timestamp; it is not forced to be positive because a
+future-dated event could be known before it occurs.
+
+The fact must reconcile exactly to status differences derived from the complete
+snapshot. The initial snapshot is not treated as a change and therefore creates no
+fact rows.
+
 ## Questions for the next few days
 
 - When should a plan become effective-dated rather than current-state only?
