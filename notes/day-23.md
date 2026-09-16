@@ -12,7 +12,7 @@ The controlled cancellation scenario now does three things:
 2. reruns the snapshots;
 3. rebuilds and tests the status-change fact.
 
-It should produce one transition from Active to Cancelled. The model keeps both the synthetic cancellation event date and the snapshot observation timestamp, plus the number of days between them. A positive delay means the pipeline observed the event after its stated business date; a negative delay could represent a future-dated event known in advance.
+GitHub Actions produced exactly one transition from Active to Cancelled, and the selected model build passed all eleven attached tests. The model keeps both the synthetic cancellation event date and the snapshot observation timestamp, plus the number of days between them. A positive delay means the pipeline observed the event after its stated business date; a negative delay could represent a future-dated event known in advance.
 
 I added reconciliation back to the complete snapshot history rather than checking only the one demonstration row. I also test that cancellation transitions have an event date and that the stored delay agrees with the two dates.
 
