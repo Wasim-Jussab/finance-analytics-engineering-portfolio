@@ -106,6 +106,16 @@ Both controlled scenarios use a shared Python helper. Each starts from a checkpo
 copy of the clean database, changes one synthetic row and reruns the snapshots. This
 keeps the evidence repeatable without contaminating the normal seed-42 output.
 
+The status-change fact depends on the agreement snapshot through `ref`, so dbt
+builds the snapshot before the downstream model. Its reconciliation test derives the
+expected transitions independently from the full history and compares their version
+IDs with the fact.
+
+After the controlled cancellation updates the temporary source and reruns snapshots,
+the Python scenario runs a selected dbt build for
+`fct_subscription_status_change`. That selected build executes the model and its
+eleven attached data tests before Python checks the resulting transition.
+
 ## Local setup decision
 
 The profile is kept in `config/profiles.yml` rather than the default dbt user directory. That makes the project self-contained and avoids requiring a local profile to be created manually. It only contains a local DuckDB path and no credentials.
