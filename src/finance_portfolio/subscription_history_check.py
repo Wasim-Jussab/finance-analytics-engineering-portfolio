@@ -8,7 +8,11 @@ from pathlib import Path
 
 import duckdb
 
-from finance_portfolio.snapshot_scenario import run_snapshots, temporary_database_copy
+from finance_portfolio.snapshot_scenario import (
+    build_selection,
+    run_snapshots,
+    temporary_database_copy,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -59,6 +63,23 @@ def verify_changed_version(
             """
         ).fetchone()
 
+        status_changes = connection.execute(
+            """
+            select
+                previous_status,
+                new_status,
+                business_event_date,
+                observed_at,
+                observation_delay_days
+            from mart.fct_subscription_status_change
+            where subscription_id = ?
+            """,
+            [subscription_id],
+        ).fetchall()
+        all_status_change_count = connection.execute(
+            "select count(*) from mart.fct_subscription_status_change"
+        ).fetchone()[0]
+
     if (total_versions, current_versions, closed_versions) != (2, 1, 1):
         raise AssertionError(
             "Expected the changed agreement to have two versions: one current and one closed."
@@ -67,10 +88,24 @@ def verify_changed_version(
         raise AssertionError("Expected 21 agreement versions with 20 current rows.")
     if (current_status, current_cancellation_date) != ("Cancelled", cancellation_date):
         raise AssertionError("The current version does not contain the controlled cancellation.")
+    if len(status_changes) != 1 or all_status_change_count != 1:
+        raise AssertionError("Expected exactly one observed status-change fact row.")
+
+    previous_status, new_status, event_date, observed_at, delay_days = status_changes[0]
+    expected_delay = (observed_at.date() - cancellation_date).days
+    if (previous_status, new_status, event_date) != (
+        "Active",
+        "Cancelled",
+        cancellation_date,
+    ):
+        raise AssertionError("The status-change fact does not describe the controlled transition.")
+    if delay_days != expected_delay:
+        raise AssertionError("The observation delay does not match the event and snapshot dates.")
 
     print(
         "Agreement snapshot check passed: "
-        "21 total agreement versions, 20 current versions and 1 closed version."
+        "21 total agreement versions, 20 current versions, 1 closed version "
+        "and 1 observed status change."
     )
 
 
@@ -109,6 +144,7 @@ def main() -> None:
             )
 
         run_snapshots(scenario_database)
+        build_selection(scenario_database, "fct_subscription_status_change")
         verify_changed_version(scenario_database, subscription_id, cancellation_date)
 
 
