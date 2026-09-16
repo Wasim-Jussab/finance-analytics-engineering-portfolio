@@ -31,14 +31,15 @@ def temporary_database_copy(source_database: Path, prefix: str) -> Iterator[Path
         yield scenario_database
 
 
-def run_snapshots(database: Path) -> None:
-    """Run every project snapshot against the supplied DuckDB database."""
+def run_dbt(database: Path, command: str, *arguments: str) -> None:
+    """Run one dbt command against the supplied DuckDB database."""
     env = os.environ.copy()
     env["FINANCE_DUCKDB_PATH"] = str(database)
     subprocess.run(
         [
             "dbt",
-            "snapshot",
+            command,
+            *arguments,
             "--project-dir",
             ".",
             "--profiles-dir",
@@ -50,3 +51,13 @@ def run_snapshots(database: Path) -> None:
         check=True,
         env=env,
     )
+
+
+def run_snapshots(database: Path) -> None:
+    """Run every project snapshot against the supplied DuckDB database."""
+    run_dbt(database, "snapshot")
+
+
+def build_selection(database: Path, selector: str) -> None:
+    """Build and test one selected dbt resource."""
+    run_dbt(database, "build", "--select", selector)
