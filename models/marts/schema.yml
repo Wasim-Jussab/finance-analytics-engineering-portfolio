@@ -378,3 +378,28 @@ models:
         description: >
           Calendar days between the business event date and pipeline observation;
           negative values would represent a future-dated event known in advance.
+  - name: fct_subscription_source_removal
+    description: >
+      One row per agreement that previously appeared in the source but has no current
+      snapshot version. A source removal is not treated as a business cancellation.
+    columns:
+      - name: removal_id
+        description: "dbt identifier of the last observed agreement version."
+        tests: [not_null, unique]
+      - name: subscription_id
+        description: "Agreement key that no longer has a current source version."
+        tests: [not_null]
+      - name: last_observed_status
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Active', 'Cancelled']
+      - name: last_observed_at
+        tests: [not_null]
+      - name: removed_at
+        description: "Timestamp when the snapshot first observed the source absence."
+        tests: [not_null]
+      - name: was_cancelled_before_removal
+        description: "True only when the last observed business status was Cancelled."
+        tests: [not_null]
