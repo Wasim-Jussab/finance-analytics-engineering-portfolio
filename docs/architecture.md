@@ -164,6 +164,22 @@ The fact stores the source cancellation date, snapshot observation timestamp and
 their day difference. It does not assume that ingestion time is the business event
 time.
 
+## Day 24 addition
+
+`mart.fct_subscription_source_removal` identifies historical agreement keys whose
+latest snapshot version has closed without a replacement. It is separate from the
+status-change fact because source absence is not evidence of a business cancellation.
+
+The current-version control now requires exactly one current history row for every
+agreement still present in the source, while a second control prevents any historical
+key from having more than one current row. This makes the tests consistent with the
+snapshot's hard-delete invalidation setting.
+
+The removal scenario deletes one active agreement only from a temporary database,
+reruns snapshots and builds the removal fact. It intentionally has no relationship
+test to the current subscription dimension because a removed key is expected to be
+absent there.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.
