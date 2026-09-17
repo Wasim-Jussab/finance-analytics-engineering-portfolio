@@ -6,7 +6,7 @@ The snapshots were already configured to invalidate a current version after a ha
 
 I added `fct_subscription_source_removal` for agreements whose latest observed version has been closed without a replacement. I kept this separate from the status-change fact. Disappearing from an extract could mean source cleanup, retention, migration or an upstream fault; it is not enough evidence to label the agreement Cancelled.
 
-The clean dataset has no removal rows. The controlled scenario copies the database, deletes one active agreement from the temporary raw table, reruns the snapshots and rebuilds the removal fact. It should leave 20 historical versions, reduce the current population to 19 and create one removal row whose last observed status remains Active.
+The clean dataset has no removal rows. The controlled scenario copies the database, deletes one active agreement from the temporary raw table, reruns the snapshots and rebuilds the removal fact. GitHub Actions left 20 historical versions, reduced the current population to 19 and created one removal row whose last observed status remained Active. The selected model build passed all ten attached tests.
 
 I deliberately did not add a relationship test from the removal fact to the current subscription dimension. A removed source key is expected to be absent from that current-state model, so such a test would encode the wrong relationship.
 
