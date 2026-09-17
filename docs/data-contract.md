@@ -352,6 +352,22 @@ The fact must reconcile exactly to status differences derived from the complete
 snapshot. The initial snapshot is not treated as a change and therefore creates no
 fact rows.
 
+## Day 24 source-removal fact
+
+`mart.fct_subscription_source_removal` has one row per agreement that exists in
+snapshot history but has no current version. Its key is the dbt SCD identifier of the
+last observed version.
+
+The row retains the last observed status, cancellation date and plan, plus the time
+the last version was observed and the time it was invalidated. The
+`was_cancelled_before_removal` flag is derived from the last observed business
+status; source removal itself never changes that status.
+
+Every agreement still present in `raw.subscriptions` must have exactly one current
+snapshot version. Historical keys may have zero current versions, but never more than
+one. The removal fact must reconcile exactly to those zero-current keys and must not
+join back to a current source row.
+
 ## Questions for the next few days
 
 - When should a plan become effective-dated rather than current-state only?
