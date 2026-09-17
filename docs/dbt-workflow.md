@@ -116,6 +116,15 @@ the Python scenario runs a selected dbt build for
 `fct_subscription_status_change`. That selected build executes the model and its
 eleven attached data tests before Python checks the resulting transition.
 
+The source-removal scenario deletes one active agreement from a temporary raw table,
+reruns snapshots and builds `fct_subscription_source_removal` with its selected
+tests. The snapshot closes the existing version rather than inserting a replacement,
+so the history has 20 total versions and 19 current rows.
+
+The one-current test is deliberately anchored to current source keys. A separate
+at-most-one control covers all historical keys. This avoids treating the configured
+hard-delete behaviour as a data-quality failure.
+
 ## Local setup decision
 
 The profile is kept in `config/profiles.yml` rather than the default dbt user directory. That makes the project self-contained and avoids requiring a local profile to be created manually. It only contains a local DuckDB path and no credentials.
