@@ -46,5 +46,8 @@ jobs:
       - name: Prove SCD Type 2 agreement versioning
         run: make subscription-history-check
 
+      - name: Prove source removal handling
+        run: make subscription-removal-check
+
       - name: Run Python tests and linting
         run: make check
