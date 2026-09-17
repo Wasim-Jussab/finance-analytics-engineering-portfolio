@@ -371,6 +371,30 @@ tests. It produced exactly one transition with the expected agreement ID,
 Active-to-Cancelled statuses, cancellation event date, observation timestamp and
 calculated day difference. The plan scenario remained green.
 
+## Subscription source-removal run — 17 September 2026
+
+The clean seed-42 build contains zero removal rows.
+
+| Check | Result |
+|---|---:|
+| dbt table models | 11 passed |
+| dbt snapshots | 2 passed |
+| Clean source-removal rows | 0 |
+| dbt data tests | 209 passed |
+| Model, snapshot and data-test resources | 222 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 223 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| GitHub Actions | Passed |
+
+The controlled scenario removed one active agreement from a temporary raw table. The
+snapshot retained 20 historical versions, closed the removed agreement and left 19
+current versions. The selected removal model and ten attached tests passed, producing
+one removal row whose last observed status remained Active and whose cancellation
+flag remained false. The plan-change and status-change scenarios also remained green.
+
 ## Known gaps
 
 - The freshness timestamp begins at the local DuckDB load; it cannot prove when an upstream system extracted or published the data.
@@ -381,6 +405,6 @@ calculated day difference. The plan scenario remained green.
 - The dbt models currently rebuild as tables rather than incrementally.
 - Subscription refunds, billing retries and revenue-recognition rules are not yet represented. Plan and agreement changes are retained only from the point the local snapshots begin.
 - The plan snapshot records observation time, not a contractual business-effective date; it cannot reconstruct changes from before the first snapshot run.
-- Agreement snapshots retain observed current-row changes, but there is still no source event stream for pauses, reactivations or retroactive corrections; the movement model remains limited to starts and cancellations.
+- Agreement snapshots retain observed changes, but there is still no source event stream for pauses, reactivations or retroactive corrections. A source removal has no upstream reason code, so omission, retention and genuine deletion cannot be distinguished.
 - The calendar start date is a project variable rather than source-system metadata.
 - The current dataset is intentionally small; scale and performance behaviour have not been tested.
