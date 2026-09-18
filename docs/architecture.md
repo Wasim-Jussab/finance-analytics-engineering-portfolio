@@ -180,6 +180,14 @@ reruns snapshots and builds the removal fact. It intentionally has no relationsh
 test to the current subscription dimension because a removed key is expected to be
 absent there.
 
+## Day 25 addition
+
+`mart.fct_subscription_history_event` is the reporting boundary over the two historical event facts. It uses one row per observed event and assigns an explicit `event_type` of `Status Change` or `Source Removal`.
+
+The union does not turn removal into a business status. Status changes can carry a new status and business event date; source removals retain the last observed status and leave the business event date empty. Prefixing the component version ID with the event type keeps the event key unique even if the same snapshot version later supports both observations.
+
+The controlled scenarios now rebuild their component fact first, then build and test the unified consumer. This order matters because a downstream reconciliation test should not run against a stale consumer table.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.
