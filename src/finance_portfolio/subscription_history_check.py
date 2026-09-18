@@ -10,6 +10,7 @@ import duckdb
 
 from finance_portfolio.snapshot_scenario import (
     build_selection,
+    run_selection,
     run_snapshots,
     temporary_database_copy,
 )
@@ -173,7 +174,7 @@ def main() -> None:
             )
 
         run_snapshots(scenario_database)
-        build_selection(scenario_database, "fct_subscription_status_change")
+        run_selection(scenario_database, "fct_subscription_status_change")
         build_selection(scenario_database, "fct_subscription_history_event")
         verify_changed_version(scenario_database, subscription_id, cancellation_date)
 
