@@ -58,6 +58,11 @@ def run_snapshots(database: Path) -> None:
     run_dbt(database, "snapshot")
 
 
+def run_selection(database: Path, selector: str) -> None:
+    """Run one selected model without pulling downstream tests forward."""
+    run_dbt(database, "run", "--select", selector)
+
+
 def build_selection(database: Path, selector: str) -> None:
     """Build and test one selected dbt resource."""
     run_dbt(database, "build", "--select", selector)
