@@ -395,6 +395,28 @@ current versions. The selected removal model and ten attached tests passed, prod
 one removal row whose last observed status remained Active and whose cancellation
 flag remained false. The plan-change and status-change scenarios also remained green.
 
+## Unified subscription history event run — 18 September 2026
+
+The clean seed-42 build contains no historical events because it has only initial snapshot states. The unified fact remains empty rather than manufacturing transitions.
+
+| Check | Result |
+|---|---:|
+| dbt table models | 12 passed |
+| dbt snapshots | 2 passed |
+| Clean unified history-event rows | 0 |
+| dbt data tests | 221 passed |
+| Model, snapshot and data-test resources | 235 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 236 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| GitHub Actions | Passed |
+
+The controlled cancellation scenario produced one component status change and one unified `Status Change` event. The controlled removal scenario produced one component source removal and one unified `Source Removal` event. In each scenario, the selected unified build passed 14 of 14 results: one model, twelve attached tests and the checkpoint hook.
+
+The first integrated CI attempt exposed a dependency-ordering problem rather than a data-model defect. `dbt build --select fct_subscription_status_change` eagerly selected a downstream reconciliation test while `fct_subscription_history_event` still held the prior clean state. The scenario now runs the component model first and then builds and tests the unified consumer. The corrected complete workflow passed, while the failed run remains visible in the pull-request history.
+
 ## Known gaps
 
 - The freshness timestamp begins at the local DuckDB load; it cannot prove when an upstream system extracted or published the data.
