@@ -125,6 +125,18 @@ The one-current test is deliberately anchored to current source keys. A separate
 at-most-one control covers all historical keys. This avoids treating the configured
 hard-delete behaviour as a data-quality failure.
 
+## Historical scenario order
+
+The controlled agreement scenarios use an isolated database copy.
+
+1. Change or remove one synthetic agreement.
+2. Rerun both snapshots.
+3. Run the affected component fact.
+4. Build the unified history-event model and its attached tests.
+5. Assert the expected component and unified rows in Python.
+
+The component uses `dbt run` deliberately. Using `dbt build --select` there allowed eager indirect selection to execute a downstream reconciliation test before its consumer model had been refreshed. Building the unified consumer as the next explicit step makes the dependency order visible and repeatable.
+
 ## Local setup decision
 
 The profile is kept in `config/profiles.yml` rather than the default dbt user directory. That makes the project self-contained and avoids requiring a local profile to be created manually. It only contains a local DuckDB path and no credentials.
