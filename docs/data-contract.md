@@ -368,6 +368,19 @@ snapshot version. Historical keys may have zero current versions, but never more
 one. The removal fact must reconcile exactly to those zero-current keys and must not
 join back to a current source row.
 
+## Day 25 unified history event fact
+
+`mart.fct_subscription_history_event` has one row per observed historical event.
+
+- `event_id` combines the event type and source snapshot-version ID.
+- `event_type` is either `Status Change` or `Source Removal`.
+- `previous_status` is always retained.
+- `new_status` and `business_event_date` apply to status changes and remain null for removals.
+- `observed_at` is the dbt observation timestamp, not a contractual effective date.
+- `is_business_status_change` is true only for the status-change path.
+
+The fact must reconcile exactly to the union of the two component facts. It must not convert an absent source row into a cancellation.
+
 ## Questions for the next few days
 
 - When should a plan become effective-dated rather than current-state only?
