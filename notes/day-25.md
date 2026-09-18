@@ -34,3 +34,10 @@ This milestone now demonstrates snapshot design, change detection, hard-delete
 handling, downstream event modelling and reconciliation. It does not claim that
 observation timestamps are contractual effective dates or that a local DuckDB file
 is a production history service.
+
+## Verified result
+
+The corrected workflow passed the full clean build with 12 models, two snapshots and 221 data tests—236 results including the checkpoint hook. The cancellation and removal scenarios each passed the 14-result selected build for the unified event feed. Python finished with 20 passing tests and Ruff found no issues.
+
+The clean feed contains zero events, the cancellation scenario contains one `Status Change`, and the removal scenario contains one `Source Removal`. That is the behaviour I intended to prove.
+
