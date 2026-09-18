@@ -80,6 +80,23 @@ def verify_changed_version(
             "select count(*) from mart.fct_subscription_status_change"
         ).fetchone()[0]
 
+        history_events = connection.execute(
+            """
+            select
+                event_type,
+                previous_status,
+                new_status,
+                business_event_date,
+                is_business_status_change
+            from mart.fct_subscription_history_event
+            where subscription_id = ?
+            """,
+            [subscription_id],
+        ).fetchall()
+        all_history_event_count = connection.execute(
+            "select count(*) from mart.fct_subscription_history_event"
+        ).fetchone()[0]
+
     if (total_versions, current_versions, closed_versions) != (2, 1, 1):
         raise AssertionError(
             "Expected the changed agreement to have two versions: one current and one closed."
@@ -101,6 +118,18 @@ def verify_changed_version(
         raise AssertionError("The status-change fact does not describe the controlled transition.")
     if delay_days != expected_delay:
         raise AssertionError("The observation delay does not match the event and snapshot dates.")
+    if len(history_events) != 1 or all_history_event_count != 1:
+        raise AssertionError("Expected exactly one unified history event.")
+
+    event_type, event_previous, event_new, event_date, is_status_change = history_events[0]
+    if (
+        event_type,
+        event_previous,
+        event_new,
+        event_date,
+        is_status_change,
+    ) != ("Status Change", "Active", "Cancelled", cancellation_date, True):
+        raise AssertionError("The unified event feed misclassified the status change.")
 
     print(
         "Agreement snapshot check passed: "
@@ -145,6 +174,7 @@ def main() -> None:
 
         run_snapshots(scenario_database)
         build_selection(scenario_database, "fct_subscription_status_change")
+        build_selection(scenario_database, "fct_subscription_history_event")
         verify_changed_version(scenario_database, subscription_id, cancellation_date)
 
 
