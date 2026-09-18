@@ -19,6 +19,12 @@ controlled status scenario should produce one Status Change event, while the rem
 scenario should produce one Source Removal event. Both scenarios check the unified
 row as well as their component fact.
 
+The first integrated CI run caught an ordering issue in the controlled scenario.
+Selecting the component with `dbt build` also selected a downstream reconciliation
+test before the unified event model had been refreshed. I changed the scenario to
+run the component first, then build and test the unified consumer. The failed run is
+kept in the pull-request history because it reflects a real dependency lesson.
+
 I also added a short runbook covering normal execution, interpretation, controlled
 checks and failure response. The most important operating rule is to preserve failing
 evidence long enough to understand it instead of immediately rebuilding a green
