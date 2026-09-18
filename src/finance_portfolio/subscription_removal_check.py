@@ -66,6 +66,23 @@ def verify_removal(database: Path, subscription_id: str) -> None:
             "select count(*) from mart.fct_subscription_source_removal"
         ).fetchone()[0]
 
+        history_events = connection.execute(
+            """
+            select
+                event_type,
+                previous_status,
+                new_status,
+                business_event_date,
+                is_business_status_change
+            from mart.fct_subscription_history_event
+            where subscription_id = ?
+            """,
+            [subscription_id],
+        ).fetchall()
+        all_history_event_count = connection.execute(
+            "select count(*) from mart.fct_subscription_history_event"
+        ).fetchone()[0]
+
     if (target_versions, target_current, target_closed) != (1, 0, 1):
         raise AssertionError("Expected the removed agreement to have one closed version.")
     if (all_versions, all_current) != (20, 19):
@@ -78,6 +95,18 @@ def verify_removal(database: Path, subscription_id: str) -> None:
         raise AssertionError("The scenario did not retain the last observed active state.")
     if removed_at is None or was_cancelled:
         raise AssertionError("Source removal was incorrectly represented as cancellation.")
+    if len(history_events) != 1 or all_history_event_count != 1:
+        raise AssertionError("Expected exactly one unified history event.")
+
+    event_type, event_previous, event_new, event_date, is_status_change = history_events[0]
+    if (
+        event_type,
+        event_previous,
+        event_new,
+        event_date,
+        is_status_change,
+    ) != ("Source Removal", "Active", None, None, False):
+        raise AssertionError("The unified event feed misclassified the source removal.")
 
     print(
         "Source removal check passed: "
@@ -114,6 +143,7 @@ def main() -> None:
 
         run_snapshots(scenario_database)
         build_selection(scenario_database, "fct_subscription_source_removal")
+        build_selection(scenario_database, "fct_subscription_history_event")
         verify_removal(scenario_database, subscription_id)
 
 
