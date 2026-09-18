@@ -88,6 +88,55 @@ This is a deliberately small control, but it reflects the type of check I would 
 
 The `audit` source exposes run, source and failure history without applying freshness rules to old records. `ingestion_history_consistency` requires a successful run to reconcile to seven source rows and requires a failed run to have zero accepted sources. `ingestion_failure_consistency` checks that every failed run has one failure detail, successful runs have none, and failure timestamps and messages are valid. `current_ingestion_matches_history` confirms the current raw manifest still agrees with its successful history record, including file size and SHA-256 digest. `ingestion_audit_file_metadata` requires valid fingerprints for the six accepted CSV sources and NULL file metadata for generated run parameters.
 
+The subscription plan snapshot runs as part of `dbt build`. It uses the check
+strategy because the synthetic source does not provide an update timestamp. Three
+singular controls require one current row per plan, reject invalid or overlapping
+validity windows, and reconcile the current version back to the source.
+
+`make snapshot-history-check` performs a separate change scenario against a
+temporary database copy. It is intentionally outside the main data build so proof of
+versioning does not alter the clean seed-42 reporting output.
+
+The agreement snapshot applies the same observation-time approach to current
+subscription rows. Its tests require one current version per agreement, valid
+non-overlapping windows, consistent status and cancellation fields, and exact
+reconciliation of the current snapshot to the current source.
+
+Both controlled scenarios use a shared Python helper. Each starts from a checkpointed
+copy of the clean database, changes one synthetic row and reruns the snapshots. This
+keeps the evidence repeatable without contaminating the normal seed-42 output.
+
+The status-change fact depends on the agreement snapshot through `ref`, so dbt
+builds the snapshot before the downstream model. Its reconciliation test derives the
+expected transitions independently from the full history and compares their version
+IDs with the fact.
+
+After the controlled cancellation updates the temporary source and reruns snapshots,
+the Python scenario runs a selected dbt build for
+`fct_subscription_status_change`. That selected build executes the model and its
+eleven attached data tests before Python checks the resulting transition.
+
+The source-removal scenario deletes one active agreement from a temporary raw table,
+reruns snapshots and builds `fct_subscription_source_removal` with its selected
+tests. The snapshot closes the existing version rather than inserting a replacement,
+so the history has 20 total versions and 19 current rows.
+
+The one-current test is deliberately anchored to current source keys. A separate
+at-most-one control covers all historical keys. This avoids treating the configured
+hard-delete behaviour as a data-quality failure.
+
+## Historical scenario order
+
+The controlled agreement scenarios use an isolated database copy.
+
+1. Change or remove one synthetic agreement.
+2. Rerun both snapshots.
+3. Run the affected component fact.
+4. Build the unified history-event model and its attached tests.
+5. Assert the expected component and unified rows in Python.
+
+The component uses `dbt run` deliberately. Using `dbt build --select` there allowed eager indirect selection to execute a downstream reconciliation test before its consumer model had been refreshed. Building the unified consumer as the next explicit step makes the dependency order visible and repeatable.
+
 ## Local setup decision
 
 The profile is kept in `config/profiles.yml` rather than the default dbt user directory. That makes the project self-contained and avoids requiring a local profile to be created manually. It only contains a local DuckDB path and no credentials.

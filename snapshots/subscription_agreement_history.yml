@@ -1,0 +1,44 @@
+version: 2
+
+snapshots:
+  - name: subscription_agreement_history
+    description: >
+      Technical SCD Type 2 history for synthetic subscription agreements. The dbt
+      validity window records when this pipeline observed a source change; the
+      cancellation date remains the business event date.
+    columns:
+      - name: subscription_id
+        description: "Stable natural key for the synthetic agreement."
+        tests: [not_null]
+      - name: dbt_scd_id
+        description: "dbt-generated identifier for one observed agreement version."
+        tests: [not_null, unique]
+      - name: dbt_valid_from
+        description: "Timestamp when dbt first observed this version."
+        tests: [not_null]
+      - name: customer_id
+        tests: [not_null]
+      - name: product_code
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['SUB-1', 'SUB-2']
+      - name: subscription_plan_id
+        tests: [not_null]
+      - name: start_date
+        tests: [not_null]
+      - name: billing_frequency
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Monthly', 'Annual']
+      - name: status
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Active', 'Cancelled']
+      - name: cancellation_date
+        description: "Synthetic business event date; NULL while the agreement is active."

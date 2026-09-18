@@ -288,6 +288,135 @@ For a controlled schema-drift failure, I renamed the temporary `customers.csv` h
 
 A separate test writes the customer columns in reverse order and loads all five test customers successfully. This confirms that the contract is based on column identity rather than file position. Missing, unexpected and duplicate column names are rejected.
 
+## Subscription plan history run — 14 September 2026
+
+The clean seed-42 pipeline created one current snapshot version for each of the four
+subscription plans. The existing reporting totals did not change.
+
+| Check | Result |
+|---|---:|
+| dbt table models | 9 passed |
+| dbt snapshots | 1 passed |
+| Clean current / closed plan versions | 4 / 0 |
+| dbt data tests | 170 passed |
+| Model, snapshot and data-test resources | 180 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 181 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| GitHub Actions | Passed |
+
+The controlled scenario copied the built database, increased
+`SUB-1-MONTHLY` by £0.01 and ran the snapshot again. It produced five total
+versions: four current rows and one closed row. The copied database was then
+discarded.
+
+The first CI attempt exposed a wrong assumption in the helper: I used a
+`PLAN-` prefix that does not exist in the generated key. The clean dbt build had
+already passed, but the scenario stopped before making a change. After correcting
+the key to `SUB-1-MONTHLY`, the complete workflow passed. This failure remains
+visible in the pull-request checks.
+
+## Subscription agreement history run — 15 September 2026
+
+The clean pipeline created one current snapshot version for each of the 20 synthetic
+agreements. No reporting totals changed.
+
+| Check | Result |
+|---|---:|
+| dbt table models | 9 passed |
+| dbt snapshots | 2 passed |
+| Clean current / closed agreement versions | 20 / 0 |
+| dbt data tests | 187 passed |
+| Model, snapshot and data-test resources | 198 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 199 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| GitHub Actions | Passed |
+
+The controlled agreement scenario selected the first active agreement, changed its
+status to Cancelled and set its synthetic cancellation event date to the fixed
+reporting date. The temporary database then contained 21 agreement versions: 20
+current rows and one closed row. The existing plan-change scenario also passed with
+five plan versions, four current and one closed.
+
+The common checkpoint, temporary-copy and dbt subprocess logic was moved into one
+helper and exercised by both scenarios.
+
+## Observed subscription status-change run — 16 September 2026
+
+The clean seed-42 build contains zero status-change facts. This is expected because
+the first snapshot contains no prior version to compare.
+
+| Check | Result |
+|---|---:|
+| dbt table models | 10 passed |
+| dbt snapshots | 2 passed |
+| Clean observed status-change rows | 0 |
+| dbt data tests | 198 passed |
+| Model, snapshot and data-test resources | 210 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 211 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| GitHub Actions | Passed |
+
+The controlled agreement scenario reran the snapshots after changing one Active
+agreement to Cancelled, then rebuilt the status-change fact with eleven selected
+tests. It produced exactly one transition with the expected agreement ID,
+Active-to-Cancelled statuses, cancellation event date, observation timestamp and
+calculated day difference. The plan scenario remained green.
+
+## Subscription source-removal run — 17 September 2026
+
+The clean seed-42 build contains zero removal rows.
+
+| Check | Result |
+|---|---:|
+| dbt table models | 11 passed |
+| dbt snapshots | 2 passed |
+| Clean source-removal rows | 0 |
+| dbt data tests | 209 passed |
+| Model, snapshot and data-test resources | 222 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 223 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| GitHub Actions | Passed |
+
+The controlled scenario removed one active agreement from a temporary raw table. The
+snapshot retained 20 historical versions, closed the removed agreement and left 19
+current versions. The selected removal model and ten attached tests passed, producing
+one removal row whose last observed status remained Active and whose cancellation
+flag remained false. The plan-change and status-change scenarios also remained green.
+
+## Unified subscription history event run — 18 September 2026
+
+The clean seed-42 build contains no historical events because it has only initial snapshot states. The unified fact remains empty rather than manufacturing transitions.
+
+| Check | Result |
+|---|---:|
+| dbt table models | 12 passed |
+| dbt snapshots | 2 passed |
+| Clean unified history-event rows | 0 |
+| dbt data tests | 221 passed |
+| Model, snapshot and data-test resources | 235 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 236 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| GitHub Actions | Passed |
+
+The controlled cancellation scenario produced one component status change and one unified `Status Change` event. The controlled removal scenario produced one component source removal and one unified `Source Removal` event. In each scenario, the selected unified build passed 14 of 14 results: one model, twelve attached tests and the checkpoint hook.
+
+The first integrated CI attempt exposed a dependency-ordering problem rather than a data-model defect. `dbt build --select fct_subscription_status_change` eagerly selected a downstream reconciliation test while `fct_subscription_history_event` still held the prior clean state. The scenario now runs the component model first and then builds and tests the unified consumer. The corrected complete workflow passed, while the failed run remains visible in the pull-request history.
+
 ## Known gaps
 
 - The freshness timestamp begins at the local DuckDB load; it cannot prove when an upstream system extracted or published the data.
@@ -296,8 +425,8 @@ A separate test writes the customer columns in reverse order and loads all five 
 - Empty raw sources are currently rejected; there is no source-specific policy for a legitimate zero-row extract.
 - The column contract is not versioned and does not yet declare nullability or compatibility rules for schema changes.
 - The dbt models currently rebuild as tables rather than incrementally.
-- Subscription refunds, retries, plan changes and revenue-recognition rules are not yet represented.
-- The subscription plan catalogue has no effective dates, so price history is not yet represented.
-- Agreement history has no pause, reactivation or status-event records, so the movement model is limited to starts and cancellations.
+- Subscription refunds, billing retries and revenue-recognition rules are not yet represented. Plan and agreement changes are retained only from the point the local snapshots begin.
+- The plan snapshot records observation time, not a contractual business-effective date; it cannot reconstruct changes from before the first snapshot run.
+- Agreement snapshots retain observed changes, but there is still no source event stream for pauses, reactivations or retroactive corrections. A source removal has no upstream reason code, so omission, retention and genuine deletion cannot be distinguished.
 - The calendar start date is a project variable rather than source-system metadata.
 - The current dataset is intentionally small; scale and performance behaviour have not been tested.
