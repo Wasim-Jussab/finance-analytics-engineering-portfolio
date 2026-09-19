@@ -188,6 +188,23 @@ The union does not turn removal into a business status. Status changes can carry
 
 The controlled scenarios now rebuild their component fact first, then build and test the unified consumer. This order matters because a downstream reconciliation test should not run against a stale consumer table.
 
+## Day 26 addition
+
+`mart.fct_subscription_payment` is now an incremental dbt model using a keyed
+DuckDB merge. `subscription_payment_id` is the unique key: a new key is inserted,
+while a changed source row with an existing key updates the current fact row. The
+fact also retains `source_loaded_at` so the accepted source batch remains visible.
+
+The raw CSV load is still a full replacement and the incremental model deliberately
+has no date watermark. It therefore processes the complete small payment source on
+each run. This is a correctness step—safe inserts, corrections and repeatable
+reruns—not a claim that the local pipeline now scans less data.
+
+The controlled check uses a temporary database, reruns unchanged input, corrects
+one failed attempt, adds one late retry and reruns twice. It selects the incremental
+fact and its descendants together so the monthly aggregate and its reconciliation
+test cannot observe different versions of the data.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.

@@ -417,6 +417,38 @@ The controlled cancellation scenario produced one component status change and on
 
 The first integrated CI attempt exposed a dependency-ordering problem rather than a data-model defect. `dbt build --select fct_subscription_status_change` eagerly selected a downstream reconciliation test while `fct_subscription_history_event` still held the prior clean state. The scenario now runs the component model first and then builds and tests the unified consumer. The corrected complete workflow passed, while the failed run remains visible in the pull-request history.
 
+## Incremental subscription-payment run — 19 September 2026
+
+The clean seed-42 build keeps the same 150 subscription billing attempts and
+£3,648.00 of completed collections.
+
+| Check | Result |
+|---|---:|
+| dbt table models | 11 passed |
+| dbt incremental models | 1 passed |
+| dbt snapshots | 2 passed |
+| dbt data tests | 222 passed |
+| Model, snapshot and data-test resources | 236 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 237 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| dbt documentation | Generated |
+
+The isolated incremental scenario first reran unchanged input and remained at 150
+rows and 150 distinct keys. It then corrected one existing Failed attempt to
+Completed and inserted one late Failed retry. The selected fact-and-descendant build
+finished 36 of 36 results, producing 151 rows, 151 distinct keys and one additional
+collected attempt. A second rerun also passed 36 of 36 and retained the same state.
+
+The first scenario attempt encountered the project's known local DuckDB recovery-file
+conflict before any incremental assertion ran, so it is not counted as evidence. A
+later attempt proved the merge but selected only the fact; dbt then ran the downstream
+monthly reconciliation while the aggregate still represented the baseline. The
+scenario now selects `fct_subscription_payment+` so the aggregate and its tests are
+refreshed in the same dependency boundary.
+
 ## Known gaps
 
 - The freshness timestamp begins at the local DuckDB load; it cannot prove when an upstream system extracted or published the data.
@@ -424,7 +456,7 @@ The first integrated CI attempt exposed a dependency-ordering problem rather tha
 - Failed attempts retain run-level error detail but no source-level history, retries or alerts.
 - Empty raw sources are currently rejected; there is no source-specific policy for a legitimate zero-row extract.
 - The column contract is not versioned and does not yet declare nullability or compatibility rules for schema changes.
-- The dbt models currently rebuild as tables rather than incrementally.
+- One payment fact now uses a keyed incremental merge. The other marts rebuild as tables, and the full-refresh raw load means the incremental fact still considers the complete source.
 - Subscription refunds, billing retries and revenue-recognition rules are not yet represented. Plan and agreement changes are retained only from the point the local snapshots begin.
 - The plan snapshot records observation time, not a contractual business-effective date; it cannot reconstruct changes from before the first snapshot run.
 - Agreement snapshots retain observed changes, but there is still no source event stream for pauses, reactivations or retroactive corrections. A source removal has no upstream reason code, so omission, retention and genuine deletion cannot be distinguished.

@@ -49,5 +49,8 @@ jobs:
       - name: Prove source removal handling
         run: make subscription-removal-check
 
+      - name: Prove incremental payment merge
+        run: make incremental-payment-check
+
       - name: Run Python tests and linting
         run: make check
