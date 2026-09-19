@@ -381,6 +381,23 @@ join back to a current source row.
 
 The fact must reconcile exactly to the union of the two component facts. It must not convert an absent source row into a cancellation.
 
+## Day 26 incremental subscription-payment fact
+
+`mart.fct_subscription_payment` remains at one row per scheduled billing attempt.
+`subscription_payment_id` is both the declared unique key and the dbt merge key.
+An unseen key is inserted; a changed row with an existing key replaces the current
+fact values rather than creating a duplicate.
+
+The fact retains completed and failed attempts, the billing and calendar-month
+dates, amount, collection flag and `source_loaded_at`. The timestamp identifies the
+accepted raw batch supplying the current row; it is not the time the customer made
+the payment.
+
+The raw source is still replaced in full, so this contract does not promise
+watermark-based extraction or reduced scanning. The controlled scenario must prove
+an unchanged rerun, one insert, one in-place correction and a second idempotent
+rerun while preserving the downstream monthly reconciliation.
+
 ## Questions for the next few days
 
 - When should a plan become effective-dated rather than current-state only?
