@@ -205,6 +205,22 @@ one failed attempt, adds one late retry and reruns twice. It selects the increme
 fact and its descendants together so the monthly aggregate and its reconciliation
 test cannot observe different versions of the data.
 
+## Day 27 addition
+
+The incremental payment fact now distinguishes physical retention from current
+source presence. If a previously observed key is absent from the latest complete raw
+snapshot, the merge keeps one fact row, sets `is_source_present` to false and records
+the first observation in `source_missing_since`.
+
+Current monthly metrics filter to source-present rows. This avoids continuing to
+report stale collections while preserving evidence that the key existed in an
+earlier accepted snapshot. If the key reappears, the next merge sets it present and
+clears the absence timestamp.
+
+This is not a claim that the source confirmed a deletion. The local raw table is a
+complete snapshot with no deletion event or reason code, so the model records
+observed absence only.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.

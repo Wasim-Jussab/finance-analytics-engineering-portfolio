@@ -33,6 +33,7 @@ monthly_metrics as (
         sum(case when payment.is_collected then payment.amount else 0 end) as collected_amount
     from {{ ref('fct_subscription_payment') }} as payment
     inner join {{ ref('dim_subscription') }} as subscription using (subscription_id)
+    where payment.is_source_present
     group by payment.billing_month, subscription.subscription_plan_id
 ),
 zero_filled as (

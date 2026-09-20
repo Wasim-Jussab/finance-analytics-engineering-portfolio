@@ -8,7 +8,7 @@ with collection_totals as (
         (
             select coalesce(sum(amount), 0)
             from {{ ref('fct_subscription_payment') }}
-            where is_collected
+            where is_collected and is_source_present
         ) as fact_total
 )
 select

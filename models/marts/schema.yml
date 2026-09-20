@@ -260,6 +260,15 @@ models:
       - name: source_loaded_at
         description: "UTC timestamp of the accepted raw batch supplying the current fact row."
         tests: [not_null]
+      - name: is_source_present
+        description: >
+          True when the payment key exists in the latest raw snapshot. A false value
+          preserves a previously observed row without counting it in current metrics.
+        tests: [not_null]
+      - name: source_missing_since
+        description: >
+          First pipeline observation time at which a retained payment key was absent
+          from the current raw snapshot; null while the key is present.
   - name: agg_subscription_monthly
     description: "Monthly subscription billing performance by product and billing frequency."
     columns:

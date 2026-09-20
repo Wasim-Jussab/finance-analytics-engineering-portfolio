@@ -155,6 +155,21 @@ selection to run the monthly reconciliation against the preceding aggregate stat
 Refreshing the fact and descendants together keeps the dependency boundary
 consistent.
 
+Day 27 extends the same isolated scenario:
+
+1. Remove one completed payment from the raw snapshot.
+2. Rebuild the fact and descendants.
+3. Require the physical fact key to remain once, marked absent with an observation
+   timestamp.
+4. Require current fact and monthly counts to fall by one.
+5. Restore the raw source row and rebuild.
+6. Require the key to become present again, the absence timestamp to clear and a
+   final rerun to remain unchanged.
+
+The source-presence reconciliation compares current raw keys and values with only
+the source-present fact rows. Historical retained rows therefore remain testable
+without being included in current collections.
+
 ## Local setup decision
 
 The profile is kept in `config/profiles.yml` rather than the default dbt user directory. That makes the project self-contained and avoids requiring a local profile to be created manually. It only contains a local DuckDB path and no credentials.

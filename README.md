@@ -52,7 +52,7 @@ Everything runs locally with no cloud account, credentials or paid service.
 | `mart.fct_subscription_history_event` | One row per observed status change or source removal | Gives downstream reporting one event grain while preserving the distinction between business change and source absence |
 | `mart.dim_subscription` | One row per subscription agreement | Adds cancellation date, current status and completed active months |
 | `mart.fct_payment` | One row per payment attempt | Retains successful and failed attempts and derives a success flag |
-| `mart.fct_subscription_payment` | One row per subscription billing attempt | Incrementally merges stable payment keys, retains failed attempts and records the accepted source-batch timestamp |
+| `mart.fct_subscription_payment` | One row per subscription billing attempt | Incrementally merges stable keys, retains source-absent rows as evidence and excludes them from current reporting |
 | `mart.agg_subscription_monthly` | One row per eligible month, product and billing frequency | Adds active-agreement context and explicit zeros where an active plan has no billing attempt |
 | `mart.agg_subscription_movement_monthly` | One row per month, product and billing frequency | Reconciles opening population, starts, cancellations, net movement and closing population |
 
@@ -89,15 +89,15 @@ The current seed-42 run produced:
 | Clean observed status changes | 0 |
 | Clean source removals | 0 |
 | Clean unified history events | 0 |
-| dbt data tests | 222 passed |
-| dbt model, snapshot and data-test resources | 236 passed |
+| dbt data tests | 224 passed |
+| dbt model, snapshot and data-test resources | 238 passed |
 | DuckDB checkpoint hook | Passed |
-| Total dbt results including hook | 237 passed |
+| Total dbt results including hook | 239 passed |
 | Raw sources within freshness threshold | 8 of 8 |
 | Python tests | 20 passed |
 | Ruff | Passed |
 
-Controlled failure checks have detected invalid values, broken chronology, duplicate grains, missing calendar and reporting rows, payment-to-plan disagreement, an incorrect agreement closing balance, a mismatched ingestion count, inconsistent run history and CSV schema drift. A separate temporary-database scenario changed one synthetic plan by £0.01 and produced five plan-history versions: four current and one closed. A second scenario cancelled one active synthetic agreement and produced 21 agreement-history versions—20 current and one closed—plus exactly one Active-to-Cancelled status-change fact row. A third scenario removed one active source row and created one separate removal record while retaining its last observed Active status. The status and removal scenarios also each rebuilt and tested the unified event feed: one `Status Change` event in the first and one `Source Removal` event in the second. The incremental-payment scenario proved that an unchanged rerun stayed at 150 keys, one late key was inserted, one existing failed attempt was corrected in place, and a second rerun remained stable at 151 keys. Missing-file and renamed-column tests also prove that an incomplete replacement leaves the preceding valid batch in place and records a sanitised failure separately.
+Controlled failure checks have detected invalid values, broken chronology, duplicate grains, missing calendar and reporting rows, payment-to-plan disagreement, an incorrect agreement closing balance, a mismatched ingestion count, inconsistent run history and CSV schema drift. A separate temporary-database scenario changed one synthetic plan by £0.01 and produced five plan-history versions: four current and one closed. A second scenario cancelled one active synthetic agreement and produced 21 agreement-history versions—20 current and one closed—plus exactly one Active-to-Cancelled status-change fact row. A third scenario removed one active source row and created one separate removal record while retaining its last observed Active status. The status and removal scenarios also each rebuilt and tested the unified event feed: one `Status Change` event in the first and one `Source Removal` event in the second. The incremental-payment scenario proved unchanged reruns, one late insert, one in-place correction and no duplicate keys. It then removed one completed source row: the fact retained the key once with an absence timestamp, current monthly metrics excluded it, and restoring the source row reversed the flag without duplication. Missing-file and renamed-column tests also prove that an incomplete replacement leaves the preceding valid batch in place and records a sanitised failure separately.
 
 The full evidence and remaining limitations are recorded in [docs/validation.md](docs/validation.md). The operating sequence and failure response are in the [historical modelling runbook](docs/history-runbook.md).
 
@@ -146,6 +146,7 @@ Generated CSVs, DuckDB files, dbt output and logs are excluded from Git.
 - **Source absence is not cancellation:** an invalidated snapshot version is reported separately from a business status transition. A missing extract row does not prove that an agreement was cancelled.
 - **One event grain, explicit meanings:** status changes and source removals can share a reporting feed, but `event_type`, status fields and business-event dates keep their semantics distinct.
 - **Incremental by stable business key:** subscription payment attempts merge on `subscription_payment_id`, so late keys are inserted and corrected source rows update in place without duplicating an attempt.
+- **Source absence is retained, not guessed:** a payment missing from the latest snapshot remains in the fact with an observation timestamp, but current collection reporting excludes it. Reappearance restores the current flag. Absence is not labelled as a business deletion.
 - **No false performance claim:** the current raw load is still full refresh, so the incremental fact reads the complete small source. This step proves safe merge and rerun behaviour, not reduced source scanning.
 - **Collections are not revenue:** a completed synthetic billing attempt supports a cash-collected measure, but revenue recognition remains out of scope.
 - **Aggregate grain is explicit:** monthly performance is grouped by billing month, product and billing frequency, with a compound-grain test.
@@ -169,6 +170,7 @@ Generated CSVs, DuckDB files, dbt output and logs are excluded from Git.
 This is a working project, not a finished platform.
 
 - Only the subscription-payment fact is incremental. The other marts rebuild as tables, and the full-refresh raw source means the merge still considers every payment row.
+- Payment absence is observed from complete source snapshots. Without an upstream deletion event or reason code, the model cannot distinguish a genuine deletion from an omitted extract row.
 - Subscription refunds, retries, plan changes and revenue-recognition rules are not modelled.
 - Plan history starts when dbt first observes a change; the source still has no contractual business-effective date, so earlier pricing cannot be reconstructed.
 - The agreement data has no pause, reactivation or status-history events; the movement mart uses only start and cancellation dates.
@@ -225,5 +227,6 @@ The daily notes record what changed, what failed and what remains unresolved. Th
 - [Day 24: separating source removal from cancellation](notes/day-24.md)
 - [Day 25: one event feed without flattening the meaning](notes/day-25.md)
 - [Day 26: incremental payment merges and safe reruns](notes/day-26.md)
+- [Day 27: retaining source-absent payments safely](notes/day-27.md)
 
 This repository demonstrates how I structure and validate analytics-engineering work. My production experience with Redshift, AWS Glue/Python, Power BI, regulatory reporting and financial reconciliations is described separately in my professional profile.

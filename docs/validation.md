@@ -449,6 +449,38 @@ monthly reconciliation while the aggregate still represented the baseline. The
 scenario now selects `fct_subscription_payment+` so the aggregate and its tests are
 refreshed in the same dependency boundary.
 
+## Incremental source-absence run — 20 September 2026
+
+The clean seed-42 output remains unchanged: 150 physical payment rows, all 150
+present in the current source and zero absence flags.
+
+| Check | Result |
+|---|---:|
+| dbt table models | 11 passed |
+| dbt incremental models | 1 passed |
+| dbt snapshots | 2 passed |
+| dbt data tests | 224 passed |
+| Model, snapshot and data-test resources | 238 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 239 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| dbt documentation | Generated |
+
+The expanded isolated scenario ran six selected fact-and-descendant builds, each
+passing 38 of 38 results. After the existing insert and correction steps, removing
+one completed source payment left 151 physical and distinct fact keys, 150 current
+keys and one absent key with `source_missing_since` populated. Current monthly
+attempts also reconciled to 150. Restoring the source row returned all 151 keys to
+current reporting, cleared the absence metadata and stayed stable on the final
+rerun.
+
+The first scenario attempt encountered the known DuckDB recovery-file replay issue
+before assertions and is excluded from the evidence. The recovery file was retained
+separately and the checkpointed database passed the complete scenario. No model or
+test change was needed after the successful full build.
+
 ## Known gaps
 
 - The freshness timestamp begins at the local DuckDB load; it cannot prove when an upstream system extracted or published the data.
@@ -457,6 +489,7 @@ refreshed in the same dependency boundary.
 - Empty raw sources are currently rejected; there is no source-specific policy for a legitimate zero-row extract.
 - The column contract is not versioned and does not yet declare nullability or compatibility rules for schema changes.
 - One payment fact now uses a keyed incremental merge. The other marts rebuild as tables, and the full-refresh raw load means the incremental fact still considers the complete source.
+- Source absence is inferred from a complete local snapshot. There is no upstream deletion event or reason code, so an omitted row and a genuine deletion cannot be distinguished.
 - Subscription refunds, billing retries and revenue-recognition rules are not yet represented. Plan and agreement changes are retained only from the point the local snapshots begin.
 - The plan snapshot records observation time, not a contractual business-effective date; it cannot reconstruct changes from before the first snapshot run.
 - Agreement snapshots retain observed changes, but there is still no source event stream for pauses, reactivations or retroactive corrections. A source removal has no upstream reason code, so omission, retention and genuine deletion cannot be distinguished.

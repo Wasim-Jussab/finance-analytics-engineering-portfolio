@@ -398,6 +398,23 @@ watermark-based extraction or reduced scanning. The controlled scenario must pro
 an unchanged rerun, one insert, one in-place correction and a second idempotent
 rerun while preserving the downstream monthly reconciliation.
 
+## Day 27 payment source-presence contract
+
+The incremental fact retains one row for every payment key it has observed. A key
+missing from the latest complete raw snapshot is not physically deleted and is not
+assumed to represent a confirmed business deletion.
+
+- `is_source_present` is true only when the key exists in the latest raw snapshot.
+- `source_missing_since` is null while present and records the first pipeline run
+  that observed an absent retained key.
+- A key that stays absent keeps its original absence timestamp.
+- A reappearing key is merged back to present and clears the absence timestamp.
+- Current collection and monthly metrics use only source-present rows.
+
+A reconciliation test requires current source keys and values to match the
+source-present fact exactly. It also rejects present rows with an absence timestamp
+and absent rows without one.
+
 ## Questions for the next few days
 
 - When should a plan become effective-dated rather than current-state only?
