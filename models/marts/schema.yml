@@ -452,3 +452,35 @@ models:
         description: "Event-to-observation delay for status changes; NULL for removals."
       - name: is_business_status_change
         tests: [not_null]
+  - name: audit_subscription_payment_run
+    description: >
+      Append-only operational evidence at one row per dbt invocation that builds the
+      incremental subscription-payment fact and its downstream models.
+    columns:
+      - name: model_run_id
+        description: "dbt invocation identifier for the recorded transformation run."
+        tests: [not_null, unique]
+      - name: observed_at
+        description: "UTC start time of the dbt invocation."
+        tests: [not_null]
+      - name: raw_payment_count
+        description: "Payment rows in the current raw snapshot."
+        tests: [not_null]
+      - name: physical_fact_count
+        description: "All fact rows, including retained source-absent keys."
+        tests: [not_null]
+      - name: current_fact_count
+        description: "Fact rows present in the current raw snapshot."
+        tests: [not_null]
+      - name: retained_absent_count
+        description: "Previously observed fact keys absent from the current snapshot."
+        tests: [not_null]
+      - name: duplicate_fact_key_count
+        description: "Number of duplicated payment keys detected in the fact."
+        tests: [not_null]
+      - name: invalid_presence_metadata_count
+        description: "Rows whose current-presence flag and absence timestamp disagree."
+        tests: [not_null]
+      - name: is_reconciled
+        description: "True when current keys, collections and presence controls reconcile."
+        tests: [not_null]

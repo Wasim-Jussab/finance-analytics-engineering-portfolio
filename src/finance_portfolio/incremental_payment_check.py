@@ -29,6 +29,55 @@ def payment_summary(database: Path) -> tuple[int, int, int, int, int]:
         ).fetchone()
 
 
+def health_summary(database: Path) -> tuple[int, int, int, int, int, int, bool]:
+    """Return the latest recorded transformation-run metrics."""
+    with duckdb.connect(str(database), read_only=True) as connection:
+        return connection.execute(
+            """
+            SELECT
+                raw_payment_count,
+                physical_fact_count,
+                current_fact_count,
+                retained_absent_count,
+                raw_collected_count,
+                current_fact_collected_count,
+                is_reconciled
+            FROM audit.audit_subscription_payment_run
+            ORDER BY observed_at DESC
+            LIMIT 1
+            """
+        ).fetchone()
+
+
+def health_run_count(database: Path) -> int:
+    """Return the number of retained transformation-run audit records."""
+    with duckdb.connect(str(database), read_only=True) as connection:
+        return connection.execute(
+            "SELECT COUNT(*) FROM audit.audit_subscription_payment_run"
+        ).fetchone()[0]
+
+
+def assert_health(
+    database: Path,
+    *,
+    raw_count: int,
+    physical_count: int,
+    current_count: int,
+    absent_count: int,
+    collected_count: int,
+) -> None:
+    """Require the latest audit row to describe the expected reconciled state."""
+    assert health_summary(database) == (
+        raw_count,
+        physical_count,
+        current_count,
+        absent_count,
+        collected_count,
+        collected_count,
+        True,
+    )
+
+
 def apply_controlled_changes(database: Path) -> str:
     """Correct one failed attempt and add one late-arriving retry to the raw source."""
     with duckdb.connect(str(database)) as connection:
@@ -211,12 +260,21 @@ def run_check(source_database: Path) -> None:
     """Exercise initial state, no-change rerun, merge changes and idempotent rerun."""
     with temporary_database_copy(source_database, "incremental-payment-") as database:
         baseline = payment_summary(database)
+        baseline_health_runs = health_run_count(database)
         assert baseline[0] == baseline[1]
         assert baseline[0] == baseline[2]
         assert baseline[4] == 0
 
         build_selection(database, INCREMENTAL_SELECTOR)
         assert payment_summary(database) == baseline
+        assert_health(
+            database,
+            raw_count=baseline[0],
+            physical_count=baseline[0],
+            current_count=baseline[0],
+            absent_count=0,
+            collected_count=baseline[3],
+        )
 
         corrected_payment_id = apply_controlled_changes(database)
         build_selection(database, INCREMENTAL_SELECTOR)
@@ -226,6 +284,14 @@ def run_check(source_database: Path) -> None:
             baseline[0] + 1,
             baseline[3] + 1,
         )
+        assert_health(
+            database,
+            raw_count=baseline[0] + 1,
+            physical_count=baseline[0] + 1,
+            current_count=baseline[0] + 1,
+            absent_count=0,
+            collected_count=baseline[3] + 1,
+        )
 
         build_selection(database, INCREMENTAL_SELECTOR)
         assert_controlled_result(
@@ -233,6 +299,14 @@ def run_check(source_database: Path) -> None:
             corrected_payment_id,
             baseline[0] + 1,
             baseline[3] + 1,
+        )
+        assert_health(
+            database,
+            raw_count=baseline[0] + 1,
+            physical_count=baseline[0] + 1,
+            current_count=baseline[0] + 1,
+            absent_count=0,
+            collected_count=baseline[3] + 1,
         )
 
         removed_payment = remove_completed_payment(database)
@@ -244,6 +318,14 @@ def run_check(source_database: Path) -> None:
             baseline[0],
             baseline[3],
         )
+        assert_health(
+            database,
+            raw_count=baseline[0],
+            physical_count=baseline[0] + 1,
+            current_count=baseline[0],
+            absent_count=1,
+            collected_count=baseline[3],
+        )
 
         restore_payment(database, removed_payment)
         build_selection(database, INCREMENTAL_SELECTOR)
@@ -253,6 +335,14 @@ def run_check(source_database: Path) -> None:
             baseline[0] + 1,
             baseline[3] + 1,
         )
+        assert_health(
+            database,
+            raw_count=baseline[0] + 1,
+            physical_count=baseline[0] + 1,
+            current_count=baseline[0] + 1,
+            absent_count=0,
+            collected_count=baseline[3] + 1,
+        )
 
         build_selection(database, INCREMENTAL_SELECTOR)
         assert_controlled_result(
@@ -261,12 +351,22 @@ def run_check(source_database: Path) -> None:
             baseline[0] + 1,
             baseline[3] + 1,
         )
+        assert_health(
+            database,
+            raw_count=baseline[0] + 1,
+            physical_count=baseline[0] + 1,
+            current_count=baseline[0] + 1,
+            absent_count=0,
+            collected_count=baseline[3] + 1,
+        )
+        assert health_run_count(database) == baseline_health_runs + 6
 
         print(
             "Incremental payment check passed: unchanged input stayed stable, "
             "one late key was inserted, one existing key was updated, one absent "
             "source key was retained outside current metrics, its reappearance "
-            "was restored and the final rerun remained idempotent."
+            "was restored, the final rerun remained idempotent and all six states "
+            "were appended to the transformation audit."
         )
 
 

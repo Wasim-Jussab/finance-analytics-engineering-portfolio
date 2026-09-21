@@ -170,6 +170,22 @@ The source-presence reconciliation compares current raw keys and values with onl
 the source-present fact rows. Historical retained rows therefore remain testable
 without being included in current collections.
 
+Day 28 adds the append-only `audit_subscription_payment_run` descendant to the same
+selection. After the fact and monthly aggregate are refreshed, it records one row
+under the current dbt invocation ID and its tests evaluate all retained run rows.
+The scenario asserts that exactly six records are added and that the latest row
+matches each expected state:
+
+1. unchanged baseline;
+2. one late insert plus one correction;
+3. unchanged rerun;
+4. one retained source-absent key;
+5. restored source presence; and
+6. final unchanged rerun.
+
+The audit is not executed by a fact-only `dbt run`; it is evidence for selections
+that include the downstream model, including the project workflow and this scenario.
+
 ## Local setup decision
 
 The profile is kept in `config/profiles.yml` rather than the default dbt user directory. That makes the project self-contained and avoids requiring a local profile to be created manually. It only contains a local DuckDB path and no credentials.

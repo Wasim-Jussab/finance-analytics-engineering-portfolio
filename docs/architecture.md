@@ -221,6 +221,24 @@ This is not a claim that the source confirmed a deletion. The local raw table is
 complete snapshot with no deletion event or reason code, so the model records
 observed absence only.
 
+## Day 28 addition
+
+`audit.audit_subscription_payment_run` sits downstream of the incremental payment
+fact. It appends one row for each dbt invocation that selects it, using dbt's
+invocation ID as the run key. The row compares the current raw snapshot with both
+the physical fact population and the source-present reporting population. It also
+records absent-row, duplicate-key, presence-metadata and collection controls.
+
+The model is append-only so an unchanged rerun leaves evidence rather than replacing
+the previous result. The controlled scenario now creates six records: baseline,
+insert-and-correction, unchanged rerun, source absence, restoration and final
+unchanged rerun. Every state must reconcile before the scenario passes.
+
+This audit is deliberately described as local operational evidence. It shares the
+DuckDB file with the data, is created only when selected and records aggregate run
+outcomes rather than row-level changes. It is not an immutable external monitoring
+service.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.

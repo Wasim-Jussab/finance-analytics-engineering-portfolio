@@ -415,6 +415,26 @@ A reconciliation test requires current source keys and values to match the
 source-present fact exactly. It also rejects present rows with an absence timestamp
 and absent rows without one.
 
+## Day 28 payment transformation-run audit
+
+`audit.audit_subscription_payment_run` has one row per selected dbt invocation.
+`model_run_id` is the dbt invocation identifier and must be unique. `observed_at`
+records the invocation start, not a source-system event time.
+
+Each row retains:
+
+- raw payment and completed-collection counts and amounts;
+- physical fact, current fact and retained-absent counts;
+- duplicate-key and invalid presence-metadata counts;
+- current fact collection count and amount;
+- latest source load and first-observed-absence timestamps; and
+- one reconciliation flag calculated from those controls.
+
+A valid row requires the raw count to equal the source-present fact count, physical
+rows to equal current plus absent rows, collection counts and amounts to match, and
+both exception counts to be zero. The contract describes resulting state; it does
+not identify which individual keys changed during a run.
+
 ## Questions for the next few days
 
 - When should a plan become effective-dated rather than current-state only?

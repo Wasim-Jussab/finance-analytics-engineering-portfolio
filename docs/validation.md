@@ -481,6 +481,37 @@ before assertions and is excluded from the evidence. The recovery file was retai
 separately and the checkpointed database passed the complete scenario. No model or
 test change was needed after the successful full build.
 
+## Incremental run-audit evidence — 21 September 2026
+
+The clean seed-42 build appends one reconciled transformation-run row. The underlying
+payment output remains 150 current rows and £3,648.00 collected.
+
+| Check | Result |
+|---|---:|
+| dbt table models | 11 passed |
+| dbt incremental models | 2 passed |
+| dbt snapshots | 2 passed |
+| Clean transformation-audit rows | 1 reconciled |
+| dbt data tests | 235 passed |
+| Model, snapshot and data-test resources | 250 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 251 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| dbt documentation | Generated |
+
+The isolated incremental scenario again ran six selected builds. Each passed 50 of
+50 results and appended one unique run record. The records covered the unchanged
+baseline, insert-and-correction state, unchanged rerun, one retained absent key,
+restoration and final unchanged rerun. Every row reconciled raw to current fact
+counts and collections; physical fact rows reconciled to current plus absent rows.
+
+The first local scenario launch encountered the known DuckDB recovery-file replay
+conflict before any Day 28 assertion ran. I preserved that file outside the
+repository and reran the six-state scenario from the checkpointed database. The
+setup failure is not counted as control evidence.
+
 ## Known gaps
 
 - The freshness timestamp begins at the local DuckDB load; it cannot prove when an upstream system extracted or published the data.
@@ -490,6 +521,7 @@ test change was needed after the successful full build.
 - The column contract is not versioned and does not yet declare nullability or compatibility rules for schema changes.
 - One payment fact now uses a keyed incremental merge. The other marts rebuild as tables, and the full-refresh raw load means the incremental fact still considers the complete source.
 - Source absence is inferred from a complete local snapshot. There is no upstream deletion event or reason code, so an omitted row and a genuine deletion cannot be distinguished.
+- Transformation-run evidence shares the local database, runs only when its model is selected and has no external alerting or immutable control store. Its metrics describe resulting state rather than a row-level change set.
 - Subscription refunds, billing retries and revenue-recognition rules are not yet represented. Plan and agreement changes are retained only from the point the local snapshots begin.
 - The plan snapshot records observation time, not a contractual business-effective date; it cannot reconstruct changes from before the first snapshot run.
 - Agreement snapshots retain observed changes, but there is still no source event stream for pauses, reactivations or retroactive corrections. A source removal has no upstream reason code, so omission, retention and genuine deletion cannot be distinguished.
