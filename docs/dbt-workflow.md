@@ -186,6 +186,14 @@ matches each expected state:
 The audit is not executed by a fact-only `dbt run`; it is evidence for selections
 that include the downstream model, including the project workflow and this scenario.
 
+Day 29 places the `subscription_payment_run_delta` view downstream of that audit.
+The same `fct_subscription_payment+` selection now builds the fact, aggregate,
+append-only audit and view before testing the differences. Python checks exact
+changes after each of the six states; the dbt consistency test compares every
+view row against consecutive audit rows and checks for missing or extra run IDs.
+The scenario copy keeps the source database basename because a persisted DuckDB
+view can refer to its original catalogue name when a custom database path is used.
+
 ## Local setup decision
 
 The profile is kept in `config/profiles.yml` rather than the default dbt user directory. That makes the project self-contained and avoids requiring a local profile to be created manually. It only contains a local DuckDB path and no credentials.

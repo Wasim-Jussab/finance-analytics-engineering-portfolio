@@ -19,6 +19,7 @@ flowchart LR
     H --> D["dbt transformations"]
     D --> E[("Reporting marts")]
     D --> L[("Transformation run audit")]
+    L --> M["Run-to-run differences"]
     K --> F["dbt tests and reconciliation"]
     E --> F["dbt tests and reconciliation"]
     L --> F["dbt tests and reconciliation"]
@@ -33,7 +34,7 @@ Everything runs locally with no cloud account, credentials or paid service.
 |---|---|
 | Data generation | Deterministic customers, loans, subscription plans, agreements and payment attempts using a fixed seed |
 | Ingestion | Python validates a shared CSV column contract, loads typed DuckDB tables atomically, fingerprints accepted files and records failures |
-| Transformation | dbt materialises reporting models in `mart`, uses a keyed incremental merge for subscription payments, retains one reconciled outcome per selected dbt run, keeps observed plan and agreement versions, and combines status changes and source removals without erasing their meaning |
+| Transformation | dbt materialises reporting models in `mart`, uses a keyed incremental merge for subscription payments, retains reconciled run outcomes and run-to-run changes, keeps observed plan and agreement versions, and combines status changes and source removals without erasing their meaning |
 | Data quality | Key, relationship, required-field, accepted-value, chronology, history-window and current-state reconciliation tests |
 | Financial control | Loan payments and subscription collections reconcile to source; billed amounts agree with the governed synthetic plan catalogue |
 | Documentation | dbt source/model descriptions, architecture notes, data contract and daily decision log |
@@ -56,6 +57,7 @@ Everything runs locally with no cloud account, credentials or paid service.
 | `mart.fct_payment` | One row per payment attempt | Retains successful and failed attempts and derives a success flag |
 | `mart.fct_subscription_payment` | One row per subscription billing attempt | Incrementally merges stable keys, retains source-absent rows as evidence and excludes them from current reporting |
 | `audit.audit_subscription_payment_run` | One row per selected dbt invocation | Retains raw, physical, current, absent and collection reconciliation metrics for each payment-fact run |
+| `audit.subscription_payment_run_delta` | One row per recorded payment run | Compares the current and preceding run; first-run differences are null because no earlier run exists |
 | `mart.agg_subscription_monthly` | One row per eligible month, product and billing frequency | Adds active-agreement context and explicit zeros where an active plan has no billing attempt |
 | `mart.agg_subscription_movement_monthly` | One row per month, product and billing frequency | Reconciles opening population, starts, cancellations, net movement and closing population |
 
@@ -87,21 +89,24 @@ The current seed-42 run produced:
 | dbt table models | 11 passed |
 | Clean transformation audit rows | 1 reconciled |
 | dbt incremental models | 2 passed |
+| dbt run-difference views | 1 passed |
 | dbt snapshots | 2 passed |
 | Clean plan-history versions | 4 current / 0 closed |
 | Clean agreement-history versions | 20 current / 0 closed |
 | Clean observed status changes | 0 |
 | Clean source removals | 0 |
 | Clean unified history events | 0 |
-| dbt data tests | 235 passed |
-| dbt model, snapshot and data-test resources | 250 passed |
+| dbt data tests | 239 passed |
+| dbt model, snapshot and data-test resources | 255 passed |
 | DuckDB checkpoint hook | Passed |
-| Total dbt results including hook | 251 passed |
+| Total dbt results including hook | 256 passed |
 | Raw sources within freshness threshold | 8 of 8 |
 | Python tests | 20 passed |
 | Ruff | Passed |
 
 Controlled failure checks have detected invalid values, broken chronology, duplicate grains, missing calendar and reporting rows, payment-to-plan disagreement, an incorrect agreement closing balance, a mismatched ingestion count, inconsistent run history and CSV schema drift. A separate temporary-database scenario changed one synthetic plan by £0.01 and produced five plan-history versions: four current and one closed. A second scenario cancelled one active synthetic agreement and produced 21 agreement-history versions—20 current and one closed—plus exactly one Active-to-Cancelled status-change fact row. A third scenario removed one active source row and created one separate removal record while retaining its last observed Active status. The status and removal scenarios also each rebuilt and tested the unified event feed: one `Status Change` event in the first and one `Source Removal` event in the second. The incremental-payment scenario proved unchanged reruns, one late insert, one in-place correction and no duplicate keys. It then removed one completed source row: the fact retained the key once with an absence timestamp, current monthly metrics excluded it, and restoring the source row reversed the flag without duplication. The same six builds appended six distinct transformation-audit rows, each reconciling the raw snapshot to physical, current and collected fact metrics. Missing-file and renamed-column tests also prove that an incomplete replacement leaves the preceding valid batch in place and records a sanitised failure separately.
+
+For the same six runs, the comparison view shows zero movement on unchanged reruns, increased collections after a correction, a retained absent key when a payment leaves the source, and the reverse movement when it returns. These are net totals, not explanations of individual payment events.
 
 The full evidence and remaining limitations are recorded in [docs/validation.md](docs/validation.md). The operating sequence and failure response are in the [historical modelling runbook](docs/history-runbook.md).
 
@@ -152,6 +157,7 @@ Generated CSVs, DuckDB files, dbt output and logs are excluded from Git.
 - **Incremental by stable business key:** subscription payment attempts merge on `subscription_payment_id`, so late keys are inserted and corrected source rows update in place without duplicating an attempt.
 - **Source absence is retained, not guessed:** a payment missing from the latest snapshot remains in the fact with an observation timestamp, but current collection reporting excludes it. Reappearance restores the current flag. Absence is not labelled as a business deletion.
 - **Run outcomes are retained:** each selected payment-fact invocation appends its raw, physical, current, absent and collection counts under the dbt invocation ID, so a stable rerun and a changed run leave separate evidence.
+- **Differences are not explanations:** a view compares consecutive audited populations and collection totals. A zero net difference does not prove that no individual row changed.
 - **Outcome audit is not row-level lineage:** the run record proves the resulting populations and totals reconcile; it does not claim to identify every inserted or updated key.
 - **No false performance claim:** the current raw load is still full refresh, so the incremental fact reads the complete small source. This step proves safe merge and rerun behaviour, not reduced source scanning.
 - **Collections are not revenue:** a completed synthetic billing attempt supports a cash-collected measure, but revenue recognition remains out of scope.
@@ -236,5 +242,6 @@ The daily notes record what changed, what failed and what remains unresolved. Th
 - [Day 26: incremental payment merges and safe reruns](notes/day-26.md)
 - [Day 27: retaining source-absent payments safely](notes/day-27.md)
 - [Day 28: retaining evidence for each incremental run](notes/day-28.md)
+- [Day 29: comparing consecutive payment runs](notes/day-29.md)
 
 This repository demonstrates how I structure and validate analytics-engineering work. My production experience with Redshift, AWS Glue/Python, Power BI, regulatory reporting and financial reconciliations is described separately in my professional profile.

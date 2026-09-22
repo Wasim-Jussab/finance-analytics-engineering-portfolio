@@ -484,3 +484,27 @@ models:
       - name: is_reconciled
         description: "True when current keys, collections and presence controls reconcile."
         tests: [not_null]
+  - name: subscription_payment_run_delta
+    description: >
+      One row per recorded payment transformation run, comparing its resulting state
+      to the preceding recorded invocation. The first run has null differences.
+    columns:
+      - name: model_run_id
+        description: "dbt invocation ID inherited from the run audit."
+        tests: [not_null, unique]
+      - name: observed_at
+        tests: [not_null]
+      - name: previous_run_id
+        description: "Previous recorded dbt invocation; null for the first run."
+      - name: raw_payment_delta
+        description: "Current raw payment count less the preceding run's count."
+      - name: physical_fact_delta
+        description: "Change in retained physical payment-fact rows."
+      - name: current_fact_delta
+        description: "Change in rows eligible for current reporting."
+      - name: retained_absent_delta
+        description: "Change in previously observed keys absent from the latest source."
+      - name: collected_count_delta
+        description: "Change in current completed billing attempts."
+      - name: collected_amount_delta
+        description: "Change in current completed collection amount; not revenue."

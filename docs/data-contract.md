@@ -435,6 +435,16 @@ rows to equal current plus absent rows, collection counts and amounts to match, 
 both exception counts to be zero. The contract describes resulting state; it does
 not identify which individual keys changed during a run.
 
+## Day 29 consecutive-run differences
+
+`audit.subscription_payment_run_delta` has exactly one row per recorded payment
+transformation invocation, keyed by `model_run_id`. `previous_run_id` and every
+delta are null for the first row. For later rows, `previous_run_id` identifies the
+preceding recorded run, and each delta equals the current value minus the previous
+value in timestamp-and-ID order. The view exposes raw, physical, current and absent
+payment counts, completed-attempt count and completed-collection amount. A negative
+delta is a decrease in the metric, not proof of a business cancellation or refund.
+
 ## Questions for the next few days
 
 - When should a plan become effective-dated rather than current-state only?

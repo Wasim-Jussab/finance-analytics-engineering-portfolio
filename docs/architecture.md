@@ -239,6 +239,20 @@ DuckDB file with the data, is created only when selected and records aggregate r
 outcomes rather than row-level changes. It is not an immutable external monitoring
 service.
 
+## Day 29 addition
+
+`audit.subscription_payment_run_delta` is a view over the append-only payment-run
+audit. It orders runs by observation timestamp and invocation ID, then subtracts
+the preceding run's raw, physical, current, absent and collected populations and
+collection amount. The first recorded run has null differences, not a fabricated
+zero baseline. Unchanged reruns produce zero net differences.
+
+The controlled scenario verifies exact differences for a late payment and
+correction, one source-absent payment, its restoration and unchanged reruns. The
+view shows net movement, not the individual rows responsible for it. Persisted
+DuckDB views refer to their source database catalogue, so the scenario copy now
+preserves the original database filename when running under a custom local path.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.

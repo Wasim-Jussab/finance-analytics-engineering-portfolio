@@ -26,7 +26,9 @@ def temporary_database_copy(source_database: Path, prefix: str) -> Iterator[Path
         connection.execute("force checkpoint")
 
     with tempfile.TemporaryDirectory(prefix=prefix) as temp_directory:
-        scenario_database = Path(temp_directory) / "finance.duckdb"
+        # Persisted DuckDB views can store the database catalogue name. Keep it
+        # unchanged when running a scenario against a non-default database path.
+        scenario_database = Path(temp_directory) / source_database.name
         shutil.copy2(source_database, scenario_database)
         yield scenario_database
 
