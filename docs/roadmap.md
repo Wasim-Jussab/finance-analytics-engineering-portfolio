@@ -48,3 +48,15 @@ This is the order I currently expect to follow. It is not meant to imply that I 
 - Write a short explanation of the trade-offs and remaining gaps
 
 The plan will change if the data exposes a better question. That change is part of the project rather than something to hide.
+
+## Thirty-day checkpoint
+
+The first month moved faster than this initial outline in some areas. I completed
+the local dataset, ingestion controls, subscription reporting, dbt history,
+incremental payment handling and CI within Days 1–30. I did not deploy cloud
+infrastructure or claim production-scale performance.
+
+The next phase will move to the loan side of the dataset: dated portfolio snapshots,
+arrears and repayment behaviour, controlled financial assumptions and a reporting
+layer suitable for BI. Orchestration will be added only when there are enough
+independent tasks to make scheduling, retries and backfills meaningful.

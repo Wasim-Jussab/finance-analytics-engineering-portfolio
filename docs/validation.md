@@ -543,6 +543,24 @@ copy helper renamed it to `finance.duckdb`. The persisted view referred to the
 original catalogue, so the comparison query failed before assertions. The helper
 now preserves the source basename; the rerun and older history scenarios passed.
 
+## Unified milestone quality gate — 23 September 2026
+
+`make verify` now defines the complete local and CI merge gate. A clean Day 30
+database passed the full sequence in one command:
+
+- 8 of 8 source-freshness checks;
+- 256 of 256 clean dbt results;
+- plan, agreement and source-removal history scenarios;
+- six incremental payment builds at 55 of 55 results each;
+- 20 Python tests and Ruff; and
+- dbt catalogue generation.
+
+The first local invocation stopped before loading because the fresh execution
+environment did not have the package dependencies installed. After running the
+documented `python -m pip install -e ".[dev]"` prerequisite, the complete gate
+passed. That setup stop did not execute project logic and is not counted as
+validation evidence.
+
 ## Known gaps
 
 - The freshness timestamp begins at the local DuckDB load; it cannot prove when an upstream system extracted or published the data.

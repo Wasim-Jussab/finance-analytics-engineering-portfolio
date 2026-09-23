@@ -28,6 +28,14 @@ flowchart LR
 
 Everything runs locally with no cloud account, credentials or paid service.
 
+## Thirty-day checkpoint
+
+The first milestone is complete. It now covers reproducible synthetic data,
+contract-checked atomic ingestion, dbt dimensional and historical models,
+incremental payment handling, reconciliation, run evidence and CI. The honest
+technical assessment—including what this project does not prove—is in the
+[30-day review](docs/30-day-review.md).
+
 ## What is implemented
 
 | Area | Current implementation |
@@ -120,6 +128,7 @@ cd finance-analytics-engineering-portfolio
 python -m pip install -e ".[dev]"
 make pipeline
 make check
+make verify
 ```
 
 Useful individual commands:
@@ -136,6 +145,11 @@ make subscription-removal-check
 make incremental-payment-check
 make dbt-docs
 ```
+
+`make verify` is the merge gate used by GitHub Actions. It generates and loads a
+fresh dataset, checks source freshness, builds every dbt resource, runs all four
+controlled change scenarios, executes Python tests and linting, and generates the
+dbt catalogue.
 
 Generated CSVs, DuckDB files, dbt output and logs are excluded from Git.
 
@@ -176,6 +190,7 @@ Generated CSVs, DuckDB files, dbt output and logs are excluded from Git.
 - **One executable source contract:** generation and ingestion share the expected CSV columns and DuckDB types, preventing two separate definitions from drifting unnoticed.
 - **Header order is not a contract:** missing, unexpected and duplicate column names fail the load, but harmless column reordering is accepted because ingestion maps values by name.
 - **Local recovery is visible:** a DuckDB-only end-of-run hook requests a forced checkpoint; the validation log records that a recovery-file conflict can still occur between separate processes.
+- **One merge gate:** local verification and GitHub Actions use the same `make verify` entry point, reducing the chance that CI and the documented workflow silently diverge.
 
 ## Known gaps
 
@@ -243,5 +258,6 @@ The daily notes record what changed, what failed and what remains unresolved. Th
 - [Day 27: retaining source-absent payments safely](notes/day-27.md)
 - [Day 28: retaining evidence for each incremental run](notes/day-28.md)
 - [Day 29: comparing consecutive payment runs](notes/day-29.md)
+- [Day 30: closing the first milestone](notes/day-30.md)
 
 This repository demonstrates how I structure and validate analytics-engineering work. My production experience with Redshift, AWS Glue/Python, Power BI, regulatory reporting and financial reconciliations is described separately in my professional profile.
