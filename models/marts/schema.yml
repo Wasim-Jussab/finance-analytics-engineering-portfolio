@@ -218,7 +218,9 @@ models:
         description: "Boolean flag derived from status; no point-in-time history is implied."
         tests: [not_null]
   - name: fct_subscription_payment
-    description: "One row per scheduled subscription payment attempt, including failed attempts."
+    description: >
+      Incremental fact at one row per scheduled subscription payment attempt,
+      including failed attempts. Stable keys support inserts and corrections.
     columns:
       - name: subscription_payment_id
         description: "Stable synthetic subscription payment identifier."
@@ -255,6 +257,18 @@ models:
       - name: is_collected
         description: "Boolean flag derived from payment_status."
         tests: [not_null]
+      - name: source_loaded_at
+        description: "UTC timestamp of the accepted raw batch supplying the current fact row."
+        tests: [not_null]
+      - name: is_source_present
+        description: >
+          True when the payment key exists in the latest raw snapshot. A false value
+          preserves a previously observed row without counting it in current metrics.
+        tests: [not_null]
+      - name: source_missing_since
+        description: >
+          First pipeline observation time at which a retained payment key was absent
+          from the current raw snapshot; null while the key is present.
   - name: agg_subscription_monthly
     description: "Monthly subscription billing performance by product and billing frequency."
     columns:
@@ -438,3 +452,59 @@ models:
         description: "Event-to-observation delay for status changes; NULL for removals."
       - name: is_business_status_change
         tests: [not_null]
+  - name: audit_subscription_payment_run
+    description: >
+      Append-only operational evidence at one row per dbt invocation that builds the
+      incremental subscription-payment fact and its downstream models.
+    columns:
+      - name: model_run_id
+        description: "dbt invocation identifier for the recorded transformation run."
+        tests: [not_null, unique]
+      - name: observed_at
+        description: "UTC start time of the dbt invocation."
+        tests: [not_null]
+      - name: raw_payment_count
+        description: "Payment rows in the current raw snapshot."
+        tests: [not_null]
+      - name: physical_fact_count
+        description: "All fact rows, including retained source-absent keys."
+        tests: [not_null]
+      - name: current_fact_count
+        description: "Fact rows present in the current raw snapshot."
+        tests: [not_null]
+      - name: retained_absent_count
+        description: "Previously observed fact keys absent from the current snapshot."
+        tests: [not_null]
+      - name: duplicate_fact_key_count
+        description: "Number of duplicated payment keys detected in the fact."
+        tests: [not_null]
+      - name: invalid_presence_metadata_count
+        description: "Rows whose current-presence flag and absence timestamp disagree."
+        tests: [not_null]
+      - name: is_reconciled
+        description: "True when current keys, collections and presence controls reconcile."
+        tests: [not_null]
+  - name: subscription_payment_run_delta
+    description: >
+      One row per recorded payment transformation run, comparing its resulting state
+      to the preceding recorded invocation. The first run has null differences.
+    columns:
+      - name: model_run_id
+        description: "dbt invocation ID inherited from the run audit."
+        tests: [not_null, unique]
+      - name: observed_at
+        tests: [not_null]
+      - name: previous_run_id
+        description: "Previous recorded dbt invocation; null for the first run."
+      - name: raw_payment_delta
+        description: "Current raw payment count less the preceding run's count."
+      - name: physical_fact_delta
+        description: "Change in retained physical payment-fact rows."
+      - name: current_fact_delta
+        description: "Change in rows eligible for current reporting."
+      - name: retained_absent_delta
+        description: "Change in previously observed keys absent from the latest source."
+      - name: collected_count_delta
+        description: "Change in current completed billing attempts."
+      - name: collected_amount_delta
+        description: "Change in current completed collection amount; not revenue."

@@ -1,4 +1,5 @@
-.PHONY: test lint format generate load dbt-debug dbt-freshness dbt-build dbt-docs snapshot-history-check subscription-history-check subscription-removal-check pipeline check
+.PHONY: test lint format generate load dbt-debug dbt-freshness dbt-build dbt-docs snapshot-history-check subscription-history-check subscription-removal-check incremental-payment-check pipeline check verify
+.NOTPARALLEL: pipeline verify
 
 DBT_DATABASE ?= data/finance.duckdb
 DBT_FLAGS = --project-dir . --profiles-dir config --target local
@@ -39,6 +40,17 @@ subscription-history-check:
 subscription-removal-check:
 	PYTHONPATH=src python -m finance_portfolio.subscription_removal_check --database $(DBT_DATABASE)
 
+incremental-payment-check:
+	PYTHONPATH=src python -m finance_portfolio.incremental_payment_check --database $(DBT_DATABASE)
+
 pipeline: generate load dbt-freshness dbt-build
 
 check: lint test
+
+verify: pipeline
+	$(MAKE) snapshot-history-check
+	$(MAKE) subscription-history-check
+	$(MAKE) subscription-removal-check
+	$(MAKE) incremental-payment-check
+	$(MAKE) check
+	$(MAKE) dbt-docs

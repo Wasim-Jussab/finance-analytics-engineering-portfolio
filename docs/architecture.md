@@ -188,6 +188,71 @@ The union does not turn removal into a business status. Status changes can carry
 
 The controlled scenarios now rebuild their component fact first, then build and test the unified consumer. This order matters because a downstream reconciliation test should not run against a stale consumer table.
 
+## Day 26 addition
+
+`mart.fct_subscription_payment` is now an incremental dbt model using a keyed
+DuckDB merge. `subscription_payment_id` is the unique key: a new key is inserted,
+while a changed source row with an existing key updates the current fact row. The
+fact also retains `source_loaded_at` so the accepted source batch remains visible.
+
+The raw CSV load is still a full replacement and the incremental model deliberately
+has no date watermark. It therefore processes the complete small payment source on
+each run. This is a correctness step—safe inserts, corrections and repeatable
+reruns—not a claim that the local pipeline now scans less data.
+
+The controlled check uses a temporary database, reruns unchanged input, corrects
+one failed attempt, adds one late retry and reruns twice. It selects the incremental
+fact and its descendants together so the monthly aggregate and its reconciliation
+test cannot observe different versions of the data.
+
+## Day 27 addition
+
+The incremental payment fact now distinguishes physical retention from current
+source presence. If a previously observed key is absent from the latest complete raw
+snapshot, the merge keeps one fact row, sets `is_source_present` to false and records
+the first observation in `source_missing_since`.
+
+Current monthly metrics filter to source-present rows. This avoids continuing to
+report stale collections while preserving evidence that the key existed in an
+earlier accepted snapshot. If the key reappears, the next merge sets it present and
+clears the absence timestamp.
+
+This is not a claim that the source confirmed a deletion. The local raw table is a
+complete snapshot with no deletion event or reason code, so the model records
+observed absence only.
+
+## Day 28 addition
+
+`audit.audit_subscription_payment_run` sits downstream of the incremental payment
+fact. It appends one row for each dbt invocation that selects it, using dbt's
+invocation ID as the run key. The row compares the current raw snapshot with both
+the physical fact population and the source-present reporting population. It also
+records absent-row, duplicate-key, presence-metadata and collection controls.
+
+The model is append-only so an unchanged rerun leaves evidence rather than replacing
+the previous result. The controlled scenario now creates six records: baseline,
+insert-and-correction, unchanged rerun, source absence, restoration and final
+unchanged rerun. Every state must reconcile before the scenario passes.
+
+This audit is deliberately described as local operational evidence. It shares the
+DuckDB file with the data, is created only when selected and records aggregate run
+outcomes rather than row-level changes. It is not an immutable external monitoring
+service.
+
+## Day 29 addition
+
+`audit.subscription_payment_run_delta` is a view over the append-only payment-run
+audit. It orders runs by observation timestamp and invocation ID, then subtracts
+the preceding run's raw, physical, current, absent and collected populations and
+collection amount. The first recorded run has null differences, not a fabricated
+zero baseline. Unchanged reruns produce zero net differences.
+
+The controlled scenario verifies exact differences for a late payment and
+correction, one source-absent payment, its restoration and unchanged reruns. The
+view shows net movement, not the individual rows responsible for it. Persisted
+DuckDB views refer to their source database catalogue, so the scenario copy now
+preserves the original database filename when running under a custom local path.
+
 ## What I already know
 
 I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, reconciliations and checking results against business expectations. I also have experience with AWS Glue and Python in my current work.

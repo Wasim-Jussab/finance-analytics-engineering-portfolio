@@ -381,6 +381,70 @@ join back to a current source row.
 
 The fact must reconcile exactly to the union of the two component facts. It must not convert an absent source row into a cancellation.
 
+## Day 26 incremental subscription-payment fact
+
+`mart.fct_subscription_payment` remains at one row per scheduled billing attempt.
+`subscription_payment_id` is both the declared unique key and the dbt merge key.
+An unseen key is inserted; a changed row with an existing key replaces the current
+fact values rather than creating a duplicate.
+
+The fact retains completed and failed attempts, the billing and calendar-month
+dates, amount, collection flag and `source_loaded_at`. The timestamp identifies the
+accepted raw batch supplying the current row; it is not the time the customer made
+the payment.
+
+The raw source is still replaced in full, so this contract does not promise
+watermark-based extraction or reduced scanning. The controlled scenario must prove
+an unchanged rerun, one insert, one in-place correction and a second idempotent
+rerun while preserving the downstream monthly reconciliation.
+
+## Day 27 payment source-presence contract
+
+The incremental fact retains one row for every payment key it has observed. A key
+missing from the latest complete raw snapshot is not physically deleted and is not
+assumed to represent a confirmed business deletion.
+
+- `is_source_present` is true only when the key exists in the latest raw snapshot.
+- `source_missing_since` is null while present and records the first pipeline run
+  that observed an absent retained key.
+- A key that stays absent keeps its original absence timestamp.
+- A reappearing key is merged back to present and clears the absence timestamp.
+- Current collection and monthly metrics use only source-present rows.
+
+A reconciliation test requires current source keys and values to match the
+source-present fact exactly. It also rejects present rows with an absence timestamp
+and absent rows without one.
+
+## Day 28 payment transformation-run audit
+
+`audit.audit_subscription_payment_run` has one row per selected dbt invocation.
+`model_run_id` is the dbt invocation identifier and must be unique. `observed_at`
+records the invocation start, not a source-system event time.
+
+Each row retains:
+
+- raw payment and completed-collection counts and amounts;
+- physical fact, current fact and retained-absent counts;
+- duplicate-key and invalid presence-metadata counts;
+- current fact collection count and amount;
+- latest source load and first-observed-absence timestamps; and
+- one reconciliation flag calculated from those controls.
+
+A valid row requires the raw count to equal the source-present fact count, physical
+rows to equal current plus absent rows, collection counts and amounts to match, and
+both exception counts to be zero. The contract describes resulting state; it does
+not identify which individual keys changed during a run.
+
+## Day 29 consecutive-run differences
+
+`audit.subscription_payment_run_delta` has exactly one row per recorded payment
+transformation invocation, keyed by `model_run_id`. `previous_run_id` and every
+delta are null for the first row. For later rows, `previous_run_id` identifies the
+preceding recorded run, and each delta equals the current value minus the previous
+value in timestamp-and-ID order. The view exposes raw, physical, current and absent
+payment counts, completed-attempt count and completed-collection amount. A negative
+delta is a decrease in the metric, not proof of a business cancellation or refund.
+
 ## Questions for the next few days
 
 - When should a plan become effective-dated rather than current-state only?

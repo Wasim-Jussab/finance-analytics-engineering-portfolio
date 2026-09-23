@@ -58,7 +58,7 @@ The source contract runs before the raw-table replacement. It belongs in Python 
 | `dim_subscription_plan` | One row per product and billing frequency | Plan key, compound grain, accepted values, positive amount and source reconciliation |
 | `dim_subscription` | One row per subscription agreement | Subscription key, customer relationship, accepted values, chronology and row-count reconciliation |
 | `fct_payment` | One row per payment | Payment key not null and unique; account relationship |
-| `fct_subscription_payment` | One row per subscription billing attempt | Payment key, subscription relationship, accepted values, chronology, positive amount and collection reconciliation |
+| `fct_subscription_payment` | One row per subscription billing attempt | Incremental merge key, source-batch timestamp, subscription relationship, accepted values, chronology, positive amount and collection reconciliation |
 | `agg_subscription_monthly` | One row per eligible month, product and billing frequency | Active-plan coverage, compound grain, zero handling, metric consistency and fact reconciliation |
 | `agg_subscription_movement_monthly` | One row per month, product and billing frequency | Complete month coverage, movement equation, roll-forward and agreement reconciliation |
 
@@ -136,6 +136,63 @@ The controlled agreement scenarios use an isolated database copy.
 5. Assert the expected component and unified rows in Python.
 
 The component uses `dbt run` deliberately. Using `dbt build --select` there allowed eager indirect selection to execute a downstream reconciliation test before its consumer model had been refreshed. Building the unified consumer as the next explicit step makes the dependency order visible and repeatable.
+
+## Incremental payment scenario
+
+`make incremental-payment-check` copies the clean database and exercises the keyed
+merge without changing the normal seed-42 output.
+
+1. Record the baseline row, distinct-key and collected counts.
+2. Rebuild with unchanged input and require the same state.
+3. Correct one existing failed attempt and add one late retry key in `raw`.
+4. Build `fct_subscription_payment+`, which refreshes the fact, its downstream
+   monthly aggregate and their selected tests.
+5. Require one inserted key, one in-place update and no duplicate keys.
+6. Rerun the same selection and require the state to remain unchanged.
+
+The trailing `+` is intentional. Selecting only the fact caused dbt's eager test
+selection to run the monthly reconciliation against the preceding aggregate state.
+Refreshing the fact and descendants together keeps the dependency boundary
+consistent.
+
+Day 27 extends the same isolated scenario:
+
+1. Remove one completed payment from the raw snapshot.
+2. Rebuild the fact and descendants.
+3. Require the physical fact key to remain once, marked absent with an observation
+   timestamp.
+4. Require current fact and monthly counts to fall by one.
+5. Restore the raw source row and rebuild.
+6. Require the key to become present again, the absence timestamp to clear and a
+   final rerun to remain unchanged.
+
+The source-presence reconciliation compares current raw keys and values with only
+the source-present fact rows. Historical retained rows therefore remain testable
+without being included in current collections.
+
+Day 28 adds the append-only `audit_subscription_payment_run` descendant to the same
+selection. After the fact and monthly aggregate are refreshed, it records one row
+under the current dbt invocation ID and its tests evaluate all retained run rows.
+The scenario asserts that exactly six records are added and that the latest row
+matches each expected state:
+
+1. unchanged baseline;
+2. one late insert plus one correction;
+3. unchanged rerun;
+4. one retained source-absent key;
+5. restored source presence; and
+6. final unchanged rerun.
+
+The audit is not executed by a fact-only `dbt run`; it is evidence for selections
+that include the downstream model, including the project workflow and this scenario.
+
+Day 29 places the `subscription_payment_run_delta` view downstream of that audit.
+The same `fct_subscription_payment+` selection now builds the fact, aggregate,
+append-only audit and view before testing the differences. Python checks exact
+changes after each of the six states; the dbt consistency test compares every
+view row against consecutive audit rows and checks for missing or extra run IDs.
+The scenario copy keeps the source database basename because a persisted DuckDB
+view can refer to its original catalogue name when a custom database path is used.
 
 ## Local setup decision
 

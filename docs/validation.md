@@ -417,6 +417,150 @@ The controlled cancellation scenario produced one component status change and on
 
 The first integrated CI attempt exposed a dependency-ordering problem rather than a data-model defect. `dbt build --select fct_subscription_status_change` eagerly selected a downstream reconciliation test while `fct_subscription_history_event` still held the prior clean state. The scenario now runs the component model first and then builds and tests the unified consumer. The corrected complete workflow passed, while the failed run remains visible in the pull-request history.
 
+## Incremental subscription-payment run — 19 September 2026
+
+The clean seed-42 build keeps the same 150 subscription billing attempts and
+£3,648.00 of completed collections.
+
+| Check | Result |
+|---|---:|
+| dbt table models | 11 passed |
+| dbt incremental models | 1 passed |
+| dbt snapshots | 2 passed |
+| dbt data tests | 222 passed |
+| Model, snapshot and data-test resources | 236 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 237 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| dbt documentation | Generated |
+
+The isolated incremental scenario first reran unchanged input and remained at 150
+rows and 150 distinct keys. It then corrected one existing Failed attempt to
+Completed and inserted one late Failed retry. The selected fact-and-descendant build
+finished 36 of 36 results, producing 151 rows, 151 distinct keys and one additional
+collected attempt. A second rerun also passed 36 of 36 and retained the same state.
+
+The first scenario attempt encountered the project's known local DuckDB recovery-file
+conflict before any incremental assertion ran, so it is not counted as evidence. A
+later attempt proved the merge but selected only the fact; dbt then ran the downstream
+monthly reconciliation while the aggregate still represented the baseline. The
+scenario now selects `fct_subscription_payment+` so the aggregate and its tests are
+refreshed in the same dependency boundary.
+
+## Incremental source-absence run — 20 September 2026
+
+The clean seed-42 output remains unchanged: 150 physical payment rows, all 150
+present in the current source and zero absence flags.
+
+| Check | Result |
+|---|---:|
+| dbt table models | 11 passed |
+| dbt incremental models | 1 passed |
+| dbt snapshots | 2 passed |
+| dbt data tests | 224 passed |
+| Model, snapshot and data-test resources | 238 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 239 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| dbt documentation | Generated |
+
+The expanded isolated scenario ran six selected fact-and-descendant builds, each
+passing 38 of 38 results. After the existing insert and correction steps, removing
+one completed source payment left 151 physical and distinct fact keys, 150 current
+keys and one absent key with `source_missing_since` populated. Current monthly
+attempts also reconciled to 150. Restoring the source row returned all 151 keys to
+current reporting, cleared the absence metadata and stayed stable on the final
+rerun.
+
+The first scenario attempt encountered the known DuckDB recovery-file replay issue
+before assertions and is excluded from the evidence. The recovery file was retained
+separately and the checkpointed database passed the complete scenario. No model or
+test change was needed after the successful full build.
+
+## Incremental run-audit evidence — 21 September 2026
+
+The clean seed-42 build appends one reconciled transformation-run row. The underlying
+payment output remains 150 current rows and £3,648.00 collected.
+
+| Check | Result |
+|---|---:|
+| dbt table models | 11 passed |
+| dbt incremental models | 2 passed |
+| dbt snapshots | 2 passed |
+| Clean transformation-audit rows | 1 reconciled |
+| dbt data tests | 235 passed |
+| Model, snapshot and data-test resources | 250 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 251 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| dbt documentation | Generated |
+
+The isolated incremental scenario again ran six selected builds. Each passed 50 of
+50 results and appended one unique run record. The records covered the unchanged
+baseline, insert-and-correction state, unchanged rerun, one retained absent key,
+restoration and final unchanged rerun. Every row reconciled raw to current fact
+counts and collections; physical fact rows reconciled to current plus absent rows.
+
+The first local scenario launch encountered the known DuckDB recovery-file replay
+conflict before any Day 28 assertion ran. I preserved that file outside the
+repository and reran the six-state scenario from the checkpointed database. The
+setup failure is not counted as control evidence.
+
+## Consecutive payment-run differences — 22 September 2026
+
+The clean seed-42 build has one audited payment run. Its comparison view has one
+row, with null predecessor and null differences rather than an invented baseline.
+
+| Check | Result |
+|---|---:|
+| dbt table / incremental / view models | 11 / 2 / 1 passed |
+| dbt snapshots | 2 passed |
+| dbt data tests | 239 passed |
+| Model, snapshot and data-test resources | 255 passed |
+| DuckDB checkpoint hook | Passed |
+| Total dbt results including hook | 256 passed |
+| Raw sources within freshness threshold | 8 of 8 |
+| Python tests | 20 passed |
+| Ruff | Passed |
+| dbt documentation | Generated |
+
+All six selected incremental builds passed 55 of 55 results. The comparison view
+reported zero differences on three unchanged reruns. The insert-and-correction
+run increased raw, physical and current counts by one and completed collections
+by one. Removing one completed source row decreased raw and current counts by one
+while leaving physical count unchanged and raising retained-absent count by one.
+Restoring it reversed those movements. The controlled checks also compared the
+collection-amount deltas to the actual synthetic payment amounts.
+
+The first local scenario attempt used a custom database basename, while the shared
+copy helper renamed it to `finance.duckdb`. The persisted view referred to the
+original catalogue, so the comparison query failed before assertions. The helper
+now preserves the source basename; the rerun and older history scenarios passed.
+
+## Unified milestone quality gate — 23 September 2026
+
+`make verify` now defines the complete local and CI merge gate. A clean Day 30
+database passed the full sequence in one command:
+
+- 8 of 8 source-freshness checks;
+- 256 of 256 clean dbt results;
+- plan, agreement and source-removal history scenarios;
+- six incremental payment builds at 55 of 55 results each;
+- 20 Python tests and Ruff; and
+- dbt catalogue generation.
+
+The first local invocation stopped before loading because the fresh execution
+environment did not have the package dependencies installed. After running the
+documented `python -m pip install -e ".[dev]"` prerequisite, the complete gate
+passed. That setup stop did not execute project logic and is not counted as
+validation evidence.
+
 ## Known gaps
 
 - The freshness timestamp begins at the local DuckDB load; it cannot prove when an upstream system extracted or published the data.
@@ -424,7 +568,10 @@ The first integrated CI attempt exposed a dependency-ordering problem rather tha
 - Failed attempts retain run-level error detail but no source-level history, retries or alerts.
 - Empty raw sources are currently rejected; there is no source-specific policy for a legitimate zero-row extract.
 - The column contract is not versioned and does not yet declare nullability or compatibility rules for schema changes.
-- The dbt models currently rebuild as tables rather than incrementally.
+- One payment fact now uses a keyed incremental merge. The other marts rebuild as tables, and the full-refresh raw load means the incremental fact still considers the complete source.
+- Source absence is inferred from a complete local snapshot. There is no upstream deletion event or reason code, so an omitted row and a genuine deletion cannot be distinguished.
+- Transformation-run evidence shares the local database, runs only when its model is selected and has no external alerting or immutable control store. Its metrics describe resulting state rather than a row-level change set.
+- Consecutive-run differences are net movements. Equal totals can conceal offsetting corrections, and no source change reason is inferred from a delta.
 - Subscription refunds, billing retries and revenue-recognition rules are not yet represented. Plan and agreement changes are retained only from the point the local snapshots begin.
 - The plan snapshot records observation time, not a contractual business-effective date; it cannot reconstruct changes from before the first snapshot run.
 - Agreement snapshots retain observed changes, but there is still no source event stream for pauses, reactivations or retroactive corrections. A source removal has no upstream reason code, so omission, retention and genuine deletion cannot be distinguished.

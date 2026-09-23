@@ -6,6 +6,7 @@ with fact_totals as (
         sum(amount) as attempted_amount,
         sum(case when is_collected then amount else 0 end) as collected_amount
     from {{ ref('fct_subscription_payment') }}
+    where is_source_present
 ),
 monthly_totals as (
     select
