@@ -277,3 +277,16 @@ I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, 
 | Local tests | CI checks before a merge |
 
 This mapping is an investigation list. It is not evidence that this repository is running on AWS.
+
+## Day 31 addition
+
+`mart.fct_loan_monthly_snapshot` starts the loan-reporting phase. It combines the
+tested calendar, loan dimension and payment fact at one row per account and month
+end. A loan first appears at the end of its origination month and continues through
+the fixed reporting date, including months with no successful payment.
+
+The model separates monthly completed-payment movement from cumulative payment
+state. Its remaining balance is intentionally named as a calculation from original
+balance, not a source-system balance. Building arrears at this point would require
+inventing payment schedules and due dates, so those measures remain out of scope
+until the synthetic source represents them explicitly.

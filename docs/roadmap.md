@@ -60,3 +60,7 @@ The next phase will move to the loan side of the dataset: dated portfolio snapsh
 arrears and repayment behaviour, controlled financial assumptions and a reporting
 layer suitable for BI. Orchestration will be added only when there are enough
 independent tasks to make scheduling, retries and backfills meaningful.
+
+Day 31 added the first dated loan-portfolio model: complete month-end rows with
+monthly and cumulative completed-payment movement. Arrears remains pending because
+the source contract does not yet contain a repayment schedule or due amounts.

@@ -42,7 +42,7 @@ technical assessment—including what this project does not prove—is in the
 |---|---|
 | Data generation | Deterministic customers, loans, subscription plans, agreements and payment attempts using a fixed seed |
 | Ingestion | Python validates a shared CSV column contract, loads typed DuckDB tables atomically, fingerprints accepted files and records failures |
-| Transformation | dbt materialises reporting models in `mart`, uses a keyed incremental merge for subscription payments, retains reconciled run outcomes and run-to-run changes, keeps observed plan and agreement versions, and combines status changes and source removals without erasing their meaning |
+| Transformation | dbt materialises reporting models in `mart`, builds month-end loan snapshots, uses a keyed incremental merge for subscription payments, retains reconciled run outcomes and run-to-run changes, keeps observed plan and agreement versions, and combines status changes and source removals without erasing their meaning |
 | Data quality | Key, relationship, required-field, accepted-value, chronology, history-window and current-state reconciliation tests |
 | Financial control | Loan payments and subscription collections reconcile to source; billed amounts agree with the governed synthetic plan catalogue |
 | Documentation | dbt source/model descriptions, architecture notes, data contract and daily decision log |
@@ -63,6 +63,7 @@ technical assessment—including what this project does not prove—is in the
 | `mart.fct_subscription_history_event` | One row per observed status change or source removal | Gives downstream reporting one event grain while preserving the distinction between business change and source absence |
 | `mart.dim_subscription` | One row per subscription agreement | Adds cancellation date, current status and completed active months |
 | `mart.fct_payment` | One row per payment attempt | Retains successful and failed attempts and derives a success flag |
+| `mart.fct_loan_monthly_snapshot` | One row per loan account and completed calendar month | Retains monthly and cumulative completed payments plus a clearly labelled remaining-balance calculation |
 | `mart.fct_subscription_payment` | One row per subscription billing attempt | Incrementally merges stable keys, retains source-absent rows as evidence and excludes them from current reporting |
 | `audit.audit_subscription_payment_run` | One row per selected dbt invocation | Retains raw, physical, current, absent and collection reconciliation metrics for each payment-fact run |
 | `audit.subscription_payment_run_delta` | One row per recorded payment run | Compares the current and preceding run; first-run differences are null because no earlier run exists |
@@ -82,6 +83,8 @@ The current seed-42 run produced:
 | Subscription plans | 4 |
 | Subscriptions | 20 |
 | Loan payment attempts | 99 |
+| Loan month-end snapshot rows | 355 across 25 accounts |
+| Calculated remaining balance at 31 December 2025 | £62,325.00 |
 | Subscription billing attempts | 150 |
 | Completed subscription collections | 125 / £3,648.00 |
 | Monthly aggregate rows | 82 |
@@ -94,7 +97,7 @@ The current seed-42 run produced:
 | Fingerprinted CSV sources | 6 of 6 |
 | Successful run/source history rows | 1 / 7 |
 | Failed run/failure detail rows | 0 / 0 |
-| dbt table models | 11 passed |
+| dbt table models | 12 passed |
 | Clean transformation audit rows | 1 reconciled |
 | dbt incremental models | 2 passed |
 | dbt run-difference views | 1 passed |
@@ -104,12 +107,12 @@ The current seed-42 run produced:
 | Clean observed status changes | 0 |
 | Clean source removals | 0 |
 | Clean unified history events | 0 |
-| dbt data tests | 239 passed |
-| dbt model, snapshot and data-test resources | 255 passed |
+| dbt data tests | 259 passed |
+| dbt model, snapshot and data-test resources | 276 passed |
 | DuckDB checkpoint hook | Passed |
-| Total dbt results including hook | 256 passed |
+| Total dbt results including hook | 277 passed |
 | Raw sources within freshness threshold | 8 of 8 |
-| Python tests | 20 passed |
+| Python tests | 22 passed |
 | Ruff | Passed |
 
 Controlled failure checks have detected invalid values, broken chronology, duplicate grains, missing calendar and reporting rows, payment-to-plan disagreement, an incorrect agreement closing balance, a mismatched ingestion count, inconsistent run history and CSV schema drift. A separate temporary-database scenario changed one synthetic plan by £0.01 and produced five plan-history versions: four current and one closed. A second scenario cancelled one active synthetic agreement and produced 21 agreement-history versions—20 current and one closed—plus exactly one Active-to-Cancelled status-change fact row. A third scenario removed one active source row and created one separate removal record while retaining its last observed Active status. The status and removal scenarios also each rebuilt and tested the unified event feed: one `Status Change` event in the first and one `Source Removal` event in the second. The incremental-payment scenario proved unchanged reruns, one late insert, one in-place correction and no duplicate keys. It then removed one completed source row: the fact retained the key once with an absence timestamp, current monthly metrics excluded it, and restoring the source row reversed the flag without duplication. The same six builds appended six distinct transformation-audit rows, each reconciling the raw snapshot to physical, current and collected fact metrics. Missing-file and renamed-column tests also prove that an incomplete replacement leaves the preceding valid batch in place and records a sanitised failure separately.
@@ -158,6 +161,7 @@ Generated CSVs, DuckDB files, dbt output and logs are excluded from Git.
 - **Synthetic data only:** no employer records, customer identifiers or confidential business rules are used.
 - **Explicit grain:** customer, loan and payment models have documented keys and relationship tests.
 - **Fixed reporting date:** loan age uses a supplied as-of date rather than the machine clock.
+- **Calculated balance is labelled honestly:** the monthly loan snapshot subtracts completed payments from original balance and floors the result at zero. It is not presented as a contractual statement balance because the source has no interest allocation, fees, adjustments or repayment schedule.
 - **Decimal money types:** monetary fields are loaded as controlled decimal values.
 - **Raw and mart separation:** source data is kept separate from reporting transformations.
 - **Reconciliation before presentation:** completed-payment values are compared at raw, fact and account-summary level.
@@ -189,7 +193,7 @@ Generated CSVs, DuckDB files, dbt output and logs are excluded from Git.
 - **Failure details are limited:** the audit stores the exception type and a sanitised message; missing-file errors retain the filename but not the local filesystem path.
 - **One executable source contract:** generation and ingestion share the expected CSV columns and DuckDB types, preventing two separate definitions from drifting unnoticed.
 - **Header order is not a contract:** missing, unexpected and duplicate column names fail the load, but harmless column reordering is accepted because ingestion maps values by name.
-- **Local recovery is visible:** a DuckDB-only end-of-run hook requests a forced checkpoint; the validation log records that a recovery-file conflict can still occur between separate processes.
+- **Local recovery is constrained:** a DuckDB-only end-of-run hook requests a forced checkpoint. If the known duplicate-schema WAL replay error still occurs, controlled scenarios copy the checkpointed database without deleting the recovery file; unrelated catalogue errors still fail.
 - **One merge gate:** local verification and GitHub Actions use the same `make verify` entry point, reducing the chance that CI and the documented workflow silently diverge.
 
 ## Known gaps
@@ -209,6 +213,7 @@ This is a working project, not a finished platform.
 - The transformation-run audit is written only when its downstream model is selected. It has no independent alerting, external control store or protection from someone with write access to the local database.
 - The source contract checks column presence but is not versioned and does not yet define nullable fields or source-specific empty-file policies.
 - The dataset is intentionally small and has not been performance-tested.
+- The loan snapshot has no contractual schedule, due amount, interest split, fees or balance transactions. It cannot yet calculate arrears, days past due or an accounting balance.
 - The cloud architecture is documented as a possible production mapping, not presented as a deployed AWS system.
 
 ## Repository map
@@ -259,5 +264,6 @@ The daily notes record what changed, what failed and what remains unresolved. Th
 - [Day 28: retaining evidence for each incremental run](notes/day-28.md)
 - [Day 29: comparing consecutive payment runs](notes/day-29.md)
 - [Day 30: closing the first milestone](notes/day-30.md)
+- [Day 31: first month-end loan snapshot](notes/day-31.md)
 
 This repository demonstrates how I structure and validate analytics-engineering work. My production experience with Redshift, AWS Glue/Python, Power BI, regulatory reporting and financial reconciliations is described separately in my professional profile.

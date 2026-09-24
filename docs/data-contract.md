@@ -456,3 +456,27 @@ delta is a decrease in the metric, not proof of a business cancellation or refun
 - Which sources, if any, should be allowed to complete with zero rows?
 
 These questions are intentionally left open. I will answer them when the generated data and models make the trade-offs clearer.
+
+## Day 31 month-end loan snapshot
+
+`mart.fct_loan_monthly_snapshot` has one row per loan account and completed
+calendar month from origination through the fixed reporting date. Its compound key
+is `account_id` plus `snapshot_date`.
+
+The model retains completed-payment activity for the month and cumulatively through
+each month end. `calculated_remaining_balance` is original balance less cumulative
+completed payments, floored at zero. Any amount above original balance is exposed
+separately in `payments_above_original_balance` rather than hidden by the floor.
+
+This value is a controlled project calculation, not a contractual or accounting
+balance. The source does not contain a repayment schedule, amount due, interest and
+principal allocation, fees, adjustments or historical status events. Arrears and
+days-past-due measures are therefore outside this model's contract.
+
+The controls require:
+
+- one row for every eligible loan-month and no other rows;
+- a unique account and month-end grain;
+- cumulative counts and amounts to roll forward by the current month's activity;
+- the final snapshot to reconcile to the completed-payment totals on `dim_loan`; and
+- account, customer and snapshot-date references to resolve.
