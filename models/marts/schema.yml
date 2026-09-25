@@ -110,6 +110,13 @@ models:
       - name: original_balance
         description: "Original loan balance."
         tests: [not_null]
+      - name: term_months
+        description: "Synthetic contractual term in whole months."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [6, 12, 18]
       - name: status
         description: "Loan status at the point represented by the generated data."
         tests:
@@ -217,6 +224,39 @@ models:
         description: >
           Cumulative completed payments above original balance, if any; kept
           separate so the calculated remaining balance never becomes negative.
+        tests: [not_null]
+  - name: fct_loan_repayment_schedule
+    description: >
+      Principal-only synthetic repayment schedule at one row per loan and
+      instalment. It is an explicit learning assumption, not lender contract data.
+    columns:
+      - name: schedule_id
+        description: "Stable synthetic identifier for the scheduled instalment."
+        tests: [not_null, unique]
+      - name: account_id
+        description: "Loan account to which the instalment belongs."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_loan')
+                field: account_id
+      - name: instalment_number
+        description: "One-based position within the loan schedule."
+        tests: [not_null]
+      - name: due_date
+        description: "Synthetic contractual principal due date."
+        tests: [not_null]
+      - name: due_month
+        description: "First day of the instalment due month."
+        tests: [not_null]
+      - name: scheduled_principal_amount
+        description: >
+          Principal amount due. Equal instalments are used except for the final
+          rounding adjustment, and the full schedule equals original balance.
+        tests: [not_null]
+      - name: source_loaded_at
+        description: "UTC timestamp of the accepted source batch."
         tests: [not_null]
   - name: dim_subscription
     description: "One row per subscription agreement with reporting attributes as at the fixed run date."

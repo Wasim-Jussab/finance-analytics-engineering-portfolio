@@ -20,6 +20,7 @@ select
             else 0
           end as loan_age_months,
     loan.original_balance,
+    loan.term_months,
     loan.status,
     coalesce(payment_summary.completed_payment_count, 0) as completed_payment_count,
     coalesce(payment_summary.completed_payment_amount, 0.00) as completed_payment_amount,

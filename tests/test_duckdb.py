@@ -37,10 +37,11 @@ def test_duckdb_build_loads_raw_and_reporting_tables(tmp_path) -> None:
     assert counts["raw.subscription_plans"] == 4
     assert counts["raw.customers"] == 10
     assert counts["raw.loans"] == 10
+    assert counts["raw.loan_repayment_schedule"] > 0
     assert counts["raw.subscription_payments"] > 0
-    assert counts["raw.ingestion_audit"] == 7
+    assert counts["raw.ingestion_audit"] == 8
     assert counts["audit.ingestion_runs"] == 1
-    assert counts["audit.ingestion_sources"] == 7
+    assert counts["audit.ingestion_sources"] == 8
     assert counts["audit.ingestion_failures"] == 0
     assert counts["mart.dim_customer"] == 10
     assert counts["mart.dim_loan"] == 10
@@ -126,7 +127,7 @@ def test_raw_tables_record_one_load_timestamp(tmp_path) -> None:
     assert len(timestamps) == 1
     assert None not in load_ids
     assert len(load_ids) == 1
-    assert audit_summary == (7, 1, 1)
+    assert audit_summary == (8, 1, 1)
     customer_file = raw_dir / "customers.csv"
     assert file_audit == (
         "customers.csv",
@@ -170,8 +171,8 @@ def test_successful_loads_retain_batch_history(tmp_path) -> None:
             """
         ).fetchone()[0]
 
-    assert run_summary == (2, 2, 14)
-    assert source_summary == (14, 2)
+    assert run_summary == (2, 2, 16)
+    assert source_summary == (16, 2)
     assert current_load_id == latest_history_load_id
     assert customer_hash_count == 1
 
@@ -221,7 +222,7 @@ def test_failed_load_rolls_back_to_previous_batch(tmp_path) -> None:
     assert retained_load_id == first_load_id
     assert retained_customer_count == 5
     assert run_statuses == [("Failed", 1), ("Success", 1)]
-    assert retained_source_history_count == 7
+    assert retained_source_history_count == 8
     assert failure == (
         "FileNotFoundError",
         "Required source file not found: payments.csv",

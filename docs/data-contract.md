@@ -254,7 +254,7 @@ Every raw table now contains these pipeline-managed fields:
 | `load_id` | String UUID | Identifier shared by every table in the current load |
 | `loaded_at` | Timestamp with time zone | UTC timestamp at which the batch was loaded into DuckDB |
 
-`raw.ingestion_audit` has one row for each of the six CSV sources and one for `run_parameters`:
+`raw.ingestion_audit` has one row for each of the seven CSV sources and one for `run_parameters`:
 
 | Field | Meaning |
 |---|---|
@@ -280,7 +280,7 @@ This current manifest is still replaced by each full refresh. Day 18 adds separa
 | `source_file_size_bytes` | Size of the input CSV in bytes |
 | `source_file_sha256` | Lowercase 64-character SHA-256 digest of the input file |
 
-Both fields are NULL for `run_parameters` because that record is created by the loader rather than read from a file. The six CSV sources require a positive size and valid digest. History controls confirm seven sources per run, one shared timestamp, run-level totals equal to source-level totals, and the current manifest agrees with its matching history rows.
+Both fields are NULL for `run_parameters` because that record is created by the loader rather than read from a file. The seven CSV sources require a positive size and valid digest. History controls confirm eight sources per run, one shared timestamp, run-level totals equal to source-level totals, and the current manifest agrees with its matching history rows.
 
 ## Day 19 failure-history contract
 
@@ -469,9 +469,10 @@ completed payments, floored at zero. Any amount above original balance is expose
 separately in `payments_above_original_balance` rather than hidden by the floor.
 
 This value is a controlled project calculation, not a contractual or accounting
-balance. The source does not contain a repayment schedule, amount due, interest and
-principal allocation, fees, adjustments or historical status events. Arrears and
-days-past-due measures are therefore outside this model's contract.
+balance. At Day 31, the source did not contain a repayment schedule, amount due,
+interest and principal allocation, fees, adjustments or historical status events.
+Arrears and days-past-due measures therefore remain outside this snapshot model's
+contract; Day 32 adds a separate principal schedule without changing that boundary.
 
 The controls require:
 
@@ -480,3 +481,25 @@ The controls require:
 - cumulative counts and amounts to roll forward by the current month's activity;
 - the final snapshot to reconcile to the completed-payment totals on `dim_loan`; and
 - account, customer and snapshot-date references to resolve.
+
+## Day 32 loan repayment schedule
+
+`raw.loans` now includes `term_months`, limited to the synthetic values 6, 12 and
+18. `raw.loan_repayment_schedule` and `mart.fct_loan_repayment_schedule` have one
+row per account and instalment, identified by `schedule_id` and the compound grain
+of `account_id` plus `instalment_number`.
+
+The first instalment is due one calendar month after origination. Later due dates
+are calculated from the original date rather than by repeatedly adding days, which
+avoids gradual date drift. Principal is divided evenly in whole pence and the final
+instalment absorbs any remainder. For every account:
+
+- instalments run consecutively from one to the stated term;
+- due dates follow the expected calendar-month sequence;
+- every scheduled principal amount is positive; and
+- scheduled principal sums exactly to original balance.
+
+These are invented project assumptions, not copied lending terms. The source has no
+interest, fees, grace period, repayment holiday, reschedule event or allocation of
+payments to dues. The schedule therefore supports a later arrears exercise but does
+not itself define arrears or days past due.

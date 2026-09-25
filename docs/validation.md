@@ -609,3 +609,31 @@ copies the checkpointed database for isolated scenarios, leaves the recovery fil
 untouched and re-raises unrelated catalogue errors. Two Python tests cover both
 paths. The complete `make verify` rerun then passed. The setup stops are not counted
 as model-control evidence.
+
+## Loan repayment schedule — 25 September 2026
+
+The seed-42 dataset produced 294 scheduled principal instalments across 25 loans.
+The 6-, 12- and 18-month terms were represented by 9, 8 and 8 accounts
+respectively. Scheduled principal totalled £68,350.00 and reconciled exactly to
+the original loan balances.
+
+The clean build passed:
+
+- 9 of 9 source-freshness checks;
+- 13 table models, 2 incremental models, 1 view and 2 snapshots;
+- 275 dbt data tests;
+- 294 of 294 total dbt results including the checkpoint hook;
+- schedule key, account relationship, sequence, calendar-date and positive-amount controls;
+- exact schedule-to-original-balance reconciliation;
+- 24 Python tests and Ruff; and
+- dbt documentation generation.
+
+The first dbt attempt returned one ingestion-audit reconciliation exception because
+that SQL control still enumerated the pre-schedule sources. I added the new
+schedule source to the test and rebuilt a fresh database; the final clean build
+passed. This was an integration omission in the change, not controlled failure
+evidence.
+
+For the controlled failure, I increased one scheduled principal amount by £0.01 in
+an isolated database. `reconcile_loan_repayment_schedule` returned exactly one
+failing account. The clean database and generated source were unchanged.

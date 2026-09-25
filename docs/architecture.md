@@ -290,3 +290,15 @@ state. Its remaining balance is intentionally named as a calculation from origin
 balance, not a source-system balance. Building arrears at this point would require
 inventing payment schedules and due dates, so those measures remain out of scope
 until the synthetic source represents them explicitly.
+
+## Day 32 addition
+
+The generator now creates `loan_repayment_schedule.csv` alongside the loan source.
+The shared contract and atomic loader treat it as the seventh fingerprinted CSV,
+so a missing or structurally changed schedule rejects the whole replacement batch.
+
+dbt materialises `mart.fct_loan_repayment_schedule` at one row per account and
+instalment. It does not join the rows to payments yet. Keeping contractual dues and
+payment attempts separate avoids silently assuming which payment settled which
+instalment. Grain, sequence, due-date and full-principal reconciliation tests prove
+the schedule before arrears logic is added.

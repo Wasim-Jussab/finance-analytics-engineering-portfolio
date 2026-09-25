@@ -64,3 +64,8 @@ independent tasks to make scheduling, retries and backfills meaningful.
 Day 31 added the first dated loan-portfolio model: complete month-end rows with
 monthly and cumulative completed-payment movement. Arrears remains pending because
 the source contract does not yet contain a repayment schedule or due amounts.
+
+Day 32 added that missing schedule contract. Every synthetic loan now has an
+explicit term and principal-only monthly due rows that reconcile to original
+balance. Arrears remains a separate next step because payment allocation, grace
+periods, interest and fees still need an honest modelling decision.

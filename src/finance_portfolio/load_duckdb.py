@@ -432,6 +432,7 @@ def build_database(
                     "raw.subscription_plans",
                     "raw.customers",
                     "raw.loans",
+                    "raw.loan_repayment_schedule",
                     "raw.subscriptions",
                     "raw.subscription_payments",
                     "raw.payments",

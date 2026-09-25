@@ -25,6 +25,7 @@ Dataset: TypeAlias = dict[str, list[Row]]
 FIRST_NAMES = ["Aisha", "Ben", "Daniel", "Fatima", "Hannah", "Imran", "Leah", "Maya"]
 LAST_NAMES = ["Ahmed", "Clarke", "Davies", "Khan", "Patel", "Roberts", "Smith", "Taylor"]
 LOAN_PRODUCTS = ["LOAN-A", "LOAN-B", "LOAN-C"]
+LOAN_TERMS_MONTHS = [6, 12, 18]
 SUBSCRIPTION_PRODUCTS = ["SUB-1", "SUB-2"]
 SUBSCRIPTION_PLANS = [
     {
@@ -123,9 +124,49 @@ def generate_loans(
                 "original_balance": _money_from_pence(
                     rng.randrange(50000, 500001, 5000)
                 ),
+                # Cycle through explicit terms without consuming another random
+                # draw and changing the published seed-42 baseline.
+                "term_months": str(
+                    LOAN_TERMS_MONTHS[(number - 1) % len(LOAN_TERMS_MONTHS)]
+                ),
                 "status": rng.choice(["Open", "Open", "Open", "Pending", "Closed"]),
             }
         )
+    return rows
+
+
+def generate_loan_repayment_schedule(loans: list[Row]) -> list[Row]:
+    """Create a principal-only monthly schedule for each synthetic loan."""
+
+    rows: list[Row] = []
+    for loan in loans:
+        term_months = int(loan["term_months"])
+        original_balance_pence = int(Decimal(loan["original_balance"]) * 100)
+        regular_instalment_pence = original_balance_pence // term_months
+        origination_date = date.fromisoformat(loan["origination_date"])
+
+        for instalment_number in range(1, term_months + 1):
+            scheduled_pence = regular_instalment_pence
+            if instalment_number == term_months:
+                scheduled_pence = original_balance_pence - (
+                    regular_instalment_pence * (term_months - 1)
+                )
+            rows.append(
+                {
+                    "schedule_id": (
+                        f"SCH-{loan['account_id'].removeprefix('ACC-')}-"
+                        f"{instalment_number:03d}"
+                    ),
+                    "account_id": loan["account_id"],
+                    "instalment_number": str(instalment_number),
+                    "due_date": _add_months(
+                        origination_date, instalment_number
+                    ).isoformat(),
+                    "scheduled_principal_amount": _money_from_pence(
+                        scheduled_pence
+                    ),
+                }
+            )
     return rows
 
 
@@ -241,6 +282,7 @@ def generate_dataset(config: GeneratorConfig | None = None) -> Dataset:
     subscription_plans = generate_subscription_plans()
     customers = generate_customers(config, rng)
     loans = generate_loans(config, rng, customers)
+    loan_repayment_schedule = generate_loan_repayment_schedule(loans)
     subscriptions = generate_subscriptions(config, rng, customers)
     payments = generate_payments(rng, loans)
     subscription_payments = generate_subscription_payments(
@@ -253,6 +295,7 @@ def generate_dataset(config: GeneratorConfig | None = None) -> Dataset:
         "subscription_plans": subscription_plans,
         "customers": customers,
         "loans": loans,
+        "loan_repayment_schedule": loan_repayment_schedule,
         "subscriptions": subscriptions,
         "payments": payments,
         "subscription_payments": subscription_payments,
@@ -267,6 +310,7 @@ def validate_dataset(dataset: Dataset) -> list[str]:
         "subscription_plans": "subscription_plan_id",
         "customers": "customer_id",
         "loans": "account_id",
+        "loan_repayment_schedule": "schedule_id",
         "subscriptions": "subscription_id",
         "payments": "payment_id",
         "subscription_payments": "subscription_payment_id",
@@ -280,6 +324,7 @@ def validate_dataset(dataset: Dataset) -> list[str]:
 
     customer_ids = {row["customer_id"] for row in dataset["customers"]}
     account_ids = {row["account_id"] for row in dataset["loans"]}
+    loans_by_id = {row["account_id"]: row for row in dataset["loans"]}
     subscriptions_by_id = {
         row["subscription_id"]: row for row in dataset["subscriptions"]
     }
@@ -317,6 +362,51 @@ def validate_dataset(dataset: Dataset) -> list[str]:
     )
     if missing_payment_accounts:
         errors.append(f"payments reference missing accounts: {missing_payment_accounts}")
+
+    missing_schedule_accounts = sorted(
+        {row["account_id"] for row in dataset["loan_repayment_schedule"]}
+        - account_ids
+    )
+    if missing_schedule_accounts:
+        errors.append(
+            "loan repayment schedule references missing accounts: "
+            f"{missing_schedule_accounts}"
+        )
+
+    schedule_by_account: dict[str, list[Row]] = {}
+    for instalment in dataset["loan_repayment_schedule"]:
+        loan = loans_by_id.get(instalment["account_id"])
+        if loan is None:
+            continue
+        schedule_by_account.setdefault(instalment["account_id"], []).append(instalment)
+        if Decimal(instalment["scheduled_principal_amount"]) <= 0:
+            errors.append(
+                "scheduled principal amount is not positive: "
+                f"{instalment['schedule_id']}"
+            )
+
+    for account_id, loan in loans_by_id.items():
+        schedule = sorted(
+            schedule_by_account.get(account_id, []),
+            key=lambda row: int(row["instalment_number"]),
+        )
+        expected_term = int(loan["term_months"])
+        actual_sequence = [int(row["instalment_number"]) for row in schedule]
+        if actual_sequence != list(range(1, expected_term + 1)):
+            errors.append(f"loan schedule sequence is incomplete: {account_id}")
+        expected_dates = [
+            _add_months(date.fromisoformat(loan["origination_date"]), number)
+            for number in range(1, expected_term + 1)
+        ]
+        actual_dates = [date.fromisoformat(row["due_date"]) for row in schedule]
+        if actual_dates != expected_dates:
+            errors.append(f"loan schedule dates are inconsistent: {account_id}")
+        scheduled_total = sum(
+            (Decimal(row["scheduled_principal_amount"]) for row in schedule),
+            Decimal("0.00"),
+        )
+        if scheduled_total != Decimal(loan["original_balance"]):
+            errors.append(f"loan schedule does not reconcile to balance: {account_id}")
 
     missing_payment_subscriptions = sorted(
         {row["subscription_id"] for row in dataset["subscription_payments"]}
