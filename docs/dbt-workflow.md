@@ -36,7 +36,7 @@ FINANCE_DUCKDB_PATH=data/finance.duckdb dbt build --project-dir . --profiles-dir
 
 `dbt source freshness` is a separate operational check. It runs after the raw load and before transformation. All nine raw sources, including the repayment schedule and ingestion audit, use the batch `loaded_at` timestamp rather than a business event date, with a one-hour warning and a 24-hour error threshold.
 
-The local DuckDB target requests a forced checkpoint at the end of dbt commands. This was added after a completed build left a recovery file that conflicted with the next connection. The conflict has still recurred after a later full build, so the hook is treated as a mitigation rather than a guarantee. Controlled scenario copies now recognise only the specific duplicate-schema WAL replay error and copy the already checkpointed database file without deleting the recovery file; unrelated catalogue errors still fail. This is adapter-specific and does not represent a warehouse-wide production pattern.
+The local DuckDB target requests a forced checkpoint at the end of dbt commands. This was added after a completed build left a recovery file that conflicted with the next connection. The conflict has still recurred after later full builds, so the hook is treated as a mitigation rather than a guarantee. Controlled scenarios and documentation generation now use the same isolated-copy helper: it recognises only the specific duplicate-schema WAL replay error, copies the already checkpointed database file without deleting the recovery file, and re-raises unrelated catalogue errors. This is adapter-specific and does not represent a warehouse-wide production pattern.
 
 To generate the local documentation site:
 

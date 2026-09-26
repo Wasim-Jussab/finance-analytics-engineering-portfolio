@@ -258,6 +258,60 @@ models:
       - name: source_loaded_at
         description: "UTC timestamp of the accepted source batch."
         tests: [not_null]
+  - name: fct_loan_schedule_allocation
+    description: >
+      One row per scheduled principal instalment with completed payments allocated
+      oldest due first as at the fixed reporting date. This is a synthetic modelling
+      rule rather than source-system allocation evidence.
+    columns:
+      - name: schedule_id
+        description: "Scheduled instalment represented by the allocation row."
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('fct_loan_repayment_schedule')
+                field: schedule_id
+      - name: account_id
+        description: "Loan account to which the scheduled instalment belongs."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_loan')
+                field: account_id
+      - name: instalment_number
+        tests: [not_null]
+      - name: due_date
+        tests: [not_null]
+      - name: due_month
+        tests: [not_null]
+      - name: scheduled_principal_amount
+        tests: [not_null]
+      - name: as_of_date
+        description: "Fixed reporting date used to decide whether an instalment is due."
+        tests: [not_null]
+      - name: is_due_as_of_date
+        tests: [not_null]
+      - name: cumulative_scheduled_principal_due_amount
+        description: "Running principal due through this row; future rows do not increase it."
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        description: >
+          Completed payment amount assigned to the instalment under the explicit
+          oldest-due-principal-first assumption.
+        tests: [not_null]
+      - name: uncovered_scheduled_principal_amount
+        description: "Due principal not covered by the assumed allocation; zero for future rows."
+        tests: [not_null]
+      - name: allocation_status
+        description: "Coverage state of the scheduled instalment at the fixed reporting date."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Future', 'Covered', 'Partially Covered', 'Uncovered']
   - name: dim_subscription
     description: "One row per subscription agreement with reporting attributes as at the fixed run date."
     columns:

@@ -302,3 +302,16 @@ instalment. It does not join the rows to payments yet. Keeping contractual dues 
 payment attempts separate avoids silently assuming which payment settled which
 instalment. Grain, sequence, due-date and full-principal reconciliation tests prove
 the schedule before arrears logic is added.
+
+## Day 33 addition
+
+`mart.fct_loan_schedule_allocation` keeps the schedule grain and introduces one
+declared modelling rule: completed payments dated on or before the fixed reporting
+date are applied to due principal from the oldest instalment forward. Allocation
+is capped at each due row and at total due principal. Future instalments remain at
+zero even when a controlled scenario supplies more completed cash than is due.
+
+This model deliberately sits between payment attempts and a later account-level
+arrears view. It makes the allocation step inspectable and testable without
+presenting the resulting uncovered principal as a lender balance. Failed payment
+attempts remain in `fct_payment` but do not contribute to allocation.

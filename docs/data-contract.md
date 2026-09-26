@@ -503,3 +503,22 @@ These are invented project assumptions, not copied lending terms. The source has
 interest, fees, grace period, repayment holiday, reschedule event or allocation of
 payments to dues. The schedule therefore supports a later arrears exercise but does
 not itself define arrears or days past due.
+
+## Day 33 payment-to-schedule allocation
+
+`mart.fct_loan_schedule_allocation` has the same `schedule_id` grain as the
+repayment schedule. The fixed `as_of_date` separates due from future instalments.
+Only completed payment attempts dated on or before that date enter the allocation
+pool; failed attempts and later-dated payments remain excluded.
+
+The model applies completed payments to due principal in ascending instalment
+order. For each due row, the assumed allocation is bounded between zero and the
+scheduled principal amount. `uncovered_scheduled_principal_amount` is the remaining
+due principal after that allocation. Future rows have zero allocation, zero
+uncovered amount and a `Future` status. Potential cash above total principal due is
+left unallocated rather than applied to future rows.
+
+`Covered`, `Partially Covered`, `Uncovered` and `Future` describe the result of this
+project rule. They are not source-system delinquency statuses. The contract still
+has no interest order, fee order, grace period, payment reversal or lender-defined
+allocation policy, so this fact is not an accounting ledger or an arrears report.

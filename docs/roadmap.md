@@ -69,3 +69,9 @@ Day 32 added that missing schedule contract. Every synthetic loan now has an
 explicit term and principal-only monthly due rows that reconcile to original
 balance. Arrears remains a separate next step because payment allocation, grace
 periods, interest and fees still need an honest modelling decision.
+
+Day 33 made the first of those decisions explicit. Completed payments are allocated
+to due principal oldest first, with future instalments and any excess payment kept
+outside the allocation. The next loan-reporting step can summarise this tested fact
+at account and reporting-date grain, while continuing to avoid claims about lender
+accounting balances or contractual days past due.

@@ -637,3 +637,40 @@ evidence.
 For the controlled failure, I increased one scheduled principal amount by £0.01 in
 an isolated database. `reconcile_loan_repayment_schedule` returned exactly one
 failing account. The clean database and generated source were unchanged.
+
+## Loan schedule allocation — 26 September 2026
+
+The allocation fact retained all 294 scheduled instalments. At the fixed reporting
+date, 236 instalments representing £57,712.01 of principal were due and 58
+instalments representing £10,637.99 remained future. The model allocated all
+£6,025.00 of completed payments to due principal under the stated oldest-first
+assumption, leaving £51,687.01 uncovered.
+
+The clean build passed:
+
+- 9 of 9 source-freshness checks;
+- 14 table models, 2 incremental models, 1 view and 2 snapshots;
+- 294 dbt data tests;
+- 314 of 314 total dbt results including the checkpoint hook;
+- schedule-row, relationship, allocation-formula, future-row and account-level reconciliation controls;
+- 25 Python tests and Ruff; and
+- dbt documentation generation.
+
+The first complete local gate reached documentation generation after the models,
+tests and controlled scenarios had passed, then encountered the known DuckDB
+duplicate-schema recovery-file replay error. I changed the documentation command to
+use the same checkpointed temporary-copy helper as the controlled scenarios. The
+helper handles only that exact replay signature, leaves the recovery file in place
+for diagnosis and re-raises unrelated catalogue errors. The repeated full gate then
+passed, including catalogue generation.
+
+For a controlled failure, I increased one allocated amount by £0.01 in a disposable
+database. `reconcile_loan_schedule_allocation` returned exactly one failing account
+and dbt exited with code 1. The clean database was unchanged.
+
+I also tested the opposite boundary in another disposable database. One completed
+payment was increased so its account had £100,000.00 completed against £1,566.60
+due. All 19 selected allocation tests passed: the model allocated £1,566.60, left
+£98,433.40 unallocated and assigned £0.00 to future instalments. This proves the
+declared cap; it does not establish that a real lender would use this allocation
+order.
