@@ -577,3 +577,100 @@ validation evidence.
 - Agreement snapshots retain observed changes, but there is still no source event stream for pauses, reactivations or retroactive corrections. A source removal has no upstream reason code, so omission, retention and genuine deletion cannot be distinguished.
 - The calendar start date is a project variable rather than source-system metadata.
 - The current dataset is intentionally small; scale and performance behaviour have not been tested.
+
+## Month-end loan snapshot — 24 September 2026
+
+The seed-42 dataset produced 355 month-end rows across all 25 loan accounts, from
+31 January 2024 to 31 December 2025. Completed payment amounts summed once across
+the monthly movements to £6,025.00. The final snapshots produced a £62,325.00
+calculated remaining balance and no payments above original balance.
+
+The clean build and final shared quality gate passed:
+
+- 8 of 8 source-freshness checks;
+- 12 table models, 2 incremental models, 1 view and 2 snapshots;
+- 259 dbt data tests;
+- 277 of 277 total dbt results including the checkpoint hook;
+- complete eligible loan-month coverage and unique compound grain;
+- payment roll-forward and final-snapshot reconciliation; and
+- the existing subscription, history and ingestion controls;
+- all four controlled change scenarios;
+- 22 Python tests and Ruff; and
+- dbt documentation generation.
+
+The fresh execution environment initially lacked the declared Python packages, so
+the first command stopped before loading or testing project data. After installing
+the documented development dependencies, the build passed. A separate read-only
+inspection encountered the documented DuckDB WAL replay conflict; copying the
+checkpointed database without the recovery file allowed result inspection. The
+same condition then stopped the first full gate before its history scenarios. I
+added a narrow fallback that recognises only this duplicate-schema replay error,
+copies the checkpointed database for isolated scenarios, leaves the recovery file
+untouched and re-raises unrelated catalogue errors. Two Python tests cover both
+paths. The complete `make verify` rerun then passed. The setup stops are not counted
+as model-control evidence.
+
+## Loan repayment schedule — 25 September 2026
+
+The seed-42 dataset produced 294 scheduled principal instalments across 25 loans.
+The 6-, 12- and 18-month terms were represented by 9, 8 and 8 accounts
+respectively. Scheduled principal totalled £68,350.00 and reconciled exactly to
+the original loan balances.
+
+The clean build passed:
+
+- 9 of 9 source-freshness checks;
+- 13 table models, 2 incremental models, 1 view and 2 snapshots;
+- 275 dbt data tests;
+- 294 of 294 total dbt results including the checkpoint hook;
+- schedule key, account relationship, sequence, calendar-date and positive-amount controls;
+- exact schedule-to-original-balance reconciliation;
+- 24 Python tests and Ruff; and
+- dbt documentation generation.
+
+The first dbt attempt returned one ingestion-audit reconciliation exception because
+that SQL control still enumerated the pre-schedule sources. I added the new
+schedule source to the test and rebuilt a fresh database; the final clean build
+passed. This was an integration omission in the change, not controlled failure
+evidence.
+
+For the controlled failure, I increased one scheduled principal amount by £0.01 in
+an isolated database. `reconcile_loan_repayment_schedule` returned exactly one
+failing account. The clean database and generated source were unchanged.
+
+## Loan schedule allocation — 26 September 2026
+
+The allocation fact retained all 294 scheduled instalments. At the fixed reporting
+date, 236 instalments representing £57,712.01 of principal were due and 58
+instalments representing £10,637.99 remained future. The model allocated all
+£6,025.00 of completed payments to due principal under the stated oldest-first
+assumption, leaving £51,687.01 uncovered.
+
+The clean build passed:
+
+- 9 of 9 source-freshness checks;
+- 14 table models, 2 incremental models, 1 view and 2 snapshots;
+- 294 dbt data tests;
+- 314 of 314 total dbt results including the checkpoint hook;
+- schedule-row, relationship, allocation-formula, future-row and account-level reconciliation controls;
+- 25 Python tests and Ruff; and
+- dbt documentation generation.
+
+The first complete local gate reached documentation generation after the models,
+tests and controlled scenarios had passed, then encountered the known DuckDB
+duplicate-schema recovery-file replay error. I changed the documentation command to
+use the same checkpointed temporary-copy helper as the controlled scenarios. The
+helper handles only that exact replay signature, leaves the recovery file in place
+for diagnosis and re-raises unrelated catalogue errors. The repeated full gate then
+passed, including catalogue generation.
+
+For a controlled failure, I increased one allocated amount by £0.01 in a disposable
+database. `reconcile_loan_schedule_allocation` returned exactly one failing account
+and dbt exited with code 1. The clean database was unchanged.
+
+I also tested the opposite boundary in another disposable database. One completed
+payment was increased so its account had £100,000.00 completed against £1,566.60
+due. All 19 selected allocation tests passed: the model allocated £1,566.60, left
+£98,433.40 unallocated and assigned £0.00 to future instalments. This proves the
+declared cap; it does not establish that a real lender would use this allocation
+order.

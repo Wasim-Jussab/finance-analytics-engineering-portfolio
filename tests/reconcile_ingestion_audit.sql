@@ -12,6 +12,9 @@ with actual_counts as (
     select 'loans', count(*), count(distinct load_id), min(load_id)
     from {{ source('raw', 'loans') }}
     union all
+    select 'loan_repayment_schedule', count(*), count(distinct load_id), min(load_id)
+    from {{ source('raw', 'loan_repayment_schedule') }}
+    union all
     select 'subscriptions', count(*), count(distinct load_id), min(load_id)
     from {{ source('raw', 'subscriptions') }}
     union all

@@ -34,9 +34,9 @@ FINANCE_DUCKDB_PATH=data/finance.duckdb dbt build --project-dir . --profiles-dir
 
 `dbt build` materialises the nine mart models and runs the model tests and singular controls. The `--no-partial-parse` option is useful while changing the project because it makes the command parse the files currently on disk.
 
-`dbt source freshness` is a separate operational check. It runs after the raw load and before transformation. All eight sources, including the ingestion audit, use the batch `loaded_at` timestamp rather than a business event date, with a one-hour warning and a 24-hour error threshold.
+`dbt source freshness` is a separate operational check. It runs after the raw load and before transformation. All nine raw sources, including the repayment schedule and ingestion audit, use the batch `loaded_at` timestamp rather than a business event date, with a one-hour warning and a 24-hour error threshold.
 
-The local DuckDB target requests a forced checkpoint at the end of dbt commands. This was added after a completed build left a recovery file that conflicted with the next connection. The conflict has still recurred after a later full build, so the hook is treated as a mitigation rather than a guarantee. It is adapter-specific and does not represent a warehouse-wide production pattern.
+The local DuckDB target requests a forced checkpoint at the end of dbt commands. This was added after a completed build left a recovery file that conflicted with the next connection. The conflict has still recurred after later full builds, so the hook is treated as a mitigation rather than a guarantee. Controlled scenarios and documentation generation now use the same isolated-copy helper: it recognises only the specific duplicate-schema WAL replay error, copies the already checkpointed database file without deleting the recovery file, and re-raises unrelated catalogue errors. This is adapter-specific and does not represent a warehouse-wide production pattern.
 
 To generate the local documentation site:
 
@@ -86,7 +86,7 @@ This is a deliberately small control, but it reflects the type of check I would 
 
 `reconcile_ingestion_audit` independently compares every audit row with the physical raw table count. Source tests also require one audit row per source name, a batch identifier, timestamp and `Loaded` status. Python performs the same count checks before committing the transaction, so an incomplete batch is rejected before dbt begins.
 
-The `audit` source exposes run, source and failure history without applying freshness rules to old records. `ingestion_history_consistency` requires a successful run to reconcile to seven source rows and requires a failed run to have zero accepted sources. `ingestion_failure_consistency` checks that every failed run has one failure detail, successful runs have none, and failure timestamps and messages are valid. `current_ingestion_matches_history` confirms the current raw manifest still agrees with its successful history record, including file size and SHA-256 digest. `ingestion_audit_file_metadata` requires valid fingerprints for the six accepted CSV sources and NULL file metadata for generated run parameters.
+The `audit` source exposes run, source and failure history without applying freshness rules to old records. `ingestion_history_consistency` requires a successful run to reconcile to eight source rows and requires a failed run to have zero accepted sources. `ingestion_failure_consistency` checks that every failed run has one failure detail, successful runs have none, and failure timestamps and messages are valid. `current_ingestion_matches_history` confirms the current raw manifest still agrees with its successful history record, including file size and SHA-256 digest. `ingestion_audit_file_metadata` requires valid fingerprints for the seven accepted CSV sources and NULL file metadata for generated run parameters.
 
 The subscription plan snapshot runs as part of `dbt build`. It uses the check
 strategy because the synthetic source does not provide an update timestamp. Three

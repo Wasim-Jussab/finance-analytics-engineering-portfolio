@@ -60,3 +60,18 @@ The next phase will move to the loan side of the dataset: dated portfolio snapsh
 arrears and repayment behaviour, controlled financial assumptions and a reporting
 layer suitable for BI. Orchestration will be added only when there are enough
 independent tasks to make scheduling, retries and backfills meaningful.
+
+Day 31 added the first dated loan-portfolio model: complete month-end rows with
+monthly and cumulative completed-payment movement. Arrears remains pending because
+the source contract does not yet contain a repayment schedule or due amounts.
+
+Day 32 added that missing schedule contract. Every synthetic loan now has an
+explicit term and principal-only monthly due rows that reconcile to original
+balance. Arrears remains a separate next step because payment allocation, grace
+periods, interest and fees still need an honest modelling decision.
+
+Day 33 made the first of those decisions explicit. Completed payments are allocated
+to due principal oldest first, with future instalments and any excess payment kept
+outside the allocation. The next loan-reporting step can summarise this tested fact
+at account and reporting-date grain, while continuing to avoid claims about lender
+accounting balances or contractual days past due.

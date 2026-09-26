@@ -110,6 +110,13 @@ models:
       - name: original_balance
         description: "Original loan balance."
         tests: [not_null]
+      - name: term_months
+        description: "Synthetic contractual term in whole months."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [6, 12, 18]
       - name: status
         description: "Loan status at the point represented by the generated data."
         tests:
@@ -160,6 +167,151 @@ models:
       - name: is_successful
         description: "Boolean flag derived from payment_status."
         tests: [not_null]
+  - name: fct_loan_monthly_snapshot
+    description: >
+      One row per loan and completed calendar month from origination to the fixed
+      reporting date, with monthly and cumulative completed-payment measures.
+    columns:
+      - name: account_id
+        description: "Loan account represented by the monthly snapshot."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_loan')
+                field: account_id
+      - name: customer_id
+        description: "Customer linked to the loan account."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customer')
+                field: customer_id
+      - name: product_code
+        description: "Synthetic loan product code."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['LOAN-A', 'LOAN-B', 'LOAN-C']
+      - name: origination_date
+        tests: [not_null]
+      - name: snapshot_date
+        description: "Calendar month-end represented by the row."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: calendar_date
+      - name: original_balance
+        tests: [not_null]
+      - name: completed_payment_count_in_month
+        tests: [not_null]
+      - name: completed_payment_amount_in_month
+        tests: [not_null]
+      - name: cumulative_completed_payment_count
+        tests: [not_null]
+      - name: cumulative_completed_payment_amount
+        tests: [not_null]
+      - name: calculated_remaining_balance
+        description: >
+          Original balance less cumulative completed payments, floored at zero.
+          This is a project calculation, not a lender statement balance.
+        tests: [not_null]
+      - name: payments_above_original_balance
+        description: >
+          Cumulative completed payments above original balance, if any; kept
+          separate so the calculated remaining balance never becomes negative.
+        tests: [not_null]
+  - name: fct_loan_repayment_schedule
+    description: >
+      Principal-only synthetic repayment schedule at one row per loan and
+      instalment. It is an explicit learning assumption, not lender contract data.
+    columns:
+      - name: schedule_id
+        description: "Stable synthetic identifier for the scheduled instalment."
+        tests: [not_null, unique]
+      - name: account_id
+        description: "Loan account to which the instalment belongs."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_loan')
+                field: account_id
+      - name: instalment_number
+        description: "One-based position within the loan schedule."
+        tests: [not_null]
+      - name: due_date
+        description: "Synthetic contractual principal due date."
+        tests: [not_null]
+      - name: due_month
+        description: "First day of the instalment due month."
+        tests: [not_null]
+      - name: scheduled_principal_amount
+        description: >
+          Principal amount due. Equal instalments are used except for the final
+          rounding adjustment, and the full schedule equals original balance.
+        tests: [not_null]
+      - name: source_loaded_at
+        description: "UTC timestamp of the accepted source batch."
+        tests: [not_null]
+  - name: fct_loan_schedule_allocation
+    description: >
+      One row per scheduled principal instalment with completed payments allocated
+      oldest due first as at the fixed reporting date. This is a synthetic modelling
+      rule rather than source-system allocation evidence.
+    columns:
+      - name: schedule_id
+        description: "Scheduled instalment represented by the allocation row."
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('fct_loan_repayment_schedule')
+                field: schedule_id
+      - name: account_id
+        description: "Loan account to which the scheduled instalment belongs."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_loan')
+                field: account_id
+      - name: instalment_number
+        tests: [not_null]
+      - name: due_date
+        tests: [not_null]
+      - name: due_month
+        tests: [not_null]
+      - name: scheduled_principal_amount
+        tests: [not_null]
+      - name: as_of_date
+        description: "Fixed reporting date used to decide whether an instalment is due."
+        tests: [not_null]
+      - name: is_due_as_of_date
+        tests: [not_null]
+      - name: cumulative_scheduled_principal_due_amount
+        description: "Running principal due through this row; future rows do not increase it."
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        description: >
+          Completed payment amount assigned to the instalment under the explicit
+          oldest-due-principal-first assumption.
+        tests: [not_null]
+      - name: uncovered_scheduled_principal_amount
+        description: "Due principal not covered by the assumed allocation; zero for future rows."
+        tests: [not_null]
+      - name: allocation_status
+        description: "Coverage state of the scheduled instalment at the fixed reporting date."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Future', 'Covered', 'Partially Covered', 'Uncovered']
   - name: dim_subscription
     description: "One row per subscription agreement with reporting attributes as at the fixed run date."
     columns:
