@@ -674,3 +674,43 @@ due. All 19 selected allocation tests passed: the model allocated £1,566.60, le
 £98,433.40 unallocated and assigned £0.00 to future instalments. This proves the
 declared cap; it does not establish that a real lender would use this allocation
 order.
+
+## Account schedule position — 27 September 2026
+
+The account summary produced 25 rows, one for every loan. Under the principal-only
+project assumptions, all 25 accounts were `Behind Schedule`: £57,712.01 was due,
+£6,025.00 was allocated and £51,687.01 remained uncovered. The average account
+coverage ratio was 0.1644, with 207 uncovered instalments. The oldest uncovered due
+date was 22 March 2024 and the largest days-past-due proxy was 649 days.
+
+These figures expose the sparse generated payment pattern; they are not presented
+as a realistic credit portfolio result.
+
+The clean quality gate passed:
+
+- 9 of 9 source-freshness checks;
+- 15 table models, 2 incremental models, 1 view and 2 snapshots;
+- 321 dbt data tests;
+- 342 of 342 dbt results including the checkpoint hook;
+- account coverage, money-equation, proxy-consistency and detail-reconciliation controls;
+- all four controlled history and incremental scenarios;
+- 25 Python tests and Ruff; and
+- dbt documentation generation.
+
+For a controlled failure, I increased one account summary's shortfall by £0.01 in
+a disposable database. `reconcile_loan_schedule_position` returned exactly one
+failure and dbt exited with code 1.
+
+For the opposite boundary, I increased one completed payment in another disposable
+database, refreshed the four affected models and ran all 28 position-focused tests.
+The account had £4,000.00 due and allocated, zero shortfall, zero days proxy and
+£96,075.00 unallocated cash. Its status changed to `On Schedule`, and every selected
+test passed.
+
+The fresh execution environment initially lacked the declared dependencies, so the
+first load stopped before model execution. A narrow exploratory selection later
+ran shared tests without building their unrelated parent models, and the first
+covered-account scenario refreshed a producer while leaving an existing consumer
+stale. Neither stop is treated as data-quality evidence. The documented dependency
+install, full quality gate and corrected disposable scenario all completed
+successfully.

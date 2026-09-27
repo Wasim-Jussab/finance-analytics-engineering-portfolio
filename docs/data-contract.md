@@ -522,3 +522,22 @@ left unallocated rather than applied to future rows.
 project rule. They are not source-system delinquency statuses. The contract still
 has no interest order, fee order, grace period, payment reversal or lender-defined
 allocation policy, so this fact is not an accounting ledger or an arrears report.
+
+## Day 34 account schedule position
+
+`mart.fct_loan_schedule_position` has one row per loan account at the fixed
+reporting date. It aggregates the tested allocation fact rather than assigning
+payments again. The row reconciles:
+
+- due principal to assumed allocation plus uncovered principal;
+- original balance to due plus future scheduled principal; and
+- completed payments to allocated plus unallocated cash.
+
+`oldest_uncovered_due_date` is the first due row with uncovered principal.
+`days_past_due_proxy` counts calendar days from that date to the reporting date and
+is zero when no principal is uncovered. `schedule_position_status` is limited to
+`Not Yet Due`, `On Schedule` and `Behind Schedule` under this project rule.
+
+These fields do not overwrite `source_loan_status`. They are analytical outputs
+from a synthetic principal-only schedule, not contractual delinquency, default or
+regulatory classifications.

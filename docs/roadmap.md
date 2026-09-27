@@ -75,3 +75,9 @@ to due principal oldest first, with future instalments and any excess payment ke
 outside the allocation. The next loan-reporting step can summarise this tested fact
 at account and reporting-date grain, while continuing to avoid claims about lender
 accounting balances or contractual days past due.
+
+Day 34 added that account-level summary. It reconciles due, allocated, uncovered
+and future principal and exposes the oldest uncovered due date. A days-past-due
+proxy is clearly separated from source loan status because the project still lacks
+the contractual rules needed for a production arrears measure. The next step is to
+aggregate the governed account positions for monthly portfolio reporting.

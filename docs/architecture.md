@@ -315,3 +315,15 @@ This model deliberately sits between payment attempts and a later account-level
 arrears view. It makes the allocation step inspectable and testable without
 presenting the resulting uncovered principal as a lender balance. Failed payment
 attempts remain in `fct_payment` but do not contribute to allocation.
+
+## Day 34 addition
+
+`mart.fct_loan_schedule_position` rolls the allocation fact up to one row per loan
+at the fixed reporting date. It retains source loan status as a separate attribute
+and calculates scheduled principal due, allocated, uncovered and future, plus cash
+that could not be allocated because it exceeded principal due.
+
+The oldest uncovered due date and days-past-due proxy are downstream of the tested
+instalment allocation rather than recomputed from raw payments. This keeps one
+declared allocation rule in the lineage. The proxy is not fed back into the source
+status and is not labelled as a lender delinquency measure.

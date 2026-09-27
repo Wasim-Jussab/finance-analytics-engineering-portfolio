@@ -312,6 +312,82 @@ models:
           - accepted_values:
               arguments:
                 values: ['Future', 'Covered', 'Partially Covered', 'Uncovered']
+  - name: fct_loan_schedule_position
+    description: >
+      One row per loan at the fixed reporting date, summarising scheduled principal,
+      assumed allocation and uncovered due principal. Days past due is explicitly a
+      project proxy rather than a lender-defined delinquency measure.
+    columns:
+      - name: account_id
+        description: "Loan account represented by the schedule position."
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_loan')
+                field: account_id
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customer')
+                field: customer_id
+      - name: product_code
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['LOAN-A', 'LOAN-B', 'LOAN-C']
+      - name: source_loan_status
+        description: "Current synthetic source status, kept separate from schedule position."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Open', 'Pending', 'Closed']
+      - name: original_balance
+        description: "Original synthetic loan principal used for full-schedule reconciliation."
+        tests: [not_null]
+      - name: as_of_date
+        tests: [not_null]
+      - name: scheduled_instalment_count
+        tests: [not_null]
+      - name: due_instalment_count
+        tests: [not_null]
+      - name: future_instalment_count
+        tests: [not_null]
+      - name: uncovered_instalment_count
+        tests: [not_null]
+      - name: scheduled_principal_due_amount
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: future_scheduled_principal_amount
+        tests: [not_null]
+      - name: completed_payment_amount_as_of_date
+        tests: [not_null]
+      - name: unallocated_completed_payment_amount
+        tests: [not_null]
+      - name: oldest_uncovered_due_date
+        description: "Earliest due date with uncovered principal under the project assumption."
+      - name: days_past_due_proxy
+        description: >
+          Calendar days from the oldest uncovered due date to the fixed reporting
+          date; zero when no due principal is uncovered.
+        tests: [not_null]
+      - name: due_principal_coverage_ratio
+        description: "Allocated completed payments divided by principal due, capped through allocation."
+      - name: schedule_position_status
+        description: "Project classification based only on scheduled principal coverage."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Not Yet Due', 'On Schedule', 'Behind Schedule']
   - name: dim_subscription
     description: "One row per subscription agreement with reporting attributes as at the fixed run date."
     columns:

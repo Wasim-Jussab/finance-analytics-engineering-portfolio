@@ -42,7 +42,7 @@ technical assessment—including what this project does not prove—is in the
 |---|---|
 | Data generation | Deterministic customers, loans, principal-only repayment schedules, subscription plans, agreements and payment attempts using a fixed seed |
 | Ingestion | Python validates a shared CSV column contract, loads typed DuckDB tables atomically, fingerprints accepted files and records failures |
-| Transformation | dbt materialises reporting models in `mart`, builds month-end loan snapshots, applies an explicit oldest-due-principal-first payment assumption, uses a keyed incremental merge for subscription payments, retains reconciled run outcomes and run-to-run changes, keeps observed plan and agreement versions, and combines status changes and source removals without erasing their meaning |
+| Transformation | dbt materialises reporting models in `mart`, builds month-end loan snapshots, applies an explicit oldest-due-principal-first payment assumption, summarises each loan's schedule position, uses a keyed incremental merge for subscription payments, retains reconciled run outcomes and run-to-run changes, keeps observed plan and agreement versions, and combines status changes and source removals without erasing their meaning |
 | Data quality | Key, relationship, required-field, accepted-value, chronology, history-window and current-state reconciliation tests |
 | Financial control | Loan payments and subscription collections reconcile to source; scheduled loan principal reconciles to original balances; assumed loan allocations reconcile to completed payments and due principal; billed amounts agree with the governed synthetic plan catalogue |
 | Documentation | dbt source/model descriptions, architecture notes, data contract and daily decision log |
@@ -66,6 +66,7 @@ technical assessment—including what this project does not prove—is in the
 | `mart.fct_loan_monthly_snapshot` | One row per loan account and completed calendar month | Retains monthly and cumulative completed payments plus a clearly labelled remaining-balance calculation |
 | `mart.fct_loan_repayment_schedule` | One row per loan account and scheduled instalment | Holds explicit principal due dates and amounts that reconcile to each synthetic loan's original balance |
 | `mart.fct_loan_schedule_allocation` | One row per scheduled instalment | Allocates completed payments to due principal oldest first, leaves future instalments untouched and labels the result as an assumption rather than source-system evidence |
+| `mart.fct_loan_schedule_position` | One row per loan account and fixed reporting date | Reconciles due, allocated, uncovered and future principal; exposes a clearly labelled days-past-due proxy |
 | `mart.fct_subscription_payment` | One row per subscription billing attempt | Incrementally merges stable keys, retains source-absent rows as evidence and excludes them from current reporting |
 | `audit.audit_subscription_payment_run` | One row per selected dbt invocation | Retains raw, physical, current, absent and collection reconciliation metrics for each payment-fact run |
 | `audit.subscription_payment_run_delta` | One row per recorded payment run | Compares the current and preceding run; first-run differences are null because no earlier run exists |
@@ -92,6 +93,7 @@ The current seed-42 run produced:
 | Due / future scheduled instalments at 31 December 2025 | 236 / 58 |
 | Scheduled principal due / assumed allocated | £57,712.01 / £6,025.00 |
 | Uncovered due principal under the stated assumption | £51,687.01 |
+| Account schedule positions | 25 Behind Schedule / £51,687.01 shortfall |
 | Subscription billing attempts | 150 |
 | Completed subscription collections | 125 / £3,648.00 |
 | Monthly aggregate rows | 82 |
@@ -104,7 +106,7 @@ The current seed-42 run produced:
 | Fingerprinted CSV sources | 7 of 7 |
 | Successful run/source history rows | 1 / 8 |
 | Failed run/failure detail rows | 0 / 0 |
-| dbt table models | 14 passed |
+| dbt table models | 15 passed |
 | Clean transformation audit rows | 1 reconciled |
 | dbt incremental models | 2 passed |
 | dbt run-difference views | 1 passed |
@@ -114,10 +116,10 @@ The current seed-42 run produced:
 | Clean observed status changes | 0 |
 | Clean source removals | 0 |
 | Clean unified history events | 0 |
-| dbt data tests | 294 passed |
-| dbt model, snapshot and data-test resources | 313 passed |
+| dbt data tests | 321 passed |
+| dbt model, snapshot and data-test resources | 341 passed |
 | DuckDB checkpoint hook | Passed |
-| Total dbt results including hook | 314 passed |
+| Total dbt results including hook | 342 passed |
 | Raw sources within freshness threshold | 9 of 9 |
 | Python tests | 25 passed |
 | Ruff | Passed |
@@ -125,9 +127,12 @@ The current seed-42 run produced:
 Controlled failure checks have detected invalid values, broken chronology, duplicate grains, missing calendar and reporting rows, payment-to-plan disagreement, an incorrect agreement closing balance, a mismatched ingestion count, inconsistent run history and CSV schema drift. A separate temporary-database scenario changed one synthetic plan by £0.01 and produced five plan-history versions: four current and one closed. A second scenario cancelled one active synthetic agreement and produced 21 agreement-history versions—20 current and one closed—plus exactly one Active-to-Cancelled status-change fact row. A third scenario removed one active source row and created one separate removal record while retaining its last observed Active status. The status and removal scenarios also each rebuilt and tested the unified event feed: one `Status Change` event in the first and one `Source Removal` event in the second. The incremental-payment scenario proved unchanged reruns, one late insert, one in-place correction and no duplicate keys. It then removed one completed source row: the fact retained the key once with an absence timestamp, current monthly metrics excluded it, and restoring the source row reversed the flag without duplication. The same six builds appended six distinct transformation-audit rows, each reconciling the raw snapshot to physical, current and collected fact metrics. Missing-file and renamed-column tests also prove that an incomplete replacement leaves the preceding valid batch in place and records a sanitised failure separately.
 
 Loan controls have also caught a £0.01 schedule imbalance and a £0.01 allocation
-mismatch. A separate excess-payment scenario allocated only the £1,566.60 due on
-the selected account, left £98,433.40 unallocated and assigned nothing to its
-future instalments.
+mismatch. Changing one account summary by £0.01 also produced exactly one position
+reconciliation failure. A separate excess-payment scenario allocated only the
+£1,566.60 due on the selected account, left £98,433.40 unallocated and assigned
+nothing to its future instalments. A second covered-account scenario moved one loan
+to `On Schedule`, reduced its shortfall and days proxy to zero, retained £96,075.00
+as unallocated cash and passed all 28 position-focused tests.
 
 For the same six runs, the comparison view shows zero movement on unchanged reruns, increased collections after a correction, a retained absent key when a payment leaves the source, and the reverse movement when it returns. These are net totals, not explanations of individual payment events.
 
@@ -176,6 +181,7 @@ Generated CSVs, DuckDB files, dbt output and logs are excluded from Git.
 - **Calculated balance is labelled honestly:** the monthly loan snapshot subtracts completed payments from original balance and floors the result at zero. It remains separate from the schedule-allocation fact and is not presented as a contractual statement balance because the source has no interest allocation, fees or adjustments.
 - **Schedule assumptions are visible:** each synthetic loan has a stated 6-, 12- or 18-month term and monthly principal instalments. The final instalment absorbs penny rounding so the schedule reconciles exactly to original balance. Interest, fees and arrears are not inferred.
 - **Allocation is an explicit assumption:** completed payments are applied to due principal from the oldest instalment forward as at the fixed reporting date. Allocation is capped at due principal, so excess payment is not pushed into future instalments. This is a modelling exercise, not evidence of a lender's contractual allocation method.
+- **Schedule position is not source delinquency:** the account summary rolls up the tested allocation and labels uncovered principal, oldest uncovered due date and a days-past-due proxy. `Behind Schedule` describes only the synthetic principal schedule; it is kept separate from the loan's source status.
 - **Decimal money types:** monetary fields are loaded as controlled decimal values.
 - **Raw and mart separation:** source data is kept separate from reporting transformations.
 - **Reconciliation before presentation:** completed-payment values are compared at raw, fact and account-summary level.
@@ -227,7 +233,7 @@ This is a working project, not a finished platform.
 - The transformation-run audit is written only when its downstream model is selected. It has no independent alerting, external control store or protection from someone with write access to the local database.
 - The source contract checks column presence but is not versioned and does not yet define nullable fields or source-specific empty-file policies.
 - The dataset is intentionally small and has not been performance-tested.
-- The repayment schedule and allocation are principal-only synthetic constructs. The allocation does not represent interest, fees, grace periods, rescheduling, reversals or a real lender's accounting order, so the project still cannot claim lender-grade arrears, days-past-due or accounting balances.
+- The repayment schedule, allocation and account position are principal-only synthetic constructs. The proxy does not represent interest, fees, grace periods, rescheduling, reversals or a real lender's accounting order, so the project does not claim lender-grade arrears, contractual days past due or accounting balances.
 - The cloud architecture is documented as a possible production mapping, not presented as a deployed AWS system.
 
 ## Repository map
@@ -281,5 +287,6 @@ The daily notes record what changed, what failed and what remains unresolved. Th
 - [Day 31: first month-end loan snapshot](notes/day-31.md)
 - [Day 32: explicit loan repayment schedule](notes/day-32.md)
 - [Day 33: explicit payment-to-schedule allocation](notes/day-33.md)
+- [Day 34: account-level schedule position](notes/day-34.md)
 
 This repository demonstrates how I structure and validate analytics-engineering work. My production experience with Redshift, AWS Glue/Python, Power BI, regulatory reporting and financial reconciliations is described separately in my professional profile.
