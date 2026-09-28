@@ -61,6 +61,7 @@ The source contract runs before the raw-table replacement. It belongs in Python 
 | `fct_loan_repayment_schedule` | One row per loan and scheduled instalment | Grain, sequence, due-date and full-principal reconciliation |
 | `fct_loan_schedule_allocation` | One row per scheduled instalment | Oldest-first formula, future-row protection and account reconciliation |
 | `fct_loan_schedule_position` | One row per loan at the fixed reporting date | Loan coverage, balance equations, proxy consistency and detail reconciliation |
+| `agg_loan_portfolio_monthly` | One row per month end and loan product | Compound grain, population coverage, balance equations, weighted ratio and account-month reconciliation |
 | `fct_subscription_payment` | One row per subscription billing attempt | Incremental merge key, source-batch timestamp, subscription relationship, accepted values, chronology, positive amount and collection reconciliation |
 | `agg_subscription_monthly` | One row per eligible month, product and billing frequency | Active-plan coverage, compound grain, zero handling, metric consistency and fact reconciliation |
 | `agg_subscription_movement_monthly` | One row per month, product and billing frequency | Complete month coverage, movement equation, roll-forward and agreement reconciliation |

@@ -81,3 +81,9 @@ and future principal and exposes the oldest uncovered due date. A days-past-due
 proxy is clearly separated from source loan status because the project still lacks
 the contractual rules needed for a production arrears measure. The next step is to
 aggregate the governed account positions for monthly portfolio reporting.
+
+Day 35 completed that step with a monthly product aggregate. It retains complete
+originated-account coverage, reconciles to account-month detail and calculates its
+coverage ratio from portfolio totals rather than averaging account percentages.
+The loan milestone is reviewed in `docs/loan-reporting-review.md`; contractual
+arrears and historical active populations remain explicit gaps.

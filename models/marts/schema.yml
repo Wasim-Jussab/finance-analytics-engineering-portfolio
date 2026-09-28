@@ -388,6 +388,52 @@ models:
           - accepted_values:
               arguments:
                 values: ['Not Yet Due', 'On Schedule', 'Behind Schedule']
+  - name: agg_loan_portfolio_monthly
+    description: >
+      Monthly loan-portfolio summary by synthetic product. Schedule-position
+      measures use the documented principal-only allocation assumption and are
+      not contractual arrears or historical source-status measures.
+    columns:
+      - name: snapshot_date
+        description: "Month end represented by the portfolio row."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: calendar_date
+      - name: product_code
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['LOAN-A', 'LOAN-B', 'LOAN-C']
+      - name: loan_account_count
+        tests: [not_null]
+      - name: original_balance_amount
+        tests: [not_null]
+      - name: completed_payment_amount_as_of_month_end
+        tests: [not_null]
+      - name: scheduled_principal_due_amount
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: future_scheduled_principal_amount
+        tests: [not_null]
+      - name: unallocated_completed_payment_amount
+        tests: [not_null]
+      - name: not_yet_due_account_count
+        tests: [not_null]
+      - name: on_schedule_account_count
+        tests: [not_null]
+      - name: behind_schedule_account_count
+        tests: [not_null]
+      - name: due_principal_coverage_ratio
+        description: >
+          Assumed allocated completed payments divided by principal due for the
+          month-end product population; null when no principal is due.
   - name: dim_subscription
     description: "One row per subscription agreement with reporting attributes as at the fixed run date."
     columns:

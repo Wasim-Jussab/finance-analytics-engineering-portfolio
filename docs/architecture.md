@@ -327,3 +327,16 @@ The oldest uncovered due date and days-past-due proxy are downstream of the test
 instalment allocation rather than recomputed from raw payments. This keeps one
 declared allocation rule in the lineage. The proxy is not fed back into the source
 status and is not labelled as a lender delinquency measure.
+
+## Day 35 addition
+
+`mart.agg_loan_portfolio_monthly` uses the account-month snapshot as its reporting
+spine and joins the tested repayment schedule to each month end. It calculates the
+same bounded principal allocation at account-month grain before aggregating by
+month and product. This prevents a large account and a small account from receiving
+equal weight in the portfolio coverage ratio.
+
+The aggregate deliberately uses originated-account populations. The source has no
+loan status-event history, so the current `status` field is not used to invent a
+historical active population. The output is suitable for local BI exploration of
+the project assumptions, not contractual arrears reporting.

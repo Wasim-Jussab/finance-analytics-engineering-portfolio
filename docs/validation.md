@@ -714,3 +714,32 @@ covered-account scenario refreshed a producer while leaving an existing consumer
 stale. Neither stop is treated as data-quality evidence. The documented dependency
 install, full quality gate and corrected disposable scenario all completed
 successfully.
+
+## Monthly loan portfolio reporting — 28 September 2026
+
+The monthly product mart produced 65 rows across 24 month ends and three products.
+Products enter the series only after their first related loan originates. At 31
+December 2025, the three rows reconciled to 25 accounts, £68,350.00 original
+principal, £57,712.01 due, £6,025.00 assumed allocation, £51,687.01 shortfall and
+£10,637.99 future principal. The portfolio-weighted due-principal coverage ratio
+was 0.1044.
+
+The clean quality gate passed:
+
+- 9 of 9 source-freshness checks;
+- 16 table models, 2 incremental models, 1 view and 2 snapshots;
+- 339 dbt data tests;
+- 361 of 361 dbt results including the checkpoint hook;
+- all four controlled history and incremental scenarios;
+- six incremental payment runs at 55 of 55 results each;
+- 25 Python tests and Ruff; and
+- dbt documentation generation.
+
+For a controlled failure, I increased one December product shortfall by £0.01 in
+an isolated database. `reconcile_loan_portfolio_monthly` returned exactly one
+failure and dbt exited with code 1. The clean source database was unchanged.
+
+A narrow exploratory build also selected shared tests whose unrelated parent
+models had not been built in that disposable database. Those catalogue errors are
+not treated as quality evidence; the new aggregate's focused checks and the full
+project gate both passed.

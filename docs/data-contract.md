@@ -541,3 +541,21 @@ is zero when no principal is uncovered. `schedule_position_status` is limited to
 These fields do not overwrite `source_loan_status`. They are analytical outputs
 from a synthetic principal-only schedule, not contractual delinquency, default or
 regulatory classifications.
+
+## Day 35 monthly loan portfolio aggregate
+
+`mart.agg_loan_portfolio_monthly` has one row per `snapshot_date` and
+`product_code`. A product appears only when at least one related loan has originated
+by that month end. `loan_account_count` therefore means originated accounts in the
+reporting population; it does not mean historically active accounts.
+
+For each account-month, assumed allocation is the lower of cumulative completed
+payments and principal due. The aggregate then sums accounts before calculating
+`due_principal_coverage_ratio`. This is a weighted portfolio ratio:
+
+`total assumed allocation / total scheduled principal due`
+
+It is not the arithmetic mean of account-level percentages. Counts for `Not Yet
+Due`, `On Schedule` and `Behind Schedule` add back to the product-month population,
+and the monetary fields retain the same reconciliation equations as the account
+position. All labels remain subject to the principal-only project assumption.
