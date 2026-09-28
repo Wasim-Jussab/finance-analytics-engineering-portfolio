@@ -46,6 +46,7 @@ SELECT
             ELSE 0
           END AS loan_age_months,
     loan.original_balance,
+    loan.term_months,
     loan.status,
     COALESCE(payment_summary.completed_payment_count, 0) AS completed_payment_count,
     COALESCE(payment_summary.completed_payment_amount, 0.00) AS completed_payment_amount,

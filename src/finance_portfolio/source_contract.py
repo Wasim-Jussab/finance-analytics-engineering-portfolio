@@ -22,7 +22,15 @@ RAW_TABLES: dict[str, list[tuple[str, str]]] = {
         ("product_code", "VARCHAR"),
         ("origination_date", "DATE"),
         ("original_balance", "DECIMAL(12, 2)"),
+        ("term_months", "INTEGER"),
         ("status", "VARCHAR"),
+    ],
+    "loan_repayment_schedule": [
+        ("schedule_id", "VARCHAR"),
+        ("account_id", "VARCHAR"),
+        ("instalment_number", "INTEGER"),
+        ("due_date", "DATE"),
+        ("scheduled_principal_amount", "DECIMAL(12, 2)"),
     ],
     "subscriptions": [
         ("subscription_id", "VARCHAR"),

@@ -24,7 +24,7 @@ where (
             or runs.total_source_row_count <> summary.total_source_row_count
             or summary.loaded_at_count <> 1
             or runs.loaded_at <> summary.loaded_at
-            or runs.source_count <> 7
+            or runs.source_count <> 8
         )
     )
     or (

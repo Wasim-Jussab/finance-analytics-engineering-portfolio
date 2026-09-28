@@ -277,3 +277,66 @@ I am comfortable with SQL, Redshift views, Power BI modelling, reporting logic, 
 | Local tests | CI checks before a merge |
 
 This mapping is an investigation list. It is not evidence that this repository is running on AWS.
+
+## Day 31 addition
+
+`mart.fct_loan_monthly_snapshot` starts the loan-reporting phase. It combines the
+tested calendar, loan dimension and payment fact at one row per account and month
+end. A loan first appears at the end of its origination month and continues through
+the fixed reporting date, including months with no successful payment.
+
+The model separates monthly completed-payment movement from cumulative payment
+state. Its remaining balance is intentionally named as a calculation from original
+balance, not a source-system balance. Building arrears at this point would require
+inventing payment schedules and due dates, so those measures remain out of scope
+until the synthetic source represents them explicitly.
+
+## Day 32 addition
+
+The generator now creates `loan_repayment_schedule.csv` alongside the loan source.
+The shared contract and atomic loader treat it as the seventh fingerprinted CSV,
+so a missing or structurally changed schedule rejects the whole replacement batch.
+
+dbt materialises `mart.fct_loan_repayment_schedule` at one row per account and
+instalment. It does not join the rows to payments yet. Keeping contractual dues and
+payment attempts separate avoids silently assuming which payment settled which
+instalment. Grain, sequence, due-date and full-principal reconciliation tests prove
+the schedule before arrears logic is added.
+
+## Day 33 addition
+
+`mart.fct_loan_schedule_allocation` keeps the schedule grain and introduces one
+declared modelling rule: completed payments dated on or before the fixed reporting
+date are applied to due principal from the oldest instalment forward. Allocation
+is capped at each due row and at total due principal. Future instalments remain at
+zero even when a controlled scenario supplies more completed cash than is due.
+
+This model deliberately sits between payment attempts and a later account-level
+arrears view. It makes the allocation step inspectable and testable without
+presenting the resulting uncovered principal as a lender balance. Failed payment
+attempts remain in `fct_payment` but do not contribute to allocation.
+
+## Day 34 addition
+
+`mart.fct_loan_schedule_position` rolls the allocation fact up to one row per loan
+at the fixed reporting date. It retains source loan status as a separate attribute
+and calculates scheduled principal due, allocated, uncovered and future, plus cash
+that could not be allocated because it exceeded principal due.
+
+The oldest uncovered due date and days-past-due proxy are downstream of the tested
+instalment allocation rather than recomputed from raw payments. This keeps one
+declared allocation rule in the lineage. The proxy is not fed back into the source
+status and is not labelled as a lender delinquency measure.
+
+## Day 35 addition
+
+`mart.agg_loan_portfolio_monthly` uses the account-month snapshot as its reporting
+spine and joins the tested repayment schedule to each month end. It calculates the
+same bounded principal allocation at account-month grain before aggregating by
+month and product. This prevents a large account and a small account from receiving
+equal weight in the portfolio coverage ratio.
+
+The aggregate deliberately uses originated-account populations. The source has no
+loan status-event history, so the current `status` field is not used to invent a
+historical active population. The output is suitable for local BI exploration of
+the project assumptions, not contractual arrears reporting.

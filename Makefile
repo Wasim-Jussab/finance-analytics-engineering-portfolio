@@ -29,7 +29,7 @@ dbt-build:
 	FINANCE_DUCKDB_PATH=$(DBT_DATABASE) dbt build $(DBT_FLAGS) --no-partial-parse
 
 dbt-docs:
-	FINANCE_DUCKDB_PATH=$(DBT_DATABASE) dbt docs generate $(DBT_FLAGS) --no-partial-parse
+	PYTHONPATH=src python -m finance_portfolio.generate_dbt_docs --database $(DBT_DATABASE)
 
 snapshot-history-check:
 	PYTHONPATH=src python -m finance_portfolio.snapshot_history_check --database $(DBT_DATABASE)

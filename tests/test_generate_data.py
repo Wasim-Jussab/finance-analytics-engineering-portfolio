@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from finance_portfolio.generate_data import (
     GeneratorConfig,
     generate_dataset,
@@ -34,6 +36,7 @@ def test_csv_outputs_can_be_written(tmp_path) -> None:
         "subscription_plans",
         "customers",
         "loans",
+        "loan_repayment_schedule",
         "subscriptions",
         "payments",
         "subscription_payments",
@@ -62,9 +65,36 @@ def test_seed_42_preserves_the_published_row_count_baseline() -> None:
     assert len(dataset["subscription_plans"]) == 4
     assert len(dataset["customers"]) == 25
     assert len(dataset["loans"]) == 25
+    assert len(dataset["loan_repayment_schedule"]) == 294
     assert len(dataset["subscriptions"]) == 20
     assert len(dataset["payments"]) == 99
     assert len(dataset["subscription_payments"]) == 150
+
+
+def test_loan_repayment_schedule_reconciles_to_each_loan() -> None:
+    dataset = generate_dataset(GeneratorConfig(seed=42))
+
+    loans = {row["account_id"]: row for row in dataset["loans"]}
+    for account_id, loan in loans.items():
+        schedule = [
+            row
+            for row in dataset["loan_repayment_schedule"]
+            if row["account_id"] == account_id
+        ]
+        assert len(schedule) == int(loan["term_months"])
+        assert sum(
+            Decimal(row["scheduled_principal_amount"]) for row in schedule
+        ) == Decimal(loan["original_balance"])
+
+
+def test_loan_schedule_balance_mismatch_is_reported() -> None:
+    dataset = generate_dataset(GeneratorConfig(seed=42, customer_count=3))
+    account_id = dataset["loan_repayment_schedule"][0]["account_id"]
+    dataset["loan_repayment_schedule"][0]["scheduled_principal_amount"] = "0.01"
+
+    assert validate_dataset(dataset) == [
+        f"loan schedule does not reconcile to balance: {account_id}"
+    ]
 
 
 def test_subscription_payment_amount_must_match_plan() -> None:

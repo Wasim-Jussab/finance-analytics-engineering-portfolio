@@ -14,6 +14,8 @@ sources:
         description: "One row per synthetic customer."
       - name: loans
         description: "One row per synthetic loan account."
+      - name: loan_repayment_schedule
+        description: "One row per synthetic principal instalment and due date."
       - name: payments
         description: "One row per payment attempt, including failed attempts."
       - name: subscriptions
