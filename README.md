@@ -10,7 +10,8 @@ I am building this project to make my move from data analysis into analytics eng
 
 ```mermaid
 flowchart LR
-    A["Synthetic finance data"] --> B["Shared CSV column contract"]
+    R["Local pipeline runner"] --> A["Synthetic finance data"]
+    A --> B["Shared CSV column contract"]
     B --> C["Python validation and typed load"]
     C --> J[("DuckDB raw tables + batch audit")]
     J --> I[("Persistent run, source and failure history")]
@@ -27,6 +28,10 @@ flowchart LR
 ```
 
 Everything runs locally with no cloud account, credentials or paid service.
+
+The operational path now runs through a small dependency-aware Python runner. It
+records stage outcomes locally and stops downstream work after a failed stage; it
+is not presented as a replacement for a production scheduler.
 
 ## Thirty-day checkpoint
 
@@ -54,7 +59,7 @@ arrears.
 | Data quality | Key, relationship, required-field, accepted-value, chronology, history-window and current-state reconciliation tests |
 | Financial control | Loan payments and subscription collections reconcile to source; scheduled loan principal reconciles to original balances; assumed loan allocations reconcile to completed payments and due principal; billed amounts agree with the governed synthetic plan catalogue |
 | Documentation | dbt source/model descriptions, architecture notes, data contract and daily decision log |
-| Automation | GitHub Actions reruns source freshness, the dbt build, Python tests and linting |
+| Automation | A local dependency-aware runner executes generation, ingestion, freshness and dbt in order; GitHub Actions runs the same pipeline before the remaining quality checks |
 
 ## Reporting models
 
@@ -132,7 +137,7 @@ The current seed-42 run produced:
 | DuckDB checkpoint hook | Passed |
 | Total dbt results including hook | 361 passed |
 | Raw sources within freshness threshold | 9 of 9 |
-| Python tests | 25 passed |
+| Python tests | 29 passed |
 | Ruff | Passed |
 
 Controlled failure checks have detected invalid values, broken chronology, duplicate grains, missing calendar and reporting rows, payment-to-plan disagreement, an incorrect agreement closing balance, a mismatched ingestion count, inconsistent run history and CSV schema drift. A separate temporary-database scenario changed one synthetic plan by £0.01 and produced five plan-history versions: four current and one closed. A second scenario cancelled one active synthetic agreement and produced 21 agreement-history versions—20 current and one closed—plus exactly one Active-to-Cancelled status-change fact row. A third scenario removed one active source row and created one separate removal record while retaining its last observed Active status. The status and removal scenarios also each rebuilt and tested the unified event feed: one `Status Change` event in the first and one `Source Removal` event in the second. The incremental-payment scenario proved unchanged reruns, one late insert, one in-place correction and no duplicate keys. It then removed one completed source row: the fact retained the key once with an absence timestamp, current monthly metrics excluded it, and restoring the source row reversed the flag without duplication. The same six builds appended six distinct transformation-audit rows, each reconciling the raw snapshot to physical, current and collected fact metrics. Missing-file and renamed-column tests also prove that an incomplete replacement leaves the preceding valid batch in place and records a sanitised failure separately.
@@ -166,6 +171,10 @@ make pipeline
 make check
 make verify
 ```
+
+`make pipeline` writes an ignored run record to
+`reports/latest-pipeline-run.json`. It includes stage timestamps, return codes and
+blocked downstream stages without publishing local runtime artefacts.
 
 Useful individual commands:
 
@@ -308,5 +317,6 @@ The daily notes record what changed, what failed and what remains unresolved. Th
 - [Day 33: explicit payment-to-schedule allocation](notes/day-33.md)
 - [Day 34: account-level schedule position](notes/day-34.md)
 - [Day 35: monthly loan portfolio reporting](notes/day-35.md)
+- [Day 36: explicit local pipeline orchestration](notes/day-36.md)
 
 This repository demonstrates how I structure and validate analytics-engineering work. My production experience with Redshift, AWS Glue/Python, Power BI, regulatory reporting and financial reconciliations is described separately in my professional profile.

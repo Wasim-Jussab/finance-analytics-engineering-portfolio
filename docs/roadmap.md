@@ -87,3 +87,9 @@ originated-account coverage, reconciles to account-month detail and calculates i
 coverage ratio from portfolio totals rather than averaging account percentages.
 The loan milestone is reviewed in `docs/loan-reporting-review.md`; contractual
 arrears and historical active populations remain explicit gaps.
+
+Day 36 starts the operational phase now that generation, ingestion, freshness and
+transformation are genuinely separate stages. A small Python runner makes their
+dependencies and stop-on-failure behaviour explicit and writes a local run report.
+It does not yet retry or backfill work, and it does not introduce a scheduler
+service solely for appearance.

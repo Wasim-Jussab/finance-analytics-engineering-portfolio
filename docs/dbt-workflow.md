@@ -203,3 +203,20 @@ view can refer to its original catalogue name when a custom database path is use
 The profile is kept in `config/profiles.yml` rather than the default dbt user directory. That makes the project self-contained and avoids requiring a local profile to be created manually. It only contains a local DuckDB path and no credentials.
 
 The schema-name macro keeps the output schema as `mart`. Without it, dbt would combine the target schema and custom schema, which would make the local database structure less obvious when comparing it with the architecture notes.
+
+## Local pipeline runner
+
+`make pipeline` now calls `finance_portfolio.run_pipeline`. The runner validates
+the dependency graph before it starts, then executes generation, ingestion, source
+freshness and the dbt build in order. It passes the selected database path to both
+the Python loader and dbt target environment.
+
+If a command returns a non-zero code, later stages are recorded as blocked and are
+not attempted. The ignored JSON report at `reports/latest-pipeline-run.json` is
+replaced atomically after the run. It records execution outcome, not application
+logs or credentials. Python tests cover dependency ordering, invalid graphs,
+failure propagation and database-path configuration.
+
+The Makefile exports `DBT_SEND_ANONYMOUS_USAGE_STATS=false` for the whole workflow,
+not only the two dbt stages in the runner. This also covers the later controlled
+scenario and documentation subprocesses.

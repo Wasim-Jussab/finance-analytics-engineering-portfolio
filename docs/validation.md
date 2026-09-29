@@ -743,3 +743,28 @@ A narrow exploratory build also selected shared tests whose unrelated parent
 models had not been built in that disposable database. Those catalogue errors are
 not treated as quality evidence; the new aggregate's focused checks and the full
 project gate both passed.
+
+## Local pipeline orchestration — 29 September 2026
+
+The Day 36 runner completed generation, ingestion, source freshness and the full
+dbt build in dependency order. Its JSON result recorded four successful stages
+with zero return codes. The clean shared quality gate passed:
+
+- 9 of 9 source-freshness checks;
+- 339 dbt data tests and 361 of 361 total dbt results;
+- all four controlled historical and incremental scenarios;
+- six incremental payment builds at 55 of 55 results each;
+- 29 Python tests;
+- Ruff; and
+- dbt documentation generation.
+
+A genuine rerun against a reused disposable database reached the known DuckDB WAL
+replay conflict during ingestion. The run report retained the exact propagation:
+`generate` succeeded, `load` failed with return code 1, and `source_freshness` plus
+`dbt_build` were blocked and never attempted. A fresh database then passed the
+complete gate. This proves local stop-on-failure behaviour; it does not resolve the
+underlying DuckDB recovery-file limitation.
+
+The first local gate also showed that dbt's anonymous-usage opt-out had only been
+set in GitHub Actions and the runner's dbt stages. The Makefile now exports the
+opt-out to every scenario and documentation subprocess as well.

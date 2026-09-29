@@ -2,6 +2,8 @@
 .NOTPARALLEL: pipeline verify
 
 DBT_DATABASE ?= data/finance.duckdb
+DBT_SEND_ANONYMOUS_USAGE_STATS ?= false
+export DBT_SEND_ANONYMOUS_USAGE_STATS
 DBT_FLAGS = --project-dir . --profiles-dir config --target local
 
 test:
@@ -43,7 +45,8 @@ subscription-removal-check:
 incremental-payment-check:
 	PYTHONPATH=src python -m finance_portfolio.incremental_payment_check --database $(DBT_DATABASE)
 
-pipeline: generate load dbt-freshness dbt-build
+pipeline:
+	PYTHONPATH=src python -m finance_portfolio.run_pipeline --database $(DBT_DATABASE)
 
 check: lint test
 

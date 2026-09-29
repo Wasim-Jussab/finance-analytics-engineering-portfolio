@@ -340,3 +340,16 @@ The aggregate deliberately uses originated-account populations. The source has n
 loan status-event history, so the current `status` field is not used to invent a
 historical active population. The output is suitable for local BI exploration of
 the project assumptions, not contractual arrears reporting.
+
+## Day 36 addition
+
+`finance_portfolio.run_pipeline` is now the operational entry point behind
+`make pipeline`. It defines generation, ingestion, source freshness and dbt build
+as separate stages with explicit dependencies. A non-zero return code stops the
+sequence and marks later stages as blocked rather than allowing stale inputs to
+reach downstream models.
+
+Each invocation writes a local JSON report atomically under `reports/`. The report
+contains one run ID, UTC stage timestamps, duration, return code and status. It is
+runtime evidence for this local process, not an external immutable audit log. The
+runner has no scheduler, retry policy, distributed executor or cross-run state.
