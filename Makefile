@@ -2,6 +2,7 @@
 .NOTPARALLEL: pipeline verify
 
 DBT_DATABASE ?= data/finance.duckdb
+PIPELINE_LOCK ?= reports/pipeline.lock
 DBT_SEND_ANONYMOUS_USAGE_STATS ?= false
 export DBT_SEND_ANONYMOUS_USAGE_STATS
 DBT_FLAGS = --project-dir . --profiles-dir config --target local
@@ -46,7 +47,7 @@ incremental-payment-check:
 	PYTHONPATH=src python -m finance_portfolio.incremental_payment_check --database $(DBT_DATABASE)
 
 pipeline:
-	PYTHONPATH=src python -m finance_portfolio.run_pipeline --database $(DBT_DATABASE)
+	PYTHONPATH=src python -m finance_portfolio.run_pipeline --database $(DBT_DATABASE) --lock $(PIPELINE_LOCK)
 
 check: lint test
 

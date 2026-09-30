@@ -7,7 +7,8 @@ import json
 import os
 import subprocess
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -52,6 +53,10 @@ class PipelineRun:
 
 
 StepRunner = Callable[[PipelineStep, Path], int]
+
+
+class PipelineLockedError(RuntimeError):
+    """Raised when another invocation already owns the local pipeline lock."""
 
 
 def build_steps(database: Path) -> tuple[PipelineStep, ...]:
@@ -168,17 +173,74 @@ def _write_report(report: PipelineRun, report_path: Path) -> None:
     temporary_path.replace(report_path)
 
 
+def _lock_metadata(run_id: str, started_at: str) -> dict[str, str | int]:
+    return {
+        "run_id": run_id,
+        "started_at": started_at,
+        "process_id": os.getpid(),
+    }
+
+
+@contextmanager
+def pipeline_lock(lock_path: Path, run_id: str, started_at: str) -> Iterator[None]:
+    """Own one atomic local lock for the duration of a pipeline invocation."""
+
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata = _lock_metadata(run_id, started_at)
+    try:
+        descriptor = os.open(
+            lock_path,
+            os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+            0o644,
+        )
+    except FileExistsError as error:
+        try:
+            existing = json.loads(lock_path.read_text(encoding="utf-8"))
+            owner = existing.get("run_id", "unknown")
+            owner_started_at = existing.get("started_at", "unknown")
+        except (OSError, json.JSONDecodeError, AttributeError):
+            owner = "unknown"
+            owner_started_at = "unknown"
+        raise PipelineLockedError(
+            f"Pipeline lock already exists at {lock_path}; "
+            f"owner run {owner}, started {owner_started_at}"
+        ) from error
+
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as lock_file:
+            json.dump(metadata, lock_file, indent=2)
+            lock_file.write("\n")
+            lock_file.flush()
+            os.fsync(lock_file.fileno())
+    except BaseException:
+        lock_path.unlink(missing_ok=True)
+        raise
+
+    try:
+        yield
+    finally:
+        try:
+            current = json.loads(lock_path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError, AttributeError):
+            current = {}
+        if current.get("run_id") == run_id:
+            lock_path.unlink(missing_ok=True)
+
+
 def run_pipeline(
     steps: Sequence[PipelineStep],
     project_root: Path,
     database: Path,
     report_path: Path,
     runner: StepRunner = execute_step,
+    run_id: str | None = None,
+    run_started_at: str | None = None,
 ) -> PipelineRun:
     """Run each ready step once and stop after the first failed stage."""
 
     ordered_steps = order_steps(steps)
-    run_started_at = _timestamp()
+    run_id = run_id or str(uuid4())
+    run_started_at = run_started_at or _timestamp()
     run_results: list[StepResult] = []
     failed = False
 
@@ -218,7 +280,7 @@ def run_pipeline(
         failed = return_code != 0
 
     report = PipelineRun(
-        run_id=str(uuid4()),
+        run_id=run_id,
         status="failed" if failed else "succeeded",
         started_at=run_started_at,
         finished_at=_timestamp(),
@@ -229,6 +291,30 @@ def run_pipeline(
     return report
 
 
+def run_pipeline_with_lock(
+    steps: Sequence[PipelineStep],
+    project_root: Path,
+    database: Path,
+    report_path: Path,
+    lock_path: Path,
+    runner: StepRunner = execute_step,
+) -> PipelineRun:
+    """Run the pipeline only when this invocation owns the local lock."""
+
+    run_id = str(uuid4())
+    run_started_at = _timestamp()
+    with pipeline_lock(lock_path, run_id, run_started_at):
+        return run_pipeline(
+            steps,
+            project_root,
+            database,
+            report_path,
+            runner=runner,
+            run_id=run_id,
+            run_started_at=run_started_at,
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, default=Path("data/finance.duckdb"))
@@ -237,16 +323,26 @@ def main() -> int:
         type=Path,
         default=Path("reports/latest-pipeline-run.json"),
     )
+    parser.add_argument(
+        "--lock",
+        type=Path,
+        default=Path("reports/pipeline.lock"),
+    )
     arguments = parser.parse_args()
 
     project_root = Path.cwd()
     database = arguments.database
-    report = run_pipeline(
-        build_steps(database),
-        project_root,
-        database,
-        arguments.report,
-    )
+    try:
+        report = run_pipeline_with_lock(
+            build_steps(database),
+            project_root,
+            database,
+            arguments.report,
+            arguments.lock,
+        )
+    except PipelineLockedError as error:
+        print(error, file=sys.stderr)
+        return 2
     print(f"Pipeline {report.status}; run report: {arguments.report}")
     return 0 if report.status == "succeeded" else 1
 

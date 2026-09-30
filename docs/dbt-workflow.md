@@ -220,3 +220,10 @@ failure propagation and database-path configuration.
 The Makefile exports `DBT_SEND_ANONYMOUS_USAGE_STATS=false` for the whole workflow,
 not only the two dbt stages in the runner. This also covers the later controlled
 scenario and documentation subprocesses.
+
+Before any of those stages run, the command atomically creates
+`reports/pipeline.lock`. This prevents two local invocations from writing to the
+same DuckDB workflow at once. A lock conflict returns exit code 2, includes the
+recorded owner run and start time in the error, and preserves the previous
+`latest-pipeline-run.json` rather than replacing known evidence with a rejected
+attempt. Locks are released after normal and handled-failure paths.

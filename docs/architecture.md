@@ -353,3 +353,17 @@ Each invocation writes a local JSON report atomically under `reports/`. The repo
 contains one run ID, UTC stage timestamps, duration, return code and status. It is
 runtime evidence for this local process, not an external immutable audit log. The
 runner has no scheduler, retry policy, distributed executor or cross-run state.
+
+## Day 37 addition
+
+The runner now acquires `reports/pipeline.lock` with an atomic create operation
+before it starts generation. The ignored lock contains the run ID, UTC start time
+and local process ID. If the file already exists, a second invocation exits with
+code 2 before any pipeline stage runs and does not overwrite the last completed
+run report.
+
+Normal completion and handled failure both release a lock owned by that run. The
+cleanup checks the run ID before deletion so one invocation cannot remove a lock
+that has been replaced by another owner. Abrupt process or machine termination can
+still leave a stale file. The runner deliberately does not infer liveness from age
+or delete stale locks automatically; that requires operator inspection.

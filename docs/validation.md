@@ -768,3 +768,27 @@ underlying DuckDB recovery-file limitation.
 The first local gate also showed that dbt's anonymous-usage opt-out had only been
 set in GitHub Actions and the runner's dbt stages. The Makefile now exports the
 opt-out to every scenario and documentation subprocess as well.
+
+## Pipeline concurrency lock — 30 September 2026
+
+Day 37 adds an atomic lock before the first pipeline stage. A controlled command-
+line overlap test held the lock under `controlled-owner`, attempted a second real
+runner invocation and received exit code 2. The rejected invocation did not create
+or open its target DuckDB database.
+
+The focused runner suite passed eight tests. These cover dependency execution,
+failure blocking, invalid dependency graphs, database configuration, lock
+contention, release after success, release after an exception and owner-aware
+cleanup. The full clean quality gate then passed:
+
+- 9 of 9 source-freshness checks;
+- 339 dbt data tests and 361 of 361 total dbt results;
+- all four controlled historical and incremental scenarios;
+- six incremental payment builds at 55 of 55 results each;
+- 33 Python tests;
+- Ruff; and
+- dbt documentation generation.
+
+The successful run removed its lock and retained a four-stage successful JSON
+report. Stale-lock deletion is not automated: process age alone is not enough to
+prove that a run is dead, and a false decision could reintroduce concurrent writes.
