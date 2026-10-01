@@ -51,10 +51,5 @@ pipeline:
 
 check: lint test
 
-verify: pipeline
-	$(MAKE) snapshot-history-check
-	$(MAKE) subscription-history-check
-	$(MAKE) subscription-removal-check
-	$(MAKE) incremental-payment-check
-	$(MAKE) check
-	$(MAKE) dbt-docs
+verify:
+	PYTHONPATH=src python -m finance_portfolio.run_pipeline --verify --database $(DBT_DATABASE) --lock $(PIPELINE_LOCK)

@@ -160,3 +160,37 @@ def test_pipeline_does_not_remove_a_lock_it_no_longer_owns(tmp_path: Path) -> No
         )
 
     assert json.loads(lock_path.read_text(encoding="utf-8")) == {"run_id": "replacement-run"}
+
+
+def test_verification_keeps_lock_during_post_build_checks(tmp_path: Path) -> None:
+    lock_path = tmp_path / "pipeline.lock"
+    steps = build_steps(Path("data/example.duckdb"), verify=True)
+    seen: list[str] = []
+
+    def check_overlap(step: PipelineStep, project_root: Path) -> int:
+        seen.append(step.name)
+        assert lock_path.exists()
+        if step.name == "incremental_payment_check":
+            with pytest.raises(PipelineLockedError):
+                run_pipeline_with_lock(
+                    build_steps(Path("data/second.duckdb")),
+                    tmp_path,
+                    Path("data/second.duckdb"),
+                    tmp_path / "second.json",
+                    lock_path,
+                    runner=lambda _step, _root: pytest.fail("overlapping run reached a stage"),
+                )
+        return 0
+
+    report = run_pipeline_with_lock(
+        steps,
+        tmp_path,
+        Path("data/example.duckdb"),
+        tmp_path / "run.json",
+        lock_path,
+        runner=check_overlap,
+    )
+    assert report.status == "succeeded"
+    assert seen[-3:] == ["lint", "python_tests", "dbt_docs"]
+    assert not lock_path.exists()
+    assert not (tmp_path / "second.json").exists()

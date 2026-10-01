@@ -227,3 +227,14 @@ same DuckDB workflow at once. A lock conflict returns exit code 2, includes the
 recorded owner run and start time in the error, and preserves the previous
 `latest-pipeline-run.json` rather than replacing known evidence with a rejected
 attempt. Locks are released after normal and handled-failure paths.
+
+## Complete verification lock
+
+`make verify` now passes `--verify` to the dependency runner. Its lock covers
+generation, load, freshness, dbt build, all four historical/incremental checks,
+Ruff, Python tests and documentation. The run report therefore includes eleven
+stages, rather than reporting success before the remaining checks have finished.
+
+`make pipeline` retains the four-stage build path. Individual commands are manual
+operations and do not acquire the runner lock; they should not be run concurrently
+against a shared workspace. The lock remains a local cooperative control.

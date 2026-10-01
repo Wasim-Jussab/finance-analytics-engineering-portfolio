@@ -792,3 +792,14 @@ cleanup. The full clean quality gate then passed:
 The successful run removed its lock and retained a four-stage successful JSON
 report. Stale-lock deletion is not automated: process age alone is not enough to
 prove that a run is dead, and a false decision could reintroduce concurrent writes.
+
+## Complete verification boundary — 1 October 2026
+
+Day 38 closes the gap between the four-stage pipeline lock and the remaining
+verification commands. An overlap attempt during the incremental scenario was
+rejected before any stage or second report was created. The focused runner suite
+passed 9 tests; the complete finance suite passed 34 Python tests, 9 freshness
+checks, 339 dbt data tests and 361 total dbt results, all historical/incremental
+scenarios, Ruff and documentation. A second full gate with an explicit diagnostic
+lock also checked its release in the same shell. GitHub Actions now checks the
+default lock is absent after verification.

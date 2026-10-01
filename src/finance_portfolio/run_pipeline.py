@@ -59,7 +59,7 @@ class PipelineLockedError(RuntimeError):
     """Raised when another invocation already owns the local pipeline lock."""
 
 
-def build_steps(database: Path) -> tuple[PipelineStep, ...]:
+def build_steps(database: Path, verify: bool = False) -> tuple[PipelineStep, ...]:
     """Return the current local pipeline with explicit dependencies."""
 
     dbt_flags = (
@@ -75,7 +75,7 @@ def build_steps(database: Path) -> tuple[PipelineStep, ...]:
         ("FINANCE_DUCKDB_PATH", str(database)),
         ("DBT_SEND_ANONYMOUS_USAGE_STATS", "false"),
     )
-    return (
+    steps = (
         PipelineStep(
             name="generate",
             command=(sys.executable, "-m", "finance_portfolio.generate_data"),
@@ -104,6 +104,42 @@ def build_steps(database: Path) -> tuple[PipelineStep, ...]:
             environment=dbt_environment,
         ),
     )
+    if not verify:
+        return steps
+
+    # Keep every database reader and scenario inside the same lock as ingestion.
+    checks = (
+        ("plan_history_check", "finance_portfolio.snapshot_history_check"),
+        ("agreement_history_check", "finance_portfolio.subscription_history_check"),
+        ("source_removal_check", "finance_portfolio.subscription_removal_check"),
+        ("incremental_payment_check", "finance_portfolio.incremental_payment_check"),
+    )
+    for name, module in checks:
+        steps += (
+            PipelineStep(
+                name,
+                (sys.executable, "-m", module, "--database", str(database)),
+                depends_on=(steps[-1].name,),
+                environment=dbt_environment,
+            ),
+        )
+    steps += (
+        PipelineStep("lint", ("ruff", "check", "."), depends_on=(steps[-1].name,)),
+        PipelineStep("python_tests", (sys.executable, "-m", "pytest"), depends_on=("lint",)),
+        PipelineStep(
+            "dbt_docs",
+            (
+                sys.executable,
+                "-m",
+                "finance_portfolio.generate_dbt_docs",
+                "--database",
+                str(database),
+            ),
+            depends_on=("python_tests",),
+            environment=dbt_environment,
+        ),
+    )
+    return steps
 
 
 def order_steps(steps: Sequence[PipelineStep]) -> tuple[PipelineStep, ...]:
@@ -319,6 +355,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, default=Path("data/finance.duckdb"))
     parser.add_argument(
+        "--verify", action="store_true", help="Hold the lock through all quality checks"
+    )
+    parser.add_argument(
         "--report",
         type=Path,
         default=Path("reports/latest-pipeline-run.json"),
@@ -334,7 +373,7 @@ def main() -> int:
     database = arguments.database
     try:
         report = run_pipeline_with_lock(
-            build_steps(database),
+            build_steps(database, verify=arguments.verify),
             project_root,
             database,
             arguments.report,
