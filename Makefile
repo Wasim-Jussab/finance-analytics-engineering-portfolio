@@ -1,4 +1,4 @@
-.PHONY: test lint format generate load dbt-debug dbt-freshness dbt-build dbt-docs snapshot-history-check subscription-history-check subscription-removal-check incremental-payment-check pipeline check verify
+.PHONY: test lint format generate load dbt-debug dbt-freshness dbt-build dbt-docs snapshot-history-check subscription-history-check subscription-removal-check incremental-payment-check pipeline check verify operations-test
 .NOTPARALLEL: pipeline verify
 
 DBT_DATABASE ?= data/finance.duckdb
@@ -6,6 +6,9 @@ DBT_FLAGS = --project-dir . --profiles-dir config --target local
 
 test:
 	python -m pytest
+
+operations-test:
+	python -m pytest projects/operations-assistant/tests
 
 lint:
 	ruff check .

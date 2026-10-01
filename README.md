@@ -59,6 +59,11 @@ Collections are cash received, not recognised revenue. Loan schedules are synthe
 
 ## Read further
 
+The companion [Operations Intelligence application](projects/operations-assistant/README.md)
+uses synthetic delivery data to expose governed metrics through a dashboard and
+read-only API. Its first increment contains deterministic reporting; local AI
+answers and their evaluation are the next stage.
+
 - [Implementation guide and model catalogue](docs/implementation-guide.md)
 - [Architecture](docs/architecture.md) · [Data contract](docs/data-contract.md) · [dbt workflow](docs/dbt-workflow.md)
 - [Loan reporting review](docs/loan-reporting-review.md) · [Thirty-day technical review](docs/30-day-review.md)
