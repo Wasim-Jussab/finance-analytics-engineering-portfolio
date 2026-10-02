@@ -194,3 +194,28 @@ def test_verification_keeps_lock_during_post_build_checks(tmp_path: Path) -> Non
     assert seen[-3:] == ["lint", "python_tests", "dbt_docs"]
     assert not lock_path.exists()
     assert not (tmp_path / "second.json").exists()
+
+
+def test_completed_runs_keep_success_and_failure_history(tmp_path: Path) -> None:
+    steps = (PipelineStep("load", ("load",)),)
+    latest = tmp_path / "latest.json"
+    first = run_pipeline(steps, tmp_path, Path("db"), latest, runner=lambda *_: 0)
+    original = (tmp_path / "runs" / f"{first.run_id}.json").read_bytes()
+    second = run_pipeline(steps, tmp_path, Path("db"), latest, runner=lambda *_: 3)
+    assert (tmp_path / "runs" / f"{first.run_id}.json").read_bytes() == original
+    assert json.loads(original)["status"] == "succeeded"
+    assert (
+        json.loads((tmp_path / "runs" / f"{second.run_id}.json").read_text())["status"] == "failed"
+    )
+    assert json.loads(latest.read_text())["run_id"] == second.run_id
+
+
+def test_archive_collision_does_not_replace_evidence_or_latest(tmp_path: Path) -> None:
+    steps = (PipelineStep("load", ("load",)),)
+    latest = tmp_path / "latest.json"
+    run_pipeline(steps, tmp_path, Path("db"), latest, runner=lambda *_: 0, run_id="same")
+    previous = latest.read_bytes()
+    with pytest.raises(FileExistsError):
+        run_pipeline(steps, tmp_path, Path("db"), latest, runner=lambda *_: 3, run_id="same")
+    assert latest.read_bytes() == previous
+    assert (tmp_path / "runs" / "same.json").read_bytes() == previous

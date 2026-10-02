@@ -803,3 +803,8 @@ checks, 339 dbt data tests and 361 total dbt results, all historical/incremental
 scenarios, Ruff and documentation. A second full gate with an explicit diagnostic
 lock also checked its release in the same shell. GitHub Actions now checks the
 default lock is absent after verification.
+
+
+## Day 39 — completed-run evidence
+
+The full 11-stage `make verify` gate passed: 9/9 source freshness checks, 361/361 dbt results (339 data tests), all history and incremental scenarios, Ruff, documentation and 36 Python tests. The runner's archived JSON exactly matched its latest report. Two new tests retain success and failure evidence and reject archive collisions without replacing the previous report.

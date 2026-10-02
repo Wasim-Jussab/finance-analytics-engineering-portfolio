@@ -200,10 +200,24 @@ def _timestamp() -> str:
 
 
 def _write_report(report: PipelineRun, report_path: Path) -> None:
+    # Preserve completed success/failure evidence before updating the latest pointer.
+    if not report.run_id or any(
+        character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+        for character in report.run_id
+    ):
+        raise ValueError("Run ID must be safe for an archive filename")
     report_path.parent.mkdir(parents=True, exist_ok=True)
+    archive_path = report_path.parent / "runs" / f"{report.run_id}.json"
+    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(asdict(report), indent=2) + "\n"
+    # Exclusive creation rejects reuse instead of silently replacing audit evidence.
+    with archive_path.open("x", encoding="utf-8") as archive:
+        archive.write(payload)
+        archive.flush()
+        os.fsync(archive.fileno())
     temporary_path = report_path.with_suffix(f"{report_path.suffix}.tmp")
     temporary_path.write_text(
-        json.dumps(asdict(report), indent=2) + "\n",
+        payload,
         encoding="utf-8",
     )
     temporary_path.replace(report_path)
