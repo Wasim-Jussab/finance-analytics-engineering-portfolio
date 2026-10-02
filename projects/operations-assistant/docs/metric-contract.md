@@ -65,3 +65,9 @@ replacement preservation, HTTP filter validation, missing data and dashboard del
 5. Measure latency and document failure behaviour.
 
 Model inference and evaluation scores will only be reported after actual execution.
+
+
+
+## Period comparison tools
+
+Tools share the dashboard service. Compare equally long, non-overlapping promised-date cohorts using the same region and fixed observation timestamp. Recompute each rate from its own counts; subtract rates and multiply by 100 for percentage-point change. Do not sum regional rate changes or interpret count differences as causal effects. Empty-period rate changes are null. Historical point-in-time performance cannot be reconstructed from this single snapshot. Requests reject unsupported tool names, extra keys and arbitrary SQL.

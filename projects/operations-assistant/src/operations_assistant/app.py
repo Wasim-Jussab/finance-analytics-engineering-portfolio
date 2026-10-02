@@ -12,11 +12,29 @@ from fastapi.responses import FileResponse
 
 from operations_assistant.generate import REGIONS
 from operations_assistant.metrics import summary
+from operations_assistant.tools import ToolRequest, execute_tool
 
 
 def create_app(database: Path | None = None) -> FastAPI:
     database = database or Path(os.environ.get("OPERATIONS_DATABASE", "data/operations.duckdb"))
     app = FastAPI(title="Operations Intelligence", version="0.1.0")
+
+    @app.get("/api/tools")
+    def tool_catalog() -> dict:
+        return {
+            "mode": "deterministic; AI not implemented",
+            "request_schema": ToolRequest.model_json_schema(),
+            "tools": ["delivery_summary", "compare_delivery_periods"],
+        }
+
+    @app.post("/api/tools/execute")
+    def run_tool(request: ToolRequest) -> dict:
+        try:
+            return execute_tool(database, request)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        except FileNotFoundError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
 
     @app.get("/", include_in_schema=False)
     def dashboard() -> FileResponse:

@@ -7,7 +7,7 @@ name = "operations-assistant"
 version = "0.1.0"
 description = "A local operations dashboard with governed delivery metrics."
 requires-python = ">=3.11"
-dependencies = ["duckdb>=1.5,<2", "fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
+dependencies = ["duckdb>=1.5,<2", "fastapi>=0.115,<1", "uvicorn>=0.30,<1", "pydantic>=2.8,<3"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "httpx>=0.27", "ruff>=0.9"]

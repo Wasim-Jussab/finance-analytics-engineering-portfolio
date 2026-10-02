@@ -8,12 +8,13 @@ I wanted a second project that shows someone using data to investigate a problem
 
 - Deterministic synthetic data: 448 shipments across four regions and two weeks.
 - Date and region filters shared by the dashboard and API.
+- Two approved read-only tools with validated arguments and weekly comparisons.
 - On-time completion, late delivery and overdue-open counts.
 - Regional breakdown, daily trend and inspectable exception records.
 - Validation before atomic snapshot replacement.
 - Tested period boundaries, denominator rules, empty results and invalid filters.
 
-**There is no language model in this increment.** The figures come from the metric service. The next stage will expose a small set of approved metric tools before adding and evaluating local model answers.
+**There is no language model in this increment.** The figures come from the metric service. The approved metric tools are now available; adding and evaluating local model answers is the next stage.
 
 ## Metric definition
 
@@ -45,3 +46,8 @@ For 21–27 September, the fixture produces 218 due shipments: 153 on time, 44 l
 This is one row per shipment, with one shipment per order assumed. Cancellation reflects current snapshot status; historical cancellation timing, partial shipments, returns and causal explanations are outside this increment.
 
 [Metric contract and validation](docs/metric-contract.md) · [First learning note](notes/day-01.md)
+
+
+## Approved tools
+
+`GET /api/tools` publishes the request schema. `POST /api/tools/execute` accepts `delivery_summary` or `compare_delivery_periods`, date boundaries and an optional region. Comparisons require equal-duration, non-overlapping periods and report rate changes in percentage points. SQL and unrecognised arguments are rejected. Try the endpoints in `/docs`. These tools still use deterministic calculations.
