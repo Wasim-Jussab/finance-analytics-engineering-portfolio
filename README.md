@@ -6,6 +6,8 @@ A reproducible finance reporting pipeline using **Python, DuckDB and dbt Core**,
 
 I work with financial reporting, SQL and data quality. This project brings those problems into a local warehouse: tracking subscription collections and agreement movements, then explaining loan payments against an explicit principal schedule.
 
+In development: [Operations reporting and governed metric tools](https://github.com/Wasim-Jussab/finance-analytics-engineering-portfolio/pull/15), currently in a separate draft PR. Model inference is not implemented.
+
 ## Questions the models answer
 
 - How many billing attempts completed, and how much was collected each month?
