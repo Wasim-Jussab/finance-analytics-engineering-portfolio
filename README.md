@@ -6,6 +6,8 @@ A reproducible finance reporting pipeline using **Python, DuckDB and dbt Core**,
 
 I work with financial reporting, SQL and data quality. This project brings those problems into a local warehouse: tracking subscription collections and agreement movements, then explaining loan payments against an explicit principal schedule.
 
+In development: [Operations reporting and governed metric tools](https://github.com/Wasim-Jussab/finance-analytics-engineering-portfolio/pull/15), currently in a separate draft PR. Model inference is not implemented.
+
 ## Questions the models answer
 
 - How many billing attempts completed, and how much was collected each month?
@@ -24,6 +26,7 @@ The implementation includes:
 - Keyed incremental payment merges handling late arrivals, corrections, absence and restoration.
 - Grain, relationship, chronology, freshness and financial reconciliation checks.
 - Isolated scenarios that exercise failure handling and changes across consecutive runs.
+- A fail-fast local runner with full-gate locking and retained run evidence.
 
 ## Example output
 
@@ -59,7 +62,9 @@ Collections are cash received, not recognised revenue. Loan schedules are synthe
 
 ## Read further
 
+- [Local pipeline runbook](docs/local-pipeline-runbook.md)
 - [Implementation guide and model catalogue](docs/implementation-guide.md)
 - [Architecture](docs/architecture.md) · [Data contract](docs/data-contract.md) · [dbt workflow](docs/dbt-workflow.md)
 - [Loan reporting review](docs/loan-reporting-review.md) · [Thirty-day technical review](docs/30-day-review.md)
 - [Learning notes](notes/) · [Working plan](docs/roadmap.md)
+
