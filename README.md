@@ -62,6 +62,7 @@ Collections are cash received, not recognised revenue. Loan schedules are synthe
 
 ## Read further
 
+- [Operations project](projects/operations-assistant/README.md)
 - [Local pipeline runbook](docs/local-pipeline-runbook.md)
 - [Implementation guide and model catalogue](docs/implementation-guide.md)
 - [Architecture](docs/architecture.md) · [Data contract](docs/data-contract.md) · [dbt workflow](docs/dbt-workflow.md)

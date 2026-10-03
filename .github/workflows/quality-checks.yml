@@ -26,12 +26,15 @@ jobs:
           cache: pip
 
       - name: Install project
-        run: python -m pip install -e ".[dev]"
+        run: python -m pip install -e ".[dev]" -e "projects/operations-assistant[dev]"
 
       - name: Run the complete quality gate
         run: |
           make verify
           test ! -e reports/pipeline.lock
+
+      - name: Validate operations metrics and evidence
+        run: make operations-test
 
       - name: Preserve completed pipeline evidence
         if: always()

@@ -53,3 +53,8 @@ check: lint test
 
 verify:
 	PYTHONPATH=src python -m finance_portfolio.run_pipeline --verify --database $(DBT_DATABASE) --lock $(PIPELINE_LOCK)
+
+
+.PHONY: operations-test
+operations-test:
+	python -m pytest projects/operations-assistant/tests
