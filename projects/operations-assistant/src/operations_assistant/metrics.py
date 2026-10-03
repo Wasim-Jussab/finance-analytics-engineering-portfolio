@@ -18,29 +18,34 @@ DEFINITION = (
 
 
 def summary(database: Path, start: date, end: date, region: str | None = None) -> dict:
-    if start >= end:
-        raise ValueError("Start must precede the exclusive end date")
-    if region is not None and region not in REGIONS:
-        raise ValueError("Unknown region")
     if not database.is_file():
         raise FileNotFoundError("Generate the synthetic snapshot before starting the application")
     with duckdb.connect(str(database), read_only=True) as connection:
         connection.execute("SET TimeZone='UTC'")
-        as_of = connection.execute("SELECT as_of FROM snapshot_metadata").fetchone()[0]
-        if end > as_of.date():
-            raise ValueError("Period must contain complete days within the snapshot")
-        rows = connection.execute(
-            """
-            SELECT shipment_id, region, promised_at, delivered_at, source_status
-            FROM shipments
-            WHERE promised_at >= CAST(? AS DATE)
-              AND promised_at < CAST(? AS DATE)
-              AND dispatched_at <= ?
-              AND (? IS NULL OR region = ?)
-            ORDER BY promised_at, region, shipment_id
-        """,
-            [start, end, as_of, region, region],
-        ).fetchall()
+        return summary_from_connection(connection, start, end, region)
+
+
+def summary_from_connection(connection, start: date, end: date, region: str | None = None):
+    """Use one held read-only connection for all cohorts in a tool invocation."""
+    if start >= end:
+        raise ValueError("Start must precede the exclusive end date")
+    if region is not None and region not in REGIONS:
+        raise ValueError("Unknown region")
+    as_of = connection.execute("SELECT as_of FROM snapshot_metadata").fetchone()[0]
+    if end > as_of.date():
+        raise ValueError("Period must contain complete days within the snapshot")
+    rows = connection.execute(
+        """
+        SELECT shipment_id, region, promised_at, delivered_at, source_status
+        FROM shipments
+        WHERE promised_at >= CAST(? AS DATE)
+          AND promised_at < CAST(? AS DATE)
+          AND dispatched_at <= ?
+          AND (? IS NULL OR region = ?)
+        ORDER BY promised_at, region, shipment_id
+    """,
+        [start, end, as_of, region, region],
+    ).fetchall()
 
     buckets: dict[str, dict] = {}
     days: dict[str, dict] = {}

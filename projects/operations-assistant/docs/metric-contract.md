@@ -71,3 +71,9 @@ Model inference and evaluation scores will only be reported after actual executi
 ## Period comparison tools
 
 Tools share the dashboard service. Compare equally long, non-overlapping promised-date cohorts using the same region and fixed observation timestamp. Recompute each rate from its own counts; subtract rates and multiply by 100 for percentage-point change. Do not sum regional rate changes or interpret count differences as causal effects. Empty-period rate changes are null. Historical point-in-time performance cannot be reconstructed from this single snapshot. Requests reject unsupported tool names, extra keys and arbitrary SQL.
+
+
+
+## Evidence envelope
+
+The tool holds one read-only connection for source fingerprinting and both cohorts. Atomic replacement of the source file cannot mix the periods within that invocation. SHA-256 snapshot IDs use sorted shipment rows and snapshot metadata; evidence IDs bind that snapshot, request, delivery-v1 contract and returned result. Repeated inputs produce stable IDs. These IDs provide identity and traceability, not digital signatures or correctness guarantees.

@@ -1,12 +1,15 @@
 """Approved read-only tools. No free-form SQL or model inference is accepted."""
 
+import hashlib
+import json
 from datetime import date
 from pathlib import Path
 from typing import Literal
 
+import duckdb
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from operations_assistant.metrics import summary
+from operations_assistant.metrics import summary_from_connection
 
 
 class ToolRequest(BaseModel):
@@ -39,10 +42,50 @@ class ToolRequest(BaseModel):
 
 
 def execute_tool(database: Path, request: ToolRequest) -> dict:
-    current = summary(database, request.start, request.end, request.region)
+    if not database.is_file():
+        raise FileNotFoundError("Generate the synthetic snapshot before starting the application")
+    with duckdb.connect(str(database), read_only=True) as connection:
+        connection.execute("SET TimeZone='UTC'")
+        source = {
+            "metadata": connection.execute("SELECT * FROM snapshot_metadata").fetchall(),
+            "shipments": connection.execute(
+                "SELECT * FROM shipments ORDER BY shipment_id"
+            ).fetchall(),
+        }
+        snapshot_id = hashlib.sha256(
+            json.dumps(source, sort_keys=True, default=str).encode()
+        ).hexdigest()
+        result = _execute_from_connection(connection, request)
+    evidence = {
+        "snapshot_id": snapshot_id,
+        "request": request.model_dump(mode="json"),
+        "result": result,
+        "contract_version": "delivery-v1",
+    }
+    evidence_id = hashlib.sha256(
+        json.dumps(evidence, sort_keys=True, default=str).encode()
+    ).hexdigest()
+    return {
+        **result,
+        "evidence": {
+            "evidence_id": evidence_id,
+            "snapshot_id": snapshot_id,
+            "request": request.model_dump(mode="json"),
+            "contract_version": "delivery-v1",
+            "source": "shipments",
+            "grain": "one row per shipment",
+            "mode": "deterministic; model inference not implemented",
+        },
+    }
+
+
+def _execute_from_connection(connection, request: ToolRequest) -> dict:
+    current = summary_from_connection(connection, request.start, request.end, request.region)
     if request.name == "delivery_summary":
         return {"tool": request.name, "mode": "deterministic", "result": current}
-    baseline = summary(database, request.baseline_start, request.baseline_end, request.region)
+    baseline = summary_from_connection(
+        connection, request.baseline_start, request.baseline_end, request.region
+    )
 
     def differences(before, after):
         old_rate, new_rate = before["on_time_rate"], after["on_time_rate"]
