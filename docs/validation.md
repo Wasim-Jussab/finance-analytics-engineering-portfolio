@@ -743,3 +743,68 @@ A narrow exploratory build also selected shared tests whose unrelated parent
 models had not been built in that disposable database. Those catalogue errors are
 not treated as quality evidence; the new aggregate's focused checks and the full
 project gate both passed.
+
+## Local pipeline orchestration — 29 September 2026
+
+The Day 36 runner completed generation, ingestion, source freshness and the full
+dbt build in dependency order. Its JSON result recorded four successful stages
+with zero return codes. The clean shared quality gate passed:
+
+- 9 of 9 source-freshness checks;
+- 339 dbt data tests and 361 of 361 total dbt results;
+- all four controlled historical and incremental scenarios;
+- six incremental payment builds at 55 of 55 results each;
+- 29 Python tests;
+- Ruff; and
+- dbt documentation generation.
+
+A genuine rerun against a reused disposable database reached the known DuckDB WAL
+replay conflict during ingestion. The run report retained the exact propagation:
+`generate` succeeded, `load` failed with return code 1, and `source_freshness` plus
+`dbt_build` were blocked and never attempted. A fresh database then passed the
+complete gate. This proves local stop-on-failure behaviour; it does not resolve the
+underlying DuckDB recovery-file limitation.
+
+The first local gate also showed that dbt's anonymous-usage opt-out had only been
+set in GitHub Actions and the runner's dbt stages. The Makefile now exports the
+opt-out to every scenario and documentation subprocess as well.
+
+## Pipeline concurrency lock — 30 September 2026
+
+Day 37 adds an atomic lock before the first pipeline stage. A controlled command-
+line overlap test held the lock under `controlled-owner`, attempted a second real
+runner invocation and received exit code 2. The rejected invocation did not create
+or open its target DuckDB database.
+
+The focused runner suite passed eight tests. These cover dependency execution,
+failure blocking, invalid dependency graphs, database configuration, lock
+contention, release after success, release after an exception and owner-aware
+cleanup. The full clean quality gate then passed:
+
+- 9 of 9 source-freshness checks;
+- 339 dbt data tests and 361 of 361 total dbt results;
+- all four controlled historical and incremental scenarios;
+- six incremental payment builds at 55 of 55 results each;
+- 33 Python tests;
+- Ruff; and
+- dbt documentation generation.
+
+The successful run removed its lock and retained a four-stage successful JSON
+report. Stale-lock deletion is not automated: process age alone is not enough to
+prove that a run is dead, and a false decision could reintroduce concurrent writes.
+
+## Complete verification boundary — 1 October 2026
+
+Day 38 closes the gap between the four-stage pipeline lock and the remaining
+verification commands. An overlap attempt during the incremental scenario was
+rejected before any stage or second report was created. The focused runner suite
+passed 9 tests; the complete finance suite passed 34 Python tests, 9 freshness
+checks, 339 dbt data tests and 361 total dbt results, all historical/incremental
+scenarios, Ruff and documentation. A second full gate with an explicit diagnostic
+lock also checked its release in the same shell. GitHub Actions now checks the
+default lock is absent after verification.
+
+
+## Day 39 — completed-run evidence
+
+The full 11-stage `make verify` gate passed: 9/9 source freshness checks, 361/361 dbt results (339 data tests), all history and incremental scenarios, Ruff, documentation and 36 Python tests. The runner's archived JSON exactly matched its latest report. Two new tests retain success and failure evidence and reject archive collisions without replacing the previous report.
