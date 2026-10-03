@@ -8,3 +8,5 @@ I tested repeatability, filter changes and replacement data. A controlled replac
 
 No model inference is present. These structured results are the evidence an eventual answer layer will cite.
 
+
+After the finance milestone merged, the shared workflow conflicted. I incorporated its full-gate locking and report upload while retaining the separate operations tests and both package installs. The combined branch is validated before publishing.

@@ -1,14 +1,14 @@
-.PHONY: test lint format generate load dbt-debug dbt-freshness dbt-build dbt-docs snapshot-history-check subscription-history-check subscription-removal-check incremental-payment-check pipeline check verify operations-test
+.PHONY: test lint format generate load dbt-debug dbt-freshness dbt-build dbt-docs snapshot-history-check subscription-history-check subscription-removal-check incremental-payment-check pipeline check verify
 .NOTPARALLEL: pipeline verify
 
 DBT_DATABASE ?= data/finance.duckdb
+PIPELINE_LOCK ?= reports/pipeline.lock
+DBT_SEND_ANONYMOUS_USAGE_STATS ?= false
+export DBT_SEND_ANONYMOUS_USAGE_STATS
 DBT_FLAGS = --project-dir . --profiles-dir config --target local
 
 test:
 	python -m pytest
-
-operations-test:
-	python -m pytest projects/operations-assistant/tests
 
 lint:
 	ruff check .
@@ -46,14 +46,15 @@ subscription-removal-check:
 incremental-payment-check:
 	PYTHONPATH=src python -m finance_portfolio.incremental_payment_check --database $(DBT_DATABASE)
 
-pipeline: generate load dbt-freshness dbt-build
+pipeline:
+	PYTHONPATH=src python -m finance_portfolio.run_pipeline --database $(DBT_DATABASE) --lock $(PIPELINE_LOCK)
 
 check: lint test
 
-verify: pipeline
-	$(MAKE) snapshot-history-check
-	$(MAKE) subscription-history-check
-	$(MAKE) subscription-removal-check
-	$(MAKE) incremental-payment-check
-	$(MAKE) check
-	$(MAKE) dbt-docs
+verify:
+	PYTHONPATH=src python -m finance_portfolio.run_pipeline --verify --database $(DBT_DATABASE) --lock $(PIPELINE_LOCK)
+
+
+.PHONY: operations-test
+operations-test:
+	python -m pytest projects/operations-assistant/tests
