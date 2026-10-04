@@ -10,6 +10,7 @@ from typing import Annotated
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 
+from operations_assistant.answers import render_answer
 from operations_assistant.generate import REGIONS
 from operations_assistant.metrics import summary
 from operations_assistant.tools import ToolRequest, execute_tool
@@ -31,6 +32,15 @@ def create_app(database: Path | None = None) -> FastAPI:
     def run_tool(request: ToolRequest) -> dict:
         try:
             return execute_tool(database, request)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        except FileNotFoundError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+
+    @app.post("/api/answers")
+    def answer(request: ToolRequest) -> dict:
+        try:
+            return render_answer(execute_tool(database, request))
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
         except FileNotFoundError as error:

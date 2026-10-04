@@ -10,12 +10,13 @@ I wanted a second project that shows someone using data to investigate a problem
 - Date and region filters shared by the dashboard and API.
 - Two approved read-only tools with validated arguments and weekly comparisons.
 - Traceable snapshot/request evidence IDs and one consistent snapshot per tool call.
+- Evidence-cited answer templates with executable grounding checks.
 - On-time completion, late delivery and overdue-open counts.
 - Regional breakdown, daily trend and inspectable exception records.
 - Validation before atomic snapshot replacement.
 - Tested period boundaries, denominator rules, empty results and invalid filters.
 
-**There is no language model in this increment.** The figures come from the metric service. The approved metric tools are now available; adding and evaluating local model answers is the next stage.
+**There is no language model in this increment.** The figures and prose come from deterministic metric and template services. The answer contract and grounding checks are now ready for a later local model adapter.
 
 ## Metric definition
 
@@ -33,6 +34,7 @@ python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
 make test
+make evaluate
 make demo
 ```
 
@@ -55,3 +57,5 @@ This is one row per shipment, with one shipment per order assumed. Cancellation 
 
 
 Tool responses include snapshot and evidence IDs, the validated request and contract version. They identify the exact deterministic result; they are not proof of correctness or model inference.
+
+`POST /api/answers` renders a fixed, evidence-cited answer from either approved tool. The [grounding evaluation](docs/answer-grounding.md) executes four cases and records exact-claim and disclosure checks. Passing it does not constitute model evaluation because no model is invoked.

@@ -34,7 +34,16 @@ jobs:
           test ! -e reports/pipeline.lock
 
       - name: Validate operations metrics and evidence
-        run: make operations-test
+        run: make operations-verify
+
+      - name: Preserve operations answer evaluation
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: operations-evaluation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: projects/operations-assistant/reports/answer-evaluation.json
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Preserve completed pipeline evidence
         if: always()
