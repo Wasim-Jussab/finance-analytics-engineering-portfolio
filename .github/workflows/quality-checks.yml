@@ -33,6 +33,10 @@ jobs:
           make verify
           test ! -e reports/pipeline.lock
 
+      - name: Summarise completed pipeline health
+        if: always()
+        run: make pipeline-health
+
       - name: Preserve completed pipeline evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -41,5 +45,6 @@ jobs:
           path: |
             reports/latest-pipeline-run.json
             reports/runs/*.json
+            reports/pipeline-health.json
           if-no-files-found: warn
           retention-days: 7

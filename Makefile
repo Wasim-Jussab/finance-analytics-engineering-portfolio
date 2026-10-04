@@ -1,4 +1,4 @@
-.PHONY: test lint format generate load dbt-debug dbt-freshness dbt-build dbt-docs snapshot-history-check subscription-history-check subscription-removal-check incremental-payment-check pipeline check verify
+.PHONY: test lint format generate load dbt-debug dbt-freshness dbt-build dbt-docs snapshot-history-check subscription-history-check subscription-removal-check incremental-payment-check pipeline pipeline-health check verify
 .NOTPARALLEL: pipeline verify
 
 DBT_DATABASE ?= data/finance.duckdb
@@ -48,6 +48,9 @@ incremental-payment-check:
 
 pipeline:
 	PYTHONPATH=src python -m finance_portfolio.run_pipeline --database $(DBT_DATABASE) --lock $(PIPELINE_LOCK)
+
+pipeline-health:
+	PYTHONPATH=src python -m finance_portfolio.pipeline_health
 
 check: lint test
 
