@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Operations Intelligence · Delivery performance</title>
+<style>
+:root{color-scheme:dark;--bg:#0c141e;--card:#142131;--line:#27394c;--muted:#a7b6c8;--ink:#f1f5f9;--teal:#61e0c5;--amber:#f5be66}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,sans-serif}
+main{max-width:1180px;margin:auto;padding:38px 24px}header{display:flex;justify-content:space-between;align-items:start;gap:20px}
+h1{font-size:30px;font-weight:650;margin:8px 0}h2{font-size:19px;margin:0 0 18px}.eyebrow{color:var(--teal);font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+p{color:var(--muted);margin:8px 0}.tag{border:1px solid var(--line);border-radius:24px;padding:7px 13px;font-size:12px;color:var(--teal)}
+.filters,.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;margin-top:24px}
+.filters{display:flex;gap:20px;align-items:end;flex-wrap:wrap}label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:7px}
+input,select,button{font:inherit;border-radius:7px;border:1px solid var(--line);padding:10px 13px;background:#0f1a28;color:var(--ink)}
+button{background:var(--teal);color:#0b2521;font-weight:650;cursor:pointer}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px}.card span{color:var(--muted);font-size:13px}.card strong{display:block;font-size:32px;margin:8px 0}.card small{color:var(--muted)}
+.accent{color:var(--teal)}.warning{color:var(--amber)}.grid{display:grid;grid-template-columns:1.4fr 1fr;gap:20px}.scroll{overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:right;padding:13px 9px;border-bottom:1px solid var(--line);white-space:nowrap}th{font-weight:500;color:var(--muted)}th:first-child,td:first-child{text-align:left}
+caption{text-align:left;color:var(--muted);font-size:12px;margin-bottom:10px}svg{width:100%;height:auto}details{margin-top:24px;color:var(--muted)}summary{cursor:pointer;color:var(--ink)}
+.error{color:#ffb8aa}footer{font-size:12px;color:var(--muted);margin-top:28px}a{color:var(--teal)}#empty{padding:20px;color:var(--muted)}
+@media(max-width:800px){.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}header{flex-direction:column}}
+</style>
+</head>
+<body><main>
+<header><div><div class="eyebrow">Operations Intelligence / First increment</div><h1>Delivery performance</h1>
+<p>Find missed promises. Inspect the underlying shipments.</p></div><span class="tag">Synthetic data · Read-only</span></header>
+<form class="filters" id="filters">
+<label>Promised date from<input type="date" id="start" value="2026-09-21" required></label>
+<label>Before this date (exclusive)<input type="date" id="end" value="2026-09-28" required></label>
+<label>Delivery region<select id="region"><option value="">All regions</option><option>London</option><option>Midlands</option><option>North</option><option>South</option></select></label>
+<button type="submit">Update view</button></form>
+<p id="status" role="status" aria-live="polite">Loading the local snapshot…</p>
+<div id="results" hidden>
+<section class="cards" aria-label="Delivery indicators">
+<div class="card"><span>On-time completion</span><strong id="rate" class="accent"></strong><small>Completed by promise / all due</small></div>
+<div class="card"><span>Shipments due</span><strong id="due"></strong><small>Cancelled shipments excluded</small></div>
+<div class="card"><span>Late deliveries</span><strong id="late" class="warning"></strong><small>Delivered after their promise</small></div>
+<div class="card"><span>Overdue and open</span><strong id="open" class="warning"></strong><small>Still open at the snapshot date</small></div>
+</section>
+<div class="grid">
+<section class="panel"><h2>Where promises were missed</h2><div class="scroll"><table>
+<caption>Every region reconciles due = on time + late + overdue open.</caption>
+<thead><tr><th>Region</th><th>Due</th><th>On time</th><th>Late</th><th>Open</th><th>Rate</th></tr></thead><tbody id="regions"></tbody>
+</table></div></section>
+<section class="panel"><h2>Completion by promised date</h2><div id="trend"></div><p style="font-size:12px">Daily rates use each day's due population; they are not averaged to produce the overall rate.</p></section>
+</div>
+<section class="panel"><h2>Shipments to investigate</h2><p id="exception-note"></p><div class="scroll"><table>
+<thead><tr><th>Shipment</th><th>Region</th><th>Promised at (UTC)</th><th>Observed outcome</th></tr></thead><tbody id="exceptions"></tbody>
+</table></div></section>
+<details><summary>Metric definition and evidence</summary><p id="definition"></p><p id="evidence"></p>
+<p>One row per dispatched shipment. This fixture assumes one shipment per order. Cancellation reflects current snapshot status; past cancellation populations cannot be reconstructed.</p></details>
+</div>
+<footer>This increment contains deterministic reporting. Language-model answers, causal explanations and production access controls have not been implemented. <a href="/docs">Inspect the API</a>.</footer>
+</main>
+<script>
+const percent = n => n === null ? '—' : (n*100).toFixed(1)+'%';
+function cells(row,values){for(const value of values){const cell=document.createElement('td');cell.textContent=String(value);row.appendChild(cell)}}
+function populate(id,rows){const body=document.getElementById(id);body.replaceChildren();for(const values of rows){const row=document.createElement('tr');cells(row,values);body.appendChild(row)}}
+function trend(days){
+ const root=document.getElementById('trend');root.replaceChildren();
+ if(!days.length){root.textContent='No shipments in this period.';return}
+ const ns='http://www.w3.org/2000/svg';const svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 350 190');svg.setAttribute('role','img');svg.setAttribute('aria-label','Daily on-time completion rate; values available in the API');
+ const points=days.filter(d=>d.on_time_rate!==null).map((d,i)=>[28+i*290/Math.max(days.length-1,1),145-d.on_time_rate*120,d]);
+ for(const y of [25,85,145]){const line=document.createElementNS(ns,'line');for(const [k,v] of Object.entries({x1:28,x2:320,y1:y,y2:y,stroke:'#27394c'}))line.setAttribute(k,v);svg.appendChild(line)}
+ const path=document.createElementNS(ns,'polyline');path.setAttribute('points',points.map(p=>p.slice(0,2).join(',')).join(' '));path.setAttribute('fill','none');path.setAttribute('stroke','#61e0c5');path.setAttribute('stroke-width','3');svg.appendChild(path);
+ for(const [x,y,d] of points){const c=document.createElementNS(ns,'circle');c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',4);c.setAttribute('fill','#61e0c5');const t=document.createElementNS(ns,'title');t.textContent=d.date+': '+percent(d.on_time_rate);c.appendChild(t);svg.appendChild(c)}
+ for(const [x,y,text] of [[1,29,'100%'],[1,89,'50%'],[1,149,'0%'],[28,177,days[0].date.slice(5)],[276,177,days.at(-1).date.slice(5)]]){const t=document.createElementNS(ns,'text');t.setAttribute('x',x);t.setAttribute('y',y);t.setAttribute('fill','#a7b6c8');t.setAttribute('font-size',10);t.textContent=text;svg.appendChild(t)}root.appendChild(svg);
+}
+async function refresh(event){
+ if(event)event.preventDefault();const status=document.getElementById('status');const results=document.getElementById('results');results.hidden=true;status.className='';status.textContent='Loading the local snapshot…';
+ const params=new URLSearchParams({start:document.getElementById('start').value,end:document.getElementById('end').value});const region=document.getElementById('region').value;if(region)params.set('region',region);
+ try{const response=await fetch('/api/metrics?'+params);const data=await response.json();if(!response.ok)throw new Error(typeof data.detail==='string'?data.detail:'Check the period dates.');
+ document.getElementById('rate').textContent=percent(data.totals.on_time_rate);document.getElementById('due').textContent=data.totals.due;document.getElementById('late').textContent=data.totals.late_delivered;document.getElementById('open').textContent=data.totals.overdue_open;
+ populate('regions',data.regions.map(r=>[r.region,r.due,r.on_time,r.late_delivered,r.overdue_open,percent(r.on_time_rate)]));
+ populate('exceptions',data.exceptions.slice(0,50).map(r=>[r.shipment_id,r.region,r.promised_at.slice(0,16).replace('T',' '),r.outcome==='overdue_open'?'Overdue open':'Late delivered']));
+ document.getElementById('exception-note').textContent='Showing '+Math.min(50,data.exceptions.length)+' of '+data.exceptions.length+' exceptions, oldest promise first.';
+ document.getElementById('definition').textContent=data.definition;document.getElementById('evidence').textContent='Source: '+data.evidence.source+' · Observed rows: '+data.evidence.observed_rows+' · Cancelled rows excluded: '+data.evidence.cancelled_rows_excluded;
+ trend(data.daily);status.textContent='Snapshot as of '+data.as_of+' · UTC promised-date cohort · '+data.totals.cancelled+' cancellations excluded';results.hidden=false;
+ }catch(error){status.className='error';status.textContent=error.message}
+}
+document.getElementById('filters').addEventListener('submit',refresh);refresh();
+</script></body></html>
