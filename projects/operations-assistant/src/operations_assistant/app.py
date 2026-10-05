@@ -1,4 +1,4 @@
-"""Local read-only reporting API. No language model is used in this increment."""
+"""Local read-only reporting API with narrow intent-model routing."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 
 from operations_assistant.answers import render_answer
 from operations_assistant.generate import REGIONS
+from operations_assistant.intent import LocalIntentModel, QuestionRequest, UnsupportedQuestionError
 from operations_assistant.metrics import summary
 from operations_assistant.tools import ToolRequest, execute_tool
 
@@ -19,6 +20,7 @@ from operations_assistant.tools import ToolRequest, execute_tool
 def create_app(database: Path | None = None) -> FastAPI:
     database = database or Path(os.environ.get("OPERATIONS_DATABASE", "data/operations.duckdb"))
     app = FastAPI(title="Operations Intelligence", version="0.1.0")
+    intent_model = LocalIntentModel()
 
     @app.get("/api/tools")
     def tool_catalog() -> dict:
@@ -41,6 +43,19 @@ def create_app(database: Path | None = None) -> FastAPI:
     def answer(request: ToolRequest) -> dict:
         try:
             return render_answer(execute_tool(database, request))
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        except FileNotFoundError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+
+    @app.post("/api/questions")
+    def question(request: QuestionRequest) -> dict:
+        try:
+            tool_request, routing = intent_model.plan(request)
+            answer_result = render_answer(execute_tool(database, tool_request))
+            return {"routing": routing, **answer_result}
+        except UnsupportedQuestionError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
         except FileNotFoundError as error:

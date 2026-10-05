@@ -8,6 +8,7 @@ test:
 
 evaluate: data
 	python -m operations_assistant.evaluation
+	python -m operations_assistant.intent_evaluation
 
 verify: test evaluate
 

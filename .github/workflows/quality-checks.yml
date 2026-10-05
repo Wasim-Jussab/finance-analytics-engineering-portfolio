@@ -41,7 +41,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: operations-evaluation-${{ github.run_id }}-${{ github.run_attempt }}
-          path: projects/operations-assistant/reports/answer-evaluation.json
+          path: projects/operations-assistant/reports/*.json
           if-no-files-found: warn
           retention-days: 7
 
