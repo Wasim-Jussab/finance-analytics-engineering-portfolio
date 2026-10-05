@@ -1,0 +1,11 @@
+{
+  "minimum_completed_runs": 1,
+  "maximum_failure_rate": 0.2,
+  "require_latest_success": true,
+  "stage_max_duration_seconds": {
+    "dbt_build": 120,
+    "incremental_payment_check": 180,
+    "python_tests": 60,
+    "source_freshness": 60
+  }
+}

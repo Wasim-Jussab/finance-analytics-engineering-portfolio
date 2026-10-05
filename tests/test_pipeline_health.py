@@ -3,7 +3,12 @@ from pathlib import Path
 
 import pytest
 
-from finance_portfolio.pipeline_health import build_health_summary, write_health_summary
+from finance_portfolio.pipeline_health import (
+    build_health_summary,
+    evaluate_health,
+    load_policy,
+    write_health_summary,
+)
 
 
 def _report(run_id: str, status: str, finished: str, duration: float = 2.0) -> dict:
@@ -117,3 +122,88 @@ def test_failed_refresh_preserves_previous_health_summary(tmp_path: Path) -> Non
         write_health_summary(reports, output)
 
     assert output.read_bytes() == original
+
+
+def test_health_policy_reports_each_breach_without_hiding_evidence(tmp_path: Path) -> None:
+    reports = tmp_path / "runs"
+    _write(reports, _report("failed", "failed", "2026-10-04T16:00:03+00:00", 3.0))
+    summary = build_health_summary(reports)
+    policy = {
+        "minimum_completed_runs": 2,
+        "maximum_failure_rate": 0.25,
+        "require_latest_success": True,
+        "stage_max_duration_seconds": {"generate": 2.0},
+    }
+
+    result = evaluate_health(summary, policy)
+
+    assert result["status"] == "degraded"
+    assert [breach["check"] for breach in result["breaches"]] == [
+        "minimum_completed_runs",
+        "maximum_failure_rate",
+        "require_latest_success",
+        "stage_max_duration_seconds",
+    ]
+
+
+def test_health_policy_passes_at_inclusive_thresholds(tmp_path: Path) -> None:
+    reports = tmp_path / "runs"
+    _write(reports, _report("first", "failed", "2026-10-04T15:00:03+00:00", 2.0))
+    _write(reports, _report("latest", "succeeded", "2026-10-04T16:00:03+00:00", 2.0))
+    policy = {
+        "minimum_completed_runs": 2,
+        "maximum_failure_rate": 0.5,
+        "require_latest_success": True,
+        "stage_max_duration_seconds": {"generate": 2.0},
+    }
+
+    assert evaluate_health(build_health_summary(reports), policy)["status"] == "healthy"
+
+
+@pytest.mark.parametrize(
+    "change, message",
+    [
+        ({"minimum_completed_runs": 0}, "positive integer"),
+        ({"maximum_failure_rate": 1.1}, "between 0 and 1"),
+        ({"require_latest_success": "yes"}, "true or false"),
+        ({"stage_max_duration_seconds": {"dbt_build": 0}}, "positive numbers"),
+    ],
+)
+def test_health_policy_rejects_invalid_thresholds(
+    tmp_path: Path, change: dict, message: str
+) -> None:
+    policy = {
+        "minimum_completed_runs": 1,
+        "maximum_failure_rate": 0.2,
+        "require_latest_success": True,
+        "stage_max_duration_seconds": {},
+        **change,
+    }
+    path = tmp_path / "policy.json"
+    path.write_text(json.dumps(policy), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        load_policy(path)
+
+
+def test_written_summary_contains_policy_result(tmp_path: Path) -> None:
+    reports = tmp_path / "runs"
+    output = tmp_path / "health.json"
+    policy_path = tmp_path / "policy.json"
+    _write(reports, _report("valid", "succeeded", "2026-10-04T15:00:03+00:00"))
+    policy_path.write_text(
+        json.dumps(
+            {
+                "minimum_completed_runs": 1,
+                "maximum_failure_rate": 0,
+                "require_latest_success": True,
+                "stage_max_duration_seconds": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = write_health_summary(reports, output, policy_path)
+
+    assert summary["policy"]["status"] == "healthy"
+    assert json.loads(output.read_text(encoding="utf-8")) == summary

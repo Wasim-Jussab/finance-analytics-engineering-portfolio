@@ -14,3 +14,9 @@ make pipeline-health
 ```
 
 Any malformed archive stops the refresh. The previous summary is left intact so corrupt evidence is not silently omitted.
+
+## Policy gate
+
+`config/pipeline-health-policy.json` contains the minimum completed-run count, maximum failure rate, latest-run requirement and selected stage-duration budgets. The command records every breach in the output and exits non-zero when the result is degraded, so local runs and GitHub Actions use the same decision.
+
+Threshold comparisons are inclusive: a failure rate or stage duration exactly at its limit passes. Missing stages are not treated as fast or healthy; they remain outside duration evaluation and the completed-run count stays visible. These repository thresholds are quality controls, not operational uptime targets.

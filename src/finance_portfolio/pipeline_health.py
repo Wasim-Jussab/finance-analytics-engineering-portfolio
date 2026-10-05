@@ -13,6 +13,97 @@ RUN_STATUSES = {"succeeded", "failed"}
 STEP_STATUSES = {"succeeded", "failed", "blocked"}
 
 
+def load_policy(path: Path) -> dict:
+    """Load and validate the small, versioned pipeline-health policy."""
+
+    try:
+        policy = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"Could not read pipeline health policy {path}: {error}") from error
+    required = {
+        "minimum_completed_runs",
+        "maximum_failure_rate",
+        "require_latest_success",
+        "stage_max_duration_seconds",
+    }
+    if not isinstance(policy, dict) or set(policy) != required:
+        raise ValueError(f"Pipeline health policy must contain exactly: {sorted(required)}")
+    minimum = policy["minimum_completed_runs"]
+    failure_rate = policy["maximum_failure_rate"]
+    durations = policy["stage_max_duration_seconds"]
+    if not isinstance(minimum, int) or isinstance(minimum, bool) or minimum < 1:
+        raise ValueError("minimum_completed_runs must be a positive integer")
+    if (
+        not isinstance(failure_rate, (int, float))
+        or isinstance(failure_rate, bool)
+        or not 0 <= failure_rate <= 1
+    ):
+        raise ValueError("maximum_failure_rate must be between 0 and 1")
+    if not isinstance(policy["require_latest_success"], bool):
+        raise ValueError("require_latest_success must be true or false")
+    if not isinstance(durations, dict) or any(
+        not isinstance(name, str)
+        or not name
+        or not isinstance(limit, (int, float))
+        or isinstance(limit, bool)
+        or limit <= 0
+        for name, limit in durations.items()
+    ):
+        raise ValueError("stage_max_duration_seconds must map stage names to positive numbers")
+    return policy
+
+
+def evaluate_health(summary: dict, policy: dict) -> dict:
+    """Evaluate completed-run evidence against explicit, non-SLO thresholds."""
+
+    breaches = []
+    if summary["total_runs"] < policy["minimum_completed_runs"]:
+        breaches.append(
+            {
+                "check": "minimum_completed_runs",
+                "observed": summary["total_runs"],
+                "threshold": policy["minimum_completed_runs"],
+            }
+        )
+    failure_rate = summary["failed_runs"] / summary["total_runs"]
+    if failure_rate > policy["maximum_failure_rate"]:
+        breaches.append(
+            {
+                "check": "maximum_failure_rate",
+                "observed": round(failure_rate, 4),
+                "threshold": policy["maximum_failure_rate"],
+            }
+        )
+    if policy["require_latest_success"] and summary["latest_run"]["status"] != "succeeded":
+        breaches.append(
+            {
+                "check": "require_latest_success",
+                "observed": summary["latest_run"]["status"],
+                "threshold": "succeeded",
+            }
+        )
+    stages = {stage["name"]: stage for stage in summary["stages"]}
+    for name, limit in sorted(policy["stage_max_duration_seconds"].items()):
+        observed = stages.get(name, {}).get("max_duration_seconds")
+        if observed is not None and observed > limit:
+            breaches.append(
+                {
+                    "check": "stage_max_duration_seconds",
+                    "stage": name,
+                    "observed": observed,
+                    "threshold": limit,
+                }
+            )
+    return {
+        "status": "healthy" if not breaches else "degraded",
+        "breaches": breaches,
+        "criteria": policy,
+        "interpretation": (
+            "Repository quality policy over completed-run evidence; not an availability SLO."
+        ),
+    }
+
+
 def _timestamp(value: object, field: str) -> datetime:
     if not isinstance(value, str):
         raise ValueError(f"{field} must be an ISO timestamp")
@@ -135,10 +226,14 @@ def build_health_summary(report_directory: Path) -> dict:
     }
 
 
-def write_health_summary(report_directory: Path, output_path: Path) -> dict:
+def write_health_summary(
+    report_directory: Path, output_path: Path, policy_path: Path | None = None
+) -> dict:
     """Write a summary atomically, leaving an existing file intact on validation failure."""
 
     summary = build_health_summary(report_directory)
+    if policy_path is not None:
+        summary["policy"] = evaluate_health(summary, load_policy(policy_path))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary = output_path.with_suffix(f"{output_path.suffix}.tmp")
     temporary.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
@@ -150,12 +245,20 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reports", type=Path, default=Path("reports/runs"))
     parser.add_argument("--output", type=Path, default=Path("reports/pipeline-health.json"))
+    parser.add_argument(
+        "--policy",
+        type=Path,
+        default=Path("config/pipeline-health-policy.json"),
+    )
     arguments = parser.parse_args()
-    summary = write_health_summary(arguments.reports, arguments.output)
+    summary = write_health_summary(arguments.reports, arguments.output, arguments.policy)
     print(
         f"Pipeline health: {summary['succeeded_runs']}/{summary['total_runs']} "
         f"completed runs succeeded; summary: {arguments.output}"
     )
+    if summary["policy"]["status"] == "degraded":
+        print(f"Pipeline health policy failed with {len(summary['policy']['breaches'])} breach(es)")
+        return 1
     return 0
 
 
