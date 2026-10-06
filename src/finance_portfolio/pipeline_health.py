@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from collections import Counter, defaultdict
 from datetime import datetime
@@ -11,6 +12,33 @@ from statistics import median
 
 RUN_STATUSES = {"succeeded", "failed"}
 STEP_STATUSES = {"succeeded", "failed", "blocked"}
+EVALUATOR_VERSION = "1.0.0"
+
+
+def _sha256(path: Path) -> str:
+    """Return the exact artifact fingerprint without including its local path."""
+
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _decision_evidence(report_directory: Path, policy_path: Path, result: dict) -> dict:
+    """Describe the exact inputs used for a reproducible policy decision."""
+
+    reports = [
+        {"run_id": path.stem, "sha256": _sha256(path)}
+        for path in sorted(report_directory.glob("*.json"))
+    ]
+    inputs = {
+        "evaluator_version": EVALUATOR_VERSION,
+        "policy_sha256": _sha256(policy_path),
+        "reports": reports,
+        "status": result["status"],
+        "breaches": result["breaches"],
+    }
+    decision_id = hashlib.sha256(
+        json.dumps(inputs, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return {"decision_id": decision_id, **inputs}
 
 
 def load_policy(path: Path) -> dict:
@@ -233,7 +261,11 @@ def write_health_summary(
 
     summary = build_health_summary(report_directory)
     if policy_path is not None:
-        summary["policy"] = evaluate_health(summary, load_policy(policy_path))
+        policy_result = evaluate_health(summary, load_policy(policy_path))
+        summary["policy"] = policy_result
+        summary["decision_evidence"] = _decision_evidence(
+            report_directory, policy_path, policy_result
+        )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary = output_path.with_suffix(f"{output_path.suffix}.tmp")
     temporary.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")

@@ -15,6 +15,8 @@ make pipeline-health
 
 Any malformed archive stops the refresh. The previous summary is left intact so corrupt evidence is not silently omitted.
 
+Each policy decision also records SHA-256 fingerprints for the exact policy file and every archived report, plus an evaluator version and stable decision ID. Copying the same inputs to another directory produces the same ID; changing either a report or the policy produces a different ID. This makes a decision traceable and repeatable, but it is not an immutable signature: someone able to replace both the evidence and summary can still rewrite local history.
+
 ## Policy gate
 
 `config/pipeline-health-policy.json` contains the minimum completed-run count, maximum failure rate, latest-run requirement and selected stage-duration budgets. The command records every breach in the output and exits non-zero when the result is degraded, so local runs and GitHub Actions use the same decision.

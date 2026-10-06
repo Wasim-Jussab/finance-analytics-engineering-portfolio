@@ -206,4 +206,59 @@ def test_written_summary_contains_policy_result(tmp_path: Path) -> None:
     summary = write_health_summary(reports, output, policy_path)
 
     assert summary["policy"]["status"] == "healthy"
+    assert len(summary["decision_evidence"]["decision_id"]) == 64
+    assert summary["decision_evidence"]["reports"][0]["run_id"] == "valid"
     assert json.loads(output.read_text(encoding="utf-8")) == summary
+
+
+def test_health_decision_id_is_stable_for_identical_evidence(tmp_path: Path) -> None:
+    first_reports = tmp_path / "first" / "runs"
+    second_reports = tmp_path / "second" / "runs"
+    policy = tmp_path / "policy.json"
+    report = _report("valid", "succeeded", "2026-10-04T15:00:03+00:00")
+    _write(first_reports, report)
+    _write(second_reports, report)
+    policy.write_text(
+        json.dumps(
+            {
+                "minimum_completed_runs": 1,
+                "maximum_failure_rate": 0,
+                "require_latest_success": True,
+                "stage_max_duration_seconds": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    first = write_health_summary(first_reports, tmp_path / "first.json", policy)
+    second = write_health_summary(second_reports, tmp_path / "second.json", policy)
+
+    assert first["decision_evidence"] == second["decision_evidence"]
+
+
+def test_health_decision_id_changes_when_report_or_policy_changes(tmp_path: Path) -> None:
+    reports = tmp_path / "runs"
+    policy = tmp_path / "policy.json"
+    output = tmp_path / "health.json"
+    report = _report("valid", "succeeded", "2026-10-04T15:00:03+00:00")
+    _write(reports, report)
+    policy_values = {
+        "minimum_completed_runs": 1,
+        "maximum_failure_rate": 0,
+        "require_latest_success": True,
+        "stage_max_duration_seconds": {"generate": 5},
+    }
+    policy.write_text(json.dumps(policy_values), encoding="utf-8")
+    original = write_health_summary(reports, output, policy)["decision_evidence"]
+
+    report["steps"][0]["duration_seconds"] = 2.5
+    _write(reports, report)
+    report_change = write_health_summary(reports, output, policy)["decision_evidence"]
+    policy_values["stage_max_duration_seconds"]["generate"] = 4
+    policy.write_text(json.dumps(policy_values), encoding="utf-8")
+    policy_change = write_health_summary(reports, output, policy)["decision_evidence"]
+
+    assert original["decision_id"] != report_change["decision_id"]
+    assert report_change["decision_id"] != policy_change["decision_id"]
+    assert original["policy_sha256"] == report_change["policy_sha256"]
+    assert report_change["policy_sha256"] != policy_change["policy_sha256"]
