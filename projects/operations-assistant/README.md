@@ -51,4 +51,4 @@ This is one row per shipment, with one shipment per order assumed. Cancellation 
 
 `POST /api/answers` renders a fixed, evidence-cited answer from either approved tool. The [grounding evaluation](docs/answer-grounding.md) executes four cases and records exact-claim and disclosure checks. Passing it does not constitute model evaluation because no model is invoked.
 
-`POST /api/questions` adds the [local intent model](docs/local-intent-model.md). Fifteen held-out cases cover summaries, comparisons and unsupported requests. This demonstrates constrained local inference, not broad natural-language accuracy or generative AI.
+`POST /api/questions` adds the [local intent model](docs/local-intent-model.md). Fifteen held-out cases cover summaries, comparisons and unsupported requests. A separate [adversarial evaluation](docs/adversarial-evaluation.md) tests safe paraphrases, mixed requests and named risk slices while retaining the raw model outcome. This demonstrates constrained local inference, not broad natural-language accuracy or generative AI.

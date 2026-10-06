@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import date
 from typing import Literal
 
@@ -26,6 +27,8 @@ TRAINING_EXAMPLES = (
     ("how is the north performing", "delivery_summary"),
     ("count cancelled shipments", "delivery_summary"),
     ("report shipments that remain overdue and open", "delivery_summary"),
+    ("summarise shipments due for the selected period", "delivery_summary"),
+    ("give me the due delivery summary", "delivery_summary"),
     ("compare delivery performance between periods", "compare_delivery_periods"),
     ("how did this week change from last week", "compare_delivery_periods"),
     ("show the movement in late deliveries", "compare_delivery_periods"),
@@ -48,6 +51,30 @@ TRAINING_EXAMPLES = (
     ("tell me who is to blame", "unsupported"),
     ("forecast future demand", "unsupported"),
     ("forecast delivery performance for a future quarter", "unsupported"),
+)
+
+BLOCKED_PATTERNS = {
+    "write_action": re.compile(
+        r"\b(delete|drop|truncate|update|insert|email|send|notify)\b|"
+        r"\bmark\b.+\bas\b|\bchange\b.+\b(status|date)\b",
+        re.IGNORECASE,
+    ),
+    "causal_claim": re.compile(r"\b(why|root cause|who is to blame|caused by)\b", re.IGNORECASE),
+    "forward_looking": re.compile(
+        r"\b(forecast|predict|prediction|next month|next quarter|future)\b",
+        re.IGNORECASE,
+    ),
+}
+DOMAIN_PATTERN = re.compile(
+    r"\b(deliver(?:y|ies|ed)?|shipment(?:s)?|order(?:s)?|parcel(?:s)?|"
+    r"on[ -]?time|late|overdue|completion|promis(?:e|ed)|performance|outcomes?|"
+    r"rates?|counts?|totals?)\b",
+    re.IGNORECASE,
+)
+COMPARISON_CONTEXT_PATTERN = re.compile(
+    r"\b(compare|comparison|contrast)\b.*\b(week|period|baseline)\b|"
+    r"\b(week|period)\b.*\b(compare|previous|prior|baseline)\b",
+    re.IGNORECASE,
 )
 
 
@@ -94,12 +121,30 @@ class LocalIntentModel:
         best_index = int(probabilities.argmax())
         label = str(classes[best_index])
         confidence = float(probabilities[best_index])
-        accepted = label != "unsupported" and confidence >= self.confidence_threshold
+        ordered = sorted((float(value) for value in probabilities), reverse=True)
+        confidence_margin = ordered[0] - ordered[1]
+        guardrail = next(
+            (name for name, pattern in BLOCKED_PATTERNS.items() if pattern.search(question)),
+            None,
+        )
+        if (
+            guardrail is None
+            and DOMAIN_PATTERN.search(question) is None
+            and COMPARISON_CONTEXT_PATTERN.search(question) is None
+        ):
+            guardrail = "out_of_domain"
+        accepted = (
+            guardrail is None
+            and label != "unsupported"
+            and confidence >= self.confidence_threshold
+        )
         return {
             "label": label,
             "confidence": round(confidence, 6),
+            "confidence_margin": round(confidence_margin, 6),
             "accepted": accepted,
             "threshold": self.confidence_threshold,
+            "guardrail": guardrail,
             "model": "local-tfidf-logistic-regression",
             "model_version": self.version,
         }
