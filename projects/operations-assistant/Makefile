@@ -10,6 +10,7 @@ evaluate: data
 	python -m operations_assistant.evaluation
 	python -m operations_assistant.intent_evaluation
 	python -m operations_assistant.adversarial_evaluation
+	python -m operations_assistant.routing_release
 
 verify: test evaluate
 
