@@ -9,6 +9,7 @@ from finance_portfolio.pipeline_health import (
     load_policy,
     write_health_summary,
 )
+from finance_portfolio.verify_pipeline_health import verify_health_decision
 
 
 def _report(run_id: str, status: str, finished: str, duration: float = 2.0) -> dict:
@@ -262,3 +263,62 @@ def test_health_decision_id_changes_when_report_or_policy_changes(tmp_path: Path
     assert report_change["decision_id"] != policy_change["decision_id"]
     assert original["policy_sha256"] == report_change["policy_sha256"]
     assert report_change["policy_sha256"] != policy_change["policy_sha256"]
+
+
+def _healthy_decision_fixture(tmp_path: Path) -> tuple[Path, Path, Path]:
+    reports = tmp_path / "runs"
+    policy = tmp_path / "policy.json"
+    output = tmp_path / "health.json"
+    _write(reports, _report("valid", "succeeded", "2026-10-04T15:00:03+00:00"))
+    policy.write_text(
+        json.dumps(
+            {
+                "minimum_completed_runs": 1,
+                "maximum_failure_rate": 0,
+                "require_latest_success": True,
+                "stage_max_duration_seconds": {"generate": 5},
+            }
+        ),
+        encoding="utf-8",
+    )
+    write_health_summary(reports, output, policy)
+    return reports, policy, output
+
+
+def test_recorded_health_decision_verifies_without_rewriting_artifact(tmp_path: Path) -> None:
+    reports, policy, output = _healthy_decision_fixture(tmp_path)
+    original = output.read_bytes()
+
+    verified = verify_health_decision(reports, policy, output)
+
+    assert verified["policy"]["status"] == "healthy"
+    assert output.read_bytes() == original
+
+
+@pytest.mark.parametrize("changed_input", ["report", "policy"])
+def test_health_verification_rejects_changed_inputs(
+    tmp_path: Path, changed_input: str
+) -> None:
+    reports, policy, output = _healthy_decision_fixture(tmp_path)
+    if changed_input == "report":
+        report_path = reports / "valid.json"
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        report["steps"][0]["duration_seconds"] = 2.5
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+    else:
+        values = json.loads(policy.read_text(encoding="utf-8"))
+        values["stage_max_duration_seconds"]["generate"] = 4
+        policy.write_text(json.dumps(values), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="does not match"):
+        verify_health_decision(reports, policy, output)
+
+
+def test_health_verification_rejects_edited_summary(tmp_path: Path) -> None:
+    reports, policy, output = _healthy_decision_fixture(tmp_path)
+    summary = json.loads(output.read_text(encoding="utf-8"))
+    summary["success_rate"] = 0.5
+    output.write_text(json.dumps(summary), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="does not match"):
+        verify_health_decision(reports, policy, output)

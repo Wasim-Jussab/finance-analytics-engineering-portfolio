@@ -35,7 +35,9 @@ jobs:
 
       - name: Enforce completed pipeline health policy
         if: always()
-        run: make pipeline-health
+        run: |
+          make pipeline-health
+          make pipeline-health-verify
 
       - name: Validate operations metrics and evidence
         run: make operations-verify

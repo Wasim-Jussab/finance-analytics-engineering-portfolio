@@ -259,6 +259,19 @@ def write_health_summary(
 ) -> dict:
     """Write a summary atomically, leaving an existing file intact on validation failure."""
 
+    summary = build_health_decision(report_directory, policy_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = output_path.with_suffix(f"{output_path.suffix}.tmp")
+    temporary.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(output_path)
+    return summary
+
+
+def build_health_decision(
+    report_directory: Path, policy_path: Path | None = None
+) -> dict:
+    """Build the complete deterministic summary without writing an artifact."""
+
     summary = build_health_summary(report_directory)
     if policy_path is not None:
         policy_result = evaluate_health(summary, load_policy(policy_path))
@@ -266,10 +279,6 @@ def write_health_summary(
         summary["decision_evidence"] = _decision_evidence(
             report_directory, policy_path, policy_result
         )
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = output_path.with_suffix(f"{output_path.suffix}.tmp")
-    temporary.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
-    temporary.replace(output_path)
     return summary
 
 

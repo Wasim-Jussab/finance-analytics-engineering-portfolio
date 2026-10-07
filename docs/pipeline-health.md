@@ -11,11 +11,14 @@ Run it after at least one completed pipeline invocation:
 ```bash
 make verify
 make pipeline-health
+make pipeline-health-verify
 ```
 
 Any malformed archive stops the refresh. The previous summary is left intact so corrupt evidence is not silently omitted.
 
 Each policy decision also records SHA-256 fingerprints for the exact policy file and every archived report, plus an evaluator version and stable decision ID. Copying the same inputs to another directory produces the same ID; changing either a report or the policy produces a different ID. This makes a decision traceable and repeatable, but it is not an immutable signature: someone able to replace both the evidence and summary can still rewrite local history.
+
+`make pipeline-health-verify` independently rebuilds the complete decision in memory and requires an exact match with the saved JSON. It never rewrites the artifact. A changed report, policy or summary therefore fails verification instead of silently producing a new decision. GitHub Actions performs this check immediately after creating the retained health evidence.
 
 ## Policy gate
 
