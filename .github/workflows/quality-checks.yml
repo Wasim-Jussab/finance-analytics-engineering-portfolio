@@ -33,6 +33,12 @@ jobs:
           make verify
           test ! -e reports/pipeline.lock
 
+      - name: Enforce completed pipeline health policy
+        if: always()
+        run: |
+          make pipeline-health
+          make pipeline-health-verify
+
       - name: Validate operations metrics and evidence
         run: make operations-verify
 
@@ -53,5 +59,7 @@ jobs:
           path: |
             reports/latest-pipeline-run.json
             reports/runs/*.json
+            reports/pipeline-health.json
+            reports/pipeline-health-scenario.json
           if-no-files-found: warn
           retention-days: 7

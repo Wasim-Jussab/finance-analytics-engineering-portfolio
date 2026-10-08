@@ -26,7 +26,7 @@ The implementation includes:
 - Keyed incremental payment merges handling late arrivals, corrections, absence and restoration.
 - Grain, relationship, chronology, freshness and financial reconciliation checks.
 - Isolated scenarios that exercise failure handling and changes across consecutive runs.
-- A fail-fast local runner with full-gate locking and retained run evidence.
+- A fail-fast runner with locking, verified [health decisions](docs/pipeline-health.md) and a degraded-path simulation.
 
 ## Example output
 
@@ -64,6 +64,7 @@ Collections are cash received, not recognised revenue. Loan schedules are synthe
 
 - [Operations project](projects/operations-assistant/README.md)
 - [Local pipeline runbook](docs/local-pipeline-runbook.md)
+- [Pipeline health summary](docs/pipeline-health.md)
 - [Implementation guide and model catalogue](docs/implementation-guide.md)
 - [Architecture](docs/architecture.md) · [Data contract](docs/data-contract.md) · [dbt workflow](docs/dbt-workflow.md)
 - [Loan reporting review](docs/loan-reporting-review.md) · [Thirty-day technical review](docs/30-day-review.md)
