@@ -10,6 +10,7 @@ A local delivery-performance dashboard and governed analytics-assistant foundati
 - Evidence-cited answer templates with executable grounding checks.
 - Local intent-model routing with explicit abstention and validated dates.
 - Versioned release policy over held-out and adversarial routing evidence.
+- End-to-end evaluation from question routing to grounded answer evidence.
 - On-time completion, late delivery and overdue-open counts.
 - Regional breakdown, daily trend and inspectable exceptions.
 - Tested period boundaries, denominator rules, empty results and invalid filters.
@@ -52,4 +53,4 @@ This is one row per shipment, with one shipment per order assumed. Cancellation 
 
 `POST /api/answers` renders a fixed, evidence-cited answer from either approved tool. The [grounding evaluation](docs/answer-grounding.md) executes four cases and records exact-claim and disclosure checks. Passing it does not constitute model evaluation because no model is invoked.
 
-`POST /api/questions` adds the [local intent model](docs/local-intent-model.md). Fifteen held-out cases cover summaries, comparisons and unsupported requests. A separate [adversarial evaluation](docs/adversarial-evaluation.md) tests mixed requests and named risk slices. A [release gate](docs/routing-release-gate.md) reconciles both executed suites against an explicit policy. This is constrained local inference, not broad language accuracy or generative AI.
+`POST /api/questions` adds the [local intent model](docs/local-intent-model.md). Fifteen held-out cases cover summaries, comparisons and unsupported requests. A separate [adversarial evaluation](docs/adversarial-evaluation.md) tests mixed requests and named risk slices. A [release gate](docs/routing-release-gate.md) reconciles both suites, while the [end-to-end evaluation](docs/end-to-end-question-evaluation.md) checks routing, tool execution and grounded evidence together. This is constrained local inference, not broad language accuracy or generative AI.

@@ -25,7 +25,7 @@ def create_app(database: Path | None = None) -> FastAPI:
     @app.get("/api/tools")
     def tool_catalog() -> dict:
         return {
-            "mode": "deterministic; AI not implemented",
+            "mode": "deterministic read-only tools; no model invocation",
             "request_schema": ToolRequest.model_json_schema(),
             "tools": ["delivery_summary", "compare_delivery_periods"],
         }
@@ -67,7 +67,13 @@ def create_app(database: Path | None = None) -> FastAPI:
 
     @app.get("/api/metadata")
     def metadata() -> dict:
-        return {"regions": REGIONS, "mode": "deterministic metrics; AI not implemented"}
+        return {
+            "regions": REGIONS,
+            "mode": (
+                "local intent inference; deterministic metrics and answers; "
+                "no generative model"
+            ),
+        }
 
     @app.get("/api/metrics")
     def metrics(
