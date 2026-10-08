@@ -124,6 +124,11 @@ def build_steps(database: Path, verify: bool = False) -> tuple[PipelineStep, ...
             ),
         )
     steps += (
+        PipelineStep(
+            "pipeline_health_check",
+            (sys.executable, "-m", "finance_portfolio.pipeline_health_scenario"),
+            depends_on=(steps[-1].name,),
+        ),
         PipelineStep("lint", ("ruff", "check", "."), depends_on=(steps[-1].name,)),
         PipelineStep("python_tests", (sys.executable, "-m", "pytest"), depends_on=("lint",)),
         PipelineStep(

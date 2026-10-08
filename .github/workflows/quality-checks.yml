@@ -60,5 +60,6 @@ jobs:
             reports/latest-pipeline-run.json
             reports/runs/*.json
             reports/pipeline-health.json
+            reports/pipeline-health-scenario.json
           if-no-files-found: warn
           retention-days: 7

@@ -20,6 +20,12 @@ Each policy decision also records SHA-256 fingerprints for the exact policy file
 
 `make pipeline-health-verify` independently rebuilds the complete decision in memory and requires an exact match with the saved JSON. It never rewrites the artifact. A changed report, policy or summary therefore fails verification instead of silently producing a new decision. GitHub Actions performs this check immediately after creating the retained health evidence.
 
+## Controlled degraded path
+
+`make pipeline-health-check` creates two isolated synthetic run reports: one successful and one failed. A strict temporary policy must produce four breaches—insufficient completed runs, excessive failure rate, failed latest run and excessive generate duration. The scenario also reconciles one failed load, one blocked dbt build and independently verifies the degraded decision before writing `reports/pipeline-health-scenario.json`.
+
+The complete `make verify` gate runs this scenario. Its command exits successfully only when the expected degraded result is observed; it does not weaken the real policy or write into the live run archive.
+
 ## Policy gate
 
 `config/pipeline-health-policy.json` contains the minimum completed-run count, maximum failure rate, latest-run requirement and selected stage-duration budgets. The command records every breach in the output and exits non-zero when the result is degraded, so local runs and GitHub Actions use the same decision.
