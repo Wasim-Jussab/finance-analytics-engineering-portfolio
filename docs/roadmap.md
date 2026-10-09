@@ -98,3 +98,8 @@ Day 37 adds single-run concurrency control around that entry point. The lock is
 created atomically before generation, released only by its owner and tested across
 success and failure paths. Stale-lock recovery remains manual because deleting a
 lock based only on age could allow a second writer into a slow but valid run.
+
+Day 46 begins a pipeline-evidence milestone. A reconciled index ties the latest
+run pointer to its archived run, health decision, policy and dbt artifacts using
+exact fingerprints. It improves audit navigation without claiming immutable
+storage or external attestation; independent pack verification remains next.

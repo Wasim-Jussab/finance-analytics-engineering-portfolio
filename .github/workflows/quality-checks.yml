@@ -39,6 +39,10 @@ jobs:
           make pipeline-health
           make pipeline-health-verify
 
+      - name: Index reconciled pipeline evidence
+        if: success()
+        run: make evidence-pack
+
       - name: Validate operations metrics and evidence
         run: make operations-verify
 
@@ -61,5 +65,6 @@ jobs:
             reports/runs/*.json
             reports/pipeline-health.json
             reports/pipeline-health-scenario.json
+            reports/evidence-pack.json
           if-no-files-found: warn
           retention-days: 7
