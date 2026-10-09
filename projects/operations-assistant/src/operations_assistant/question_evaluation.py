@@ -8,12 +8,9 @@ import json
 from pathlib import Path
 
 from operations_assistant.answers import render_answer
+from operations_assistant.decision_trace import build_decision_trace, verify_decision_trace
 from operations_assistant.evaluation import evaluate_answer
-from operations_assistant.intent import (
-    LocalIntentModel,
-    QuestionRequest,
-    UnsupportedQuestionError,
-)
+from operations_assistant.intent import LocalIntentModel, QuestionRequest
 from operations_assistant.tools import execute_tool
 
 SAFE_CASES = (
@@ -121,6 +118,8 @@ def run_question_evaluation(
         tool_result = execute_tool(database, tool_request)
         tool_executions += 1
         answer = render_answer(tool_result)
+        trace = build_decision_trace(request, routing, "answered", tool_request, answer)
+        verify_decision_trace(trace)
         failures = evaluate_answer(tool_result, answer)
         if tool_request.name != case["expected_tool"]:
             failures.append(
@@ -139,6 +138,7 @@ def run_question_evaluation(
                 "confidence": routing["confidence"],
                 "guardrail": routing["guardrail"],
                 "evidence_id": tool_result["evidence"]["evidence_id"],
+                "decision_id": trace["decision_id"],
                 "passed": not failures,
                 "failures": failures,
             }
@@ -152,15 +152,15 @@ def run_question_evaluation(
                 "end": "2026-09-28",
             }
         )
-        prediction = model.predict(question)
+        tool_request, prediction = model.route(request)
         failures = []
-        try:
-            model.plan(request)
-        except UnsupportedQuestionError:
+        if tool_request is None:
             observed_outcome = "blocked"
         else:
             observed_outcome = "answered"
             failures.append("unsupported question reached tool planning")
+        trace = build_decision_trace(request, prediction, "blocked")
+        verify_decision_trace(trace)
         results.append(
             {
                 "case": name,
@@ -173,6 +173,7 @@ def run_question_evaluation(
                 "confidence": prediction["confidence"],
                 "guardrail": prediction["guardrail"],
                 "evidence_id": None,
+                "decision_id": trace["decision_id"],
                 "passed": not failures,
                 "failures": failures,
             }
@@ -195,6 +196,7 @@ def run_question_evaluation(
         "answered_cases": len(SAFE_CASES),
         "blocked_cases": len(BLOCKED_CASES),
         "tool_executions": tool_executions,
+        "decision_traces": len({result["decision_id"] for result in results}),
         "database_unchanged": True,
         "results": results,
     }

@@ -18,6 +18,7 @@ def test_question_evaluation_executes_supported_and_blocked_paths(
     assert result["failed"] == 0
     assert result["answered_cases"] == result["tool_executions"] == 4
     assert result["blocked_cases"] == 4
+    assert result["decision_traces"] == 8
     assert result["database_unchanged"] is True
     assert all(row["evidence_id"] for row in result["results"][:4])
     assert all(row["tool"] is None for row in result["results"][4:])

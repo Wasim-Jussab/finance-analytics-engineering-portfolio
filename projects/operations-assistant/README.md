@@ -10,7 +10,7 @@ A local delivery-performance dashboard and governed analytics-assistant foundati
 - Evidence-cited answer templates with executable grounding checks.
 - Local intent-model routing with explicit abstention and validated dates.
 - Versioned release policy over held-out and adversarial routing evidence.
-- End-to-end evaluation from question routing to grounded answer evidence.
+- End-to-end evaluation with privacy-conscious [decision traces](docs/decision-traces.md).
 - On-time completion, late delivery and overdue-open counts.
 - Regional breakdown, daily trend and inspectable exceptions.
 - Tested period boundaries, denominator rules, empty results and invalid filters.

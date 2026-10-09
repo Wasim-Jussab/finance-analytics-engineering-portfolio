@@ -11,8 +11,9 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 
 from operations_assistant.answers import render_answer
+from operations_assistant.decision_trace import build_decision_trace
 from operations_assistant.generate import REGIONS
-from operations_assistant.intent import LocalIntentModel, QuestionRequest, UnsupportedQuestionError
+from operations_assistant.intent import LocalIntentModel, QuestionRequest
 from operations_assistant.metrics import summary
 from operations_assistant.tools import ToolRequest, execute_tool
 
@@ -51,11 +52,25 @@ def create_app(database: Path | None = None) -> FastAPI:
     @app.post("/api/questions")
     def question(request: QuestionRequest) -> dict:
         try:
-            tool_request, routing = intent_model.plan(request)
+            tool_request, routing = intent_model.route(request)
+            if tool_request is None:
+                trace = build_decision_trace(request, routing, "blocked")
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "message": (
+                            "Question was not confidently routed to an approved read-only tool"
+                        ),
+                        "decision_trace": trace,
+                    },
+                )
             answer_result = render_answer(execute_tool(database, tool_request))
-            return {"routing": routing, **answer_result}
-        except UnsupportedQuestionError as error:
-            raise HTTPException(status_code=422, detail=str(error)) from error
+            trace = build_decision_trace(
+                request, routing, "answered", tool_request, answer_result
+            )
+            return {"routing": routing, "decision_trace": trace, **answer_result}
+        except HTTPException:
+            raise
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
         except FileNotFoundError as error:

@@ -149,12 +149,22 @@ class LocalIntentModel:
             "model_version": self.version,
         }
 
-    def plan(self, request: QuestionRequest) -> tuple[ToolRequest, dict]:
+    def route(self, request: QuestionRequest) -> tuple[ToolRequest | None, dict]:
+        """Return one prediction and its validated tool request, or abstain."""
+
         routing = self.predict(request.question)
         if not routing["accepted"]:
-            raise UnsupportedQuestionError(
-                "Question was not confidently routed to an approved read-only tool"
-            )
+            return None, routing
         payload = request.model_dump(exclude={"question"})
         payload["name"] = routing["label"]
         return ToolRequest.model_validate(payload), routing
+
+    def plan(self, request: QuestionRequest) -> tuple[ToolRequest, dict]:
+        """Return an approved plan or preserve the existing exception contract."""
+
+        tool_request, routing = self.route(request)
+        if tool_request is None:
+            raise UnsupportedQuestionError(
+                "Question was not confidently routed to an approved read-only tool"
+            )
+        return tool_request, routing
