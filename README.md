@@ -26,7 +26,7 @@ The implementation includes:
 - Keyed incremental payment merges handling late arrivals, corrections, absence and restoration.
 - Grain, relationship, chronology, freshness and financial reconciliation checks.
 - Isolated scenarios that exercise failure handling and changes across consecutive runs.
-- A fail-fast runner with locking, verified [health decisions](docs/pipeline-health.md) and a degraded-path simulation.
+- A fail-fast runner with locking, verified [health decisions](docs/pipeline-health.md), degraded-path testing and a read-only verified [evidence pack](docs/evidence-pack.md).
 
 ## Example output
 
