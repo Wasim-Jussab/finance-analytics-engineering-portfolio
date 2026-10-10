@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from finance_portfolio.evidence_pack import build_evidence_pack, write_evidence_pack
+from finance_portfolio.verify_evidence_pack import verify_evidence_pack
 
 
 def _json(path: Path, value: dict) -> None:
@@ -105,3 +106,36 @@ def test_failed_refresh_preserves_existing_evidence_pack(tmp_path: Path) -> None
         write_evidence_pack(output, **paths)
 
     assert output.read_bytes() == original
+
+
+def test_saved_evidence_pack_verifies_without_rewriting(tmp_path: Path) -> None:
+    paths = _fixture(tmp_path)
+    output = tmp_path / "reports/evidence-pack.json"
+    written = write_evidence_pack(output, **paths)
+    original = output.read_bytes()
+
+    verified = verify_evidence_pack(output, **paths)
+
+    assert verified == written
+    assert output.read_bytes() == original
+
+
+def test_verification_rejects_changed_indexed_artifact(tmp_path: Path) -> None:
+    paths = _fixture(tmp_path)
+    output = tmp_path / "reports/evidence-pack.json"
+    write_evidence_pack(output, **paths)
+    _json(paths["catalog_path"], {"nodes": {"model.changed": {}}, "sources": {}})
+
+    with pytest.raises(ValueError, match="does not match the current artifacts"):
+        verify_evidence_pack(output, **paths)
+
+
+def test_verification_rejects_changed_saved_pack(tmp_path: Path) -> None:
+    paths = _fixture(tmp_path)
+    output = tmp_path / "reports/evidence-pack.json"
+    recorded = write_evidence_pack(output, **paths)
+    recorded["dbt_execution"]["result_count"] = 999
+    _json(output, recorded)
+
+    with pytest.raises(ValueError, match="does not match the current artifacts"):
+        verify_evidence_pack(output, **paths)

@@ -41,7 +41,9 @@ jobs:
 
       - name: Index reconciled pipeline evidence
         if: success()
-        run: make evidence-pack
+        run: |
+          make evidence-pack
+          make evidence-pack-verify
 
       - name: Validate operations metrics and evidence
         run: make operations-verify

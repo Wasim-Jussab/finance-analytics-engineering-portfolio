@@ -103,3 +103,8 @@ Day 46 begins a pipeline-evidence milestone. A reconciled index ties the latest
 run pointer to its archived run, health decision, policy and dbt artifacts using
 exact fingerprints. It improves audit navigation without claiming immutable
 storage or external attestation; independent pack verification remains next.
+
+Day 47 adds that read-only verification step. It rebuilds the expected pack in
+memory and fails if either an indexed artifact or the saved pack changed. The
+writer and verifier intentionally share one deterministic contract; this proves
+reproducibility at check time, not historical immutability.
