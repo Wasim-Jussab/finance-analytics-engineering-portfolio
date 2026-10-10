@@ -12,6 +12,7 @@ evaluate: data
 	python -m operations_assistant.adversarial_evaluation
 	python -m operations_assistant.routing_release
 	python -m operations_assistant.question_evaluation
+	python -m operations_assistant.question_release
 
 verify: test evaluate
 
