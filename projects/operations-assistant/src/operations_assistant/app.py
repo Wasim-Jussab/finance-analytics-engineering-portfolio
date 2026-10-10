@@ -11,8 +11,9 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 
 from operations_assistant.answers import render_answer
+from operations_assistant.decision_trace import build_decision_trace
 from operations_assistant.generate import REGIONS
-from operations_assistant.intent import LocalIntentModel, QuestionRequest, UnsupportedQuestionError
+from operations_assistant.intent import LocalIntentModel, QuestionRequest
 from operations_assistant.metrics import summary
 from operations_assistant.tools import ToolRequest, execute_tool
 
@@ -25,7 +26,7 @@ def create_app(database: Path | None = None) -> FastAPI:
     @app.get("/api/tools")
     def tool_catalog() -> dict:
         return {
-            "mode": "deterministic; AI not implemented",
+            "mode": "deterministic read-only tools; no model invocation",
             "request_schema": ToolRequest.model_json_schema(),
             "tools": ["delivery_summary", "compare_delivery_periods"],
         }
@@ -51,11 +52,25 @@ def create_app(database: Path | None = None) -> FastAPI:
     @app.post("/api/questions")
     def question(request: QuestionRequest) -> dict:
         try:
-            tool_request, routing = intent_model.plan(request)
+            tool_request, routing = intent_model.route(request)
+            if tool_request is None:
+                trace = build_decision_trace(request, routing, "blocked")
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "message": (
+                            "Question was not confidently routed to an approved read-only tool"
+                        ),
+                        "decision_trace": trace,
+                    },
+                )
             answer_result = render_answer(execute_tool(database, tool_request))
-            return {"routing": routing, **answer_result}
-        except UnsupportedQuestionError as error:
-            raise HTTPException(status_code=422, detail=str(error)) from error
+            trace = build_decision_trace(
+                request, routing, "answered", tool_request, answer_result
+            )
+            return {"routing": routing, "decision_trace": trace, **answer_result}
+        except HTTPException:
+            raise
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
         except FileNotFoundError as error:
@@ -67,7 +82,13 @@ def create_app(database: Path | None = None) -> FastAPI:
 
     @app.get("/api/metadata")
     def metadata() -> dict:
-        return {"regions": REGIONS, "mode": "deterministic metrics; AI not implemented"}
+        return {
+            "regions": REGIONS,
+            "mode": (
+                "local intent inference; deterministic metrics and answers; "
+                "no generative model"
+            ),
+        }
 
     @app.get("/api/metrics")
     def metrics(
