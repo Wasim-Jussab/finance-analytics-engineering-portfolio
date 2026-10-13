@@ -74,7 +74,7 @@ def execute_tool(database: Path, request: ToolRequest) -> dict:
             "contract_version": "delivery-v1",
             "source": "shipments",
             "grain": "one row per shipment",
-            "mode": "deterministic; model inference not implemented",
+            "mode": "deterministic metric computation",
         },
     }
 

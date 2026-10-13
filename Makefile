@@ -95,4 +95,5 @@ operations-test:
 operations-evaluate:
 	$(MAKE) -C projects/operations-assistant evaluate
 
-operations-verify: operations-test operations-evaluate
+operations-verify:
+	$(MAKE) -C projects/operations-assistant verify

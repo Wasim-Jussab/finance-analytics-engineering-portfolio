@@ -15,13 +15,17 @@ from operations_assistant.decision_trace import build_decision_trace
 from operations_assistant.generate import REGIONS
 from operations_assistant.intent import LocalIntentModel, QuestionRequest
 from operations_assistant.metrics import summary
+from operations_assistant.model_artifact import load_model_artifact
 from operations_assistant.tools import ToolRequest, execute_tool
 
 
-def create_app(database: Path | None = None) -> FastAPI:
+def create_app(database: Path | None = None, model_artifact: Path | None = None) -> FastAPI:
     database = database or Path(os.environ.get("OPERATIONS_DATABASE", "data/operations.duckdb"))
+    configured_artifact = os.environ.get("OPERATIONS_MODEL_ARTIFACT")
+    model_artifact = model_artifact or (Path(configured_artifact) if configured_artifact else None)
     app = FastAPI(title="Operations Intelligence", version="0.1.0")
-    intent_model = LocalIntentModel()
+    adapter = load_model_artifact(model_artifact) if model_artifact else None
+    intent_model = LocalIntentModel(adapter=adapter)
 
     @app.get("/api/tools")
     def tool_catalog() -> dict:
@@ -65,6 +69,7 @@ def create_app(database: Path | None = None) -> FastAPI:
                     },
                 )
             answer_result = render_answer(execute_tool(database, tool_request))
+            answer_result["mode"] = "deterministic-template; local intent inference only"
             trace = build_decision_trace(
                 request, routing, "answered", tool_request, answer_result
             )

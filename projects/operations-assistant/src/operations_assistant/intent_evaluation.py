@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from operations_assistant.intent import LocalIntentModel
+from operations_assistant.model_artifact import load_model_artifact
 
 EVALUATION_CASES = (
     ("Give me a snapshot of delivery results", "delivery_summary"),
@@ -47,6 +48,7 @@ def run_intent_evaluation(model: LocalIntentModel | None = None) -> dict:
         "mode": "executed local intent-model inference; no generative model",
         "model": "local-tfidf-logistic-regression",
         "model_version": model.version,
+        "model_artifact_sha256": model.adapter.artifact_sha256,
         "cases": len(results),
         "passed": passed,
         "failed": len(results) - passed,
@@ -57,8 +59,14 @@ def run_intent_evaluation(model: LocalIntentModel | None = None) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("reports/intent-evaluation.json"))
+    parser.add_argument("--model-artifact", type=Path)
     arguments = parser.parse_args()
-    result = run_intent_evaluation()
+    model = (
+        LocalIntentModel(adapter=load_model_artifact(arguments.model_artifact))
+        if arguments.model_artifact
+        else None
+    )
+    result = run_intent_evaluation(model)
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     temporary = arguments.output.with_suffix(f"{arguments.output.suffix}.tmp")
     temporary.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
