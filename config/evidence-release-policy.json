@@ -1,0 +1,6 @@
+{
+  "minimum_retained_bundles": 1,
+  "minimum_artifacts_per_bundle": 7,
+  "allowed_pipeline_statuses": ["succeeded"],
+  "allowed_health_statuses": ["healthy"]
+}

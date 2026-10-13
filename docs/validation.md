@@ -2,6 +2,18 @@
 
 This page records checks that I have actually run. It is not a list of intended controls.
 
+## Retained evidence inventory — 12 October 2026
+
+The Day 49 gate verified every content-addressed evidence bundle before writing and then independently rebuilding the retention inventory. The clean local run contained one retained bundle, seven indexed artifacts and one unique identity each for the pipeline run, health decision and dbt invocation. Python tests cover two valid retained bundles, deterministic rewriting, a changed index, duplicate run identity, a tampered bundle and an unmanaged root file.
+
+This inventory is local retention visibility rather than a retention policy or immutable audit store.
+
+## Evidence release gate — 13 October 2026
+
+The Day 50 gate independently rebuilt the retained-bundle inventory, applied the versioned policy and recorded an approved decision for one succeeded, healthy bundle containing seven artifacts. The verifier reproduced the same decision from the saved policy and index. Unit tests also prove that too few bundles, failed pipeline status, degraded health status and an edited decision are rejected.
+
+The decision is local acceptance evidence. It is not external approval, immutable storage or proof that the policy is appropriate outside this synthetic portfolio.
+
 ## Baseline run — 31 August 2026
 
 The pipeline was rebuilt from the deterministic seed-42 dataset using a fresh DuckDB file.

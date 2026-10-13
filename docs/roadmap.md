@@ -98,3 +98,24 @@ Day 37 adds single-run concurrency control around that entry point. The lock is
 created atomically before generation, released only by its owner and tested across
 success and failure paths. Stale-lock recovery remains manual because deleting a
 lock based only on age could allow a second writer into a slow but valid run.
+
+Day 46 begins a pipeline-evidence milestone. A reconciled index ties the latest
+run pointer to its archived run, health decision, policy and dbt artifacts using
+exact fingerprints. It improves audit navigation without claiming immutable
+storage or external attestation; independent pack verification remains next.
+
+Day 47 adds that read-only verification step. It rebuilds the expected pack in
+memory and fails if either an indexed artifact or the saved pack changed. The
+writer and verifier intentionally share one deterministic contract; this proves
+reproducibility at check time, not historical immutability.
+
+Day 48 creates a portable, content-addressed snapshot from that verified pack.
+The bundle copies each indexed artifact, rejects unsafe or duplicate paths and
+checks its exact inventory independently of the original working files. Atomic
+local creation is useful audit evidence, but it is not externally controlled or
+immutable retention.
+
+Day 49 adds one verified inventory across every retained bundle and rejects reused
+pipeline, health or dbt execution identities. Day 50 closes the milestone with a
+versioned acceptance policy and a reproducible approved-or-blocked decision. The
+gate is useful local evidence, not an external approval or a retention service.
