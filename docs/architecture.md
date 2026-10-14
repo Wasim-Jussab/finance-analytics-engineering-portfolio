@@ -341,6 +341,15 @@ loan status-event history, so the current `status` field is not used to invent a
 historical active population. The output is suitable for local BI exploration of
 the project assumptions, not contractual arrears reporting.
 
+## Day 51 addition
+
+`mart.fct_loan_delinquency_position` is a thin governed classification layer over
+the account-level schedule-position fact. It does not recalculate allocation or
+days past due. That keeps one tested source for the financial amounts and gives BI
+consumers one reusable band definition rather than repeated report-level CASE
+expressions. The boundary and missing contractual inputs are documented in the
+[credit-risk proxy note](credit-risk-proxy.md).
+
 ## Day 36 addition
 
 `finance_portfolio.run_pipeline` is now the operational entry point behind

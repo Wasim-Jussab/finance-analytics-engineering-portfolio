@@ -388,6 +388,58 @@ models:
           - accepted_values:
               arguments:
                 values: ['Not Yet Due', 'On Schedule', 'Behind Schedule']
+  - name: fct_loan_delinquency_position
+    description: >
+      One row per loan at the fixed reporting date with a reusable delinquency
+      band derived from the project's days-past-due proxy. It is not contractual
+      arrears, default or regulatory staging.
+    columns:
+      - name: account_id
+        description: "Loan account represented by the proxy classification."
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('fct_loan_schedule_position')
+                field: account_id
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customer')
+                field: customer_id
+      - name: product_code
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['LOAN-A', 'LOAN-B', 'LOAN-C']
+      - name: source_loan_status
+        tests: [not_null]
+      - name: as_of_date
+        tests: [not_null]
+      - name: scheduled_principal_due_amount
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: oldest_uncovered_due_date
+      - name: days_past_due_proxy
+        tests: [not_null]
+      - name: schedule_position_status
+        tests: [not_null]
+      - name: delinquency_band_proxy
+        description: >
+          Reporting band derived only from days_past_due_proxy under the documented
+          synthetic principal-allocation assumption.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Current', '1-29 days', '30-89 days', '90+ days']
   - name: agg_loan_portfolio_monthly
     description: >
       Monthly loan-portfolio summary by synthetic product. Schedule-position

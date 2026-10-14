@@ -119,3 +119,9 @@ Day 49 adds one verified inventory across every retained bundle and rejects reus
 pipeline, health or dbt execution identities. Day 50 closes the milestone with a
 versioned acceptance policy and a reproducible approved-or-blocked decision. The
 gate is useful local evidence, not an external approval or a retention service.
+
+Day 51 returns to loan risk reporting with a reusable delinquency-band proxy at
+account and reporting-date grain. The bands are downstream of the tested
+principal-only allocation and remain explicitly separate from contractual
+arrears, default and IFRS 9 staging. The next sessions can add portfolio movement
+and controlled risk assumptions without weakening that boundary.

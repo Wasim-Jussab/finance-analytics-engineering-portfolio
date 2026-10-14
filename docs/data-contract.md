@@ -559,3 +559,14 @@ It is not the arithmetic mean of account-level percentages. Counts for `Not Yet
 Due`, `On Schedule` and `Behind Schedule` add back to the product-month population,
 and the monetary fields retain the same reconciliation equations as the account
 position. All labels remain subject to the principal-only project assumption.
+
+## Day 51 delinquency-band proxy
+
+`mart.fct_loan_delinquency_position` has one row per loan account at the fixed
+reporting date. It carries the tested schedule-position measures and maps
+`days_past_due_proxy` to `Current`, `1-29 days`, `30-89 days` or `90+ days`.
+
+`Current` means scheduled principal shortfall is zero under the project's stated
+allocation rule. It includes both `Not Yet Due` and `On Schedule` accounts; the
+retained `schedule_position_status` keeps that distinction available. The bands
+are analytical proxies, not contractual arrears, default or IFRS 9 stages.

@@ -12,7 +12,7 @@ Second project: [Operations Intelligence](projects/operations-assistant/README.m
 
 - How many billing attempts completed, and how much was collected each month?
 - How do agreement starts and cancellations explain the closing population?
-- How do completed loan payments compare with scheduled principal?
+- Which loans fall into each clearly labelled days-past-due proxy band?
 - What changed between loads, and can the current reporting totals reconcile to source?
 
 ## Engineering behind the reports
@@ -67,5 +67,5 @@ Collections are cash received, not recognised revenue. Loan schedules are synthe
 - [Pipeline health summary](docs/pipeline-health.md)
 - [Implementation guide and model catalogue](docs/implementation-guide.md)
 - [Architecture](docs/architecture.md) · [Data contract](docs/data-contract.md) · [dbt workflow](docs/dbt-workflow.md)
-- [Loan reporting review](docs/loan-reporting-review.md) · [Thirty-day technical review](docs/30-day-review.md)
+- [Loan reporting review](docs/loan-reporting-review.md) · [Credit-risk proxy](docs/credit-risk-proxy.md)
 - [Learning notes](notes/) · [Working plan](docs/roadmap.md)

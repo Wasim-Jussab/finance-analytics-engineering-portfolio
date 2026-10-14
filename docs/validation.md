@@ -2,6 +2,26 @@
 
 This page records checks that I have actually run. It is not a list of intended controls.
 
+## Delinquency-band proxy — 14 October 2026
+
+The complete `make verify` gate passed with 20 models, two snapshots, 357 dbt data
+tests, 79 Python tests, all historical and incremental scenarios, Ruff and dbt
+documentation. Including the checkpoint hook, the full dbt build returned 380
+successful results.
+
+The new fact contains 25 rows for 25 accounts and reconciles £51,687.01 of
+scheduled-principal shortfall to the existing schedule-position fact. The fixed
+fixture produces one account in `30-89 days` and 24 in `90+ days`; no account is
+`Current` or `1-29 days`. The accepted-values test governs all four possible labels
+without pretending this small fixture represents a realistic portfolio mix.
+
+A direct read of the working DuckDB file after the full gate encountered the known
+local WAL replay conflict. I obtained the stated counts from a freshly loaded
+temporary database and rebuilt the new model plus its upstream loan lineage there;
+all 18 new model checks passed. Two unrelated global singular tests could not
+resolve date and subscription models omitted by that narrow selector. The full
+repository gate had already completed successfully.
+
 ## Retained evidence inventory — 12 October 2026
 
 The Day 49 gate verified every content-addressed evidence bundle before writing and then independently rebuilding the retention inventory. The clean local run contained one retained bundle, seven indexed artifacts and one unique identity each for the pipeline run, health decision and dbt invocation. Python tests cover two valid retained bundles, deterministic rewriting, a changed index, duplicate run identity, a tampered bundle and an unmanaged root file.
