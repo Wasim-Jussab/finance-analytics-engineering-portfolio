@@ -35,6 +35,10 @@ def create_app(database: Path | None = None, model_artifact: Path | None = None)
             "tools": ["delivery_summary", "compare_delivery_periods"],
         }
 
+    @app.get("/api/model")
+    def model_provenance() -> dict:
+        return intent_model.provenance()
+
     @app.post("/api/tools/execute")
     def run_tool(request: ToolRequest) -> dict:
         try:

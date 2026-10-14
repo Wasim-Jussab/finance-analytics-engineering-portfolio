@@ -10,6 +10,7 @@ A local delivery-performance dashboard and governed analytics-assistant foundati
 - Evidence-cited answer templates with executable grounding checks.
 - Swappable local intent-model adapter with explicit abstention and validated dates.
 - Fingerprinted local model artifact with verify-before-load evaluation.
+- Read-only runtime provenance for the active classifier and artifact fingerprint.
 - Versioned release policy over held-out and adversarial routing evidence.
 - End-to-end evaluation, privacy-conscious traces and a question-path release gate.
 - On-time completion, late delivery and overdue-open counts.
@@ -59,3 +60,5 @@ This is one row per shipment, with one shipment per order assumed. Cancellation 
 `POST /api/questions` adds the [local intent model](docs/local-intent-model.md) through a [local adapter](docs/local-model-adapter.md). Held-out and [adversarial](docs/adversarial-evaluation.md) suites feed the routing [release gate](docs/routing-release-gate.md); the [question-path gate](docs/question-release-gate.md) checks routing, tools, evidence and traces together. This is constrained local inference, not broad language accuracy or generative AI.
 
 The [model artifact lifecycle](docs/model-artifact.md) records and verifies the fitted classifier bytes and compatible runtime metadata before loading. The held-out and adversarial reports name the exact artifact fingerprint used by the release gate. It only accepts locally generated trusted serialization; a matching hash does not make an untrusted pickle safe.
+
+`GET /api/model` exposes the active [runtime provenance](docs/model-provenance.md), including the local inference boundary and whether a verified artifact was loaded. It does not expose training examples or model weights.

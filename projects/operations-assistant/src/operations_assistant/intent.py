@@ -66,6 +66,38 @@ class LocalIntentModel:
         self.adapter = adapter or TfidfLogisticIntentAdapter()
         self.version = self.adapter.model_version
 
+    def provenance(self) -> dict:
+        """Describe the active inference boundary without exposing model internals."""
+
+        artifact_sha256 = self.adapter.artifact_sha256
+        return {
+            "classification_inference": {
+                "implemented": True,
+                "scope": "intent classification only",
+                "location": self.adapter.inference_location,
+                "network_required": self.adapter.network_required,
+            },
+            "generative_inference": {
+                "implemented": False,
+                "answer_mode": "deterministic template",
+            },
+            "adapter": self.adapter.adapter_name,
+            "model": self.adapter.model_name,
+            "model_version": self.adapter.model_version,
+            "approved_labels": [
+                "compare_delivery_periods",
+                "delivery_summary",
+                "unsupported",
+            ],
+            "confidence_threshold": self.confidence_threshold,
+            "artifact": {
+                "mode": "verified persisted artifact"
+                if artifact_sha256
+                else "in-memory development fit",
+                "sha256": artifact_sha256,
+            },
+        }
+
     def predict(self, question: str) -> dict:
         prediction = self.adapter.predict(question)
         if prediction.label not in {
