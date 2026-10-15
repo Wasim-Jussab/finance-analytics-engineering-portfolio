@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pytest
 from operations_assistant.generate import build_snapshot
+from operations_assistant.intent import LocalIntentModel
+from operations_assistant.model_artifact import export_model_artifact, load_model_artifact
 from operations_assistant.question_evaluation import run_question_evaluation
 from operations_assistant.question_release import (
     build_question_release_decision,
@@ -23,7 +25,12 @@ POLICY = {
 def _report(tmp_path: Path) -> dict:
     database = tmp_path / "operations.duckdb"
     build_snapshot(database)
-    return run_question_evaluation(database)
+    artifact = tmp_path / "model"
+    export_model_artifact(artifact)
+    return run_question_evaluation(
+        database,
+        LocalIntentModel(adapter=load_model_artifact(artifact)),
+    )
 
 
 def _write(path: Path, value: dict) -> None:

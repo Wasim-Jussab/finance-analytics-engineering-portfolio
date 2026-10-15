@@ -77,6 +77,16 @@ def test_release_gate_requires_matching_model_versions() -> None:
         evaluate_release(run_intent_evaluation(), adversarial, POLICY)
 
 
+def test_release_gate_requires_matching_model_artifacts() -> None:
+    held_out = run_intent_evaluation()
+    adversarial = run_adversarial_evaluation()
+    held_out["model_artifact_sha256"] = "a" * 64
+    adversarial["model_artifact_sha256"] = "b" * 64
+
+    with pytest.raises(ValueError, match="different model artifacts"):
+        evaluate_release(held_out, adversarial, POLICY)
+
+
 def test_release_decision_fingerprints_exact_inputs(tmp_path: Path) -> None:
     held_out = tmp_path / "held-out.json"
     adversarial = tmp_path / "adversarial.json"

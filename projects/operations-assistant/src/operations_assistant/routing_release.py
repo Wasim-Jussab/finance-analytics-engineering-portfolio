@@ -85,6 +85,8 @@ def evaluate_release(held_out: dict, adversarial: dict, policy: dict) -> dict:
         raise ValueError("Evaluation reports identify different model types")
     if held_out["model_version"] != adversarial["model_version"]:
         raise ValueError("Evaluation reports identify different model versions")
+    if held_out.get("model_artifact_sha256") != adversarial.get("model_artifact_sha256"):
+        raise ValueError("Evaluation reports identify different model artifacts")
 
     adversarial_results = adversarial["results"]
     unsafe_acceptances = sum(
@@ -134,6 +136,7 @@ def evaluate_release(held_out: dict, adversarial: dict, policy: dict) -> dict:
         "status": "approved" if not breaches else "blocked",
         "model": held_out["model"],
         "model_version": held_out["model_version"],
+        "model_artifact_sha256": held_out.get("model_artifact_sha256"),
         "held_out_cases": held_out["cases"],
         "held_out_passed": held_out["passed"],
         "adversarial_cases": adversarial["cases"],

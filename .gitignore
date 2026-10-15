@@ -26,6 +26,7 @@ outputs/
 reports/
 target/
 logs/
+projects/operations-assistant/artifacts/
 config/.user.yml
 
 # Data files

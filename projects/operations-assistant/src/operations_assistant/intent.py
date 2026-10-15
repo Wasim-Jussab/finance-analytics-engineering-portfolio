@@ -2,56 +2,15 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
+import math
 import re
 from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import Pipeline
 
+from operations_assistant.model_adapter import IntentModelAdapter, TfidfLogisticIntentAdapter
 from operations_assistant.tools import ToolRequest
-
-TRAINING_EXAMPLES = (
-    ("summarise delivery performance", "delivery_summary"),
-    ("show the on time completion rate", "delivery_summary"),
-    ("how many shipments were late", "delivery_summary"),
-    ("give me the delivery totals", "delivery_summary"),
-    ("what is the overdue open count", "delivery_summary"),
-    ("report delivery performance for the selected period", "delivery_summary"),
-    ("show delivery outcomes by region", "delivery_summary"),
-    ("what percentage arrived on time", "delivery_summary"),
-    ("how is the north performing", "delivery_summary"),
-    ("count cancelled shipments", "delivery_summary"),
-    ("report shipments that remain overdue and open", "delivery_summary"),
-    ("summarise shipments due for the selected period", "delivery_summary"),
-    ("give me the due delivery summary", "delivery_summary"),
-    ("compare delivery performance between periods", "compare_delivery_periods"),
-    ("how did this week change from last week", "compare_delivery_periods"),
-    ("show the movement in late deliveries", "compare_delivery_periods"),
-    ("was the on time rate better than the baseline", "compare_delivery_periods"),
-    ("which region declined most versus last week", "compare_delivery_periods"),
-    ("compare current and previous delivery outcomes", "compare_delivery_periods"),
-    ("what changed in overdue shipments", "compare_delivery_periods"),
-    ("give me the week on week difference", "compare_delivery_periods"),
-    ("show percentage point change", "compare_delivery_periods"),
-    ("contrast these two reporting periods", "compare_delivery_periods"),
-    ("did completion improve compared with the baseline", "compare_delivery_periods"),
-    ("delete the shipments table", "unsupported"),
-    ("update every delivery status", "unsupported"),
-    ("write arbitrary sql", "unsupported"),
-    ("why did the courier fail", "unsupported"),
-    ("predict next month's delivery rate", "unsupported"),
-    ("send a message to the depot", "unsupported"),
-    ("write me a poem", "unsupported"),
-    ("change the promised date", "unsupported"),
-    ("tell me who is to blame", "unsupported"),
-    ("forecast future demand", "unsupported"),
-    ("forecast delivery performance for a future quarter", "unsupported"),
-)
 
 BLOCKED_PATTERNS = {
     "write_action": re.compile(
@@ -96,33 +55,63 @@ class UnsupportedQuestionError(ValueError):
 
 
 class LocalIntentModel:
-    """Fit a reproducible TF-IDF logistic classifier entirely in process."""
+    """Apply deterministic policy around one injected local model adapter."""
 
-    def __init__(self, confidence_threshold: float = 0.38) -> None:
+    def __init__(
+        self,
+        confidence_threshold: float = 0.38,
+        adapter: IntentModelAdapter | None = None,
+    ) -> None:
         self.confidence_threshold = confidence_threshold
-        self.pipeline = Pipeline(
-            [
-                ("tfidf", TfidfVectorizer(ngram_range=(1, 2), sublinear_tf=True)),
-                (
-                    "classifier",
-                    LogisticRegression(C=4, max_iter=1000, random_state=42),
-                ),
-            ]
-        )
-        texts, labels = zip(*TRAINING_EXAMPLES, strict=True)
-        self.pipeline.fit(texts, labels)
-        self.version = hashlib.sha256(
-            json.dumps(TRAINING_EXAMPLES, separators=(",", ":")).encode()
-        ).hexdigest()[:12]
+        self.adapter = adapter or TfidfLogisticIntentAdapter()
+        self.version = self.adapter.model_version
+
+    def provenance(self) -> dict:
+        """Describe the active inference boundary without exposing model internals."""
+
+        artifact_sha256 = self.adapter.artifact_sha256
+        return {
+            "classification_inference": {
+                "implemented": True,
+                "scope": "intent classification only",
+                "location": self.adapter.inference_location,
+                "network_required": self.adapter.network_required,
+            },
+            "generative_inference": {
+                "implemented": False,
+                "answer_mode": "deterministic template",
+            },
+            "adapter": self.adapter.adapter_name,
+            "model": self.adapter.model_name,
+            "model_version": self.adapter.model_version,
+            "approved_labels": [
+                "compare_delivery_periods",
+                "delivery_summary",
+                "unsupported",
+            ],
+            "confidence_threshold": self.confidence_threshold,
+            "artifact": {
+                "mode": "verified persisted artifact"
+                if artifact_sha256
+                else "in-memory development fit",
+                "sha256": artifact_sha256,
+            },
+        }
 
     def predict(self, question: str) -> dict:
-        probabilities = self.pipeline.predict_proba([question])[0]
-        classes = self.pipeline.classes_
-        best_index = int(probabilities.argmax())
-        label = str(classes[best_index])
-        confidence = float(probabilities[best_index])
-        ordered = sorted((float(value) for value in probabilities), reverse=True)
-        confidence_margin = ordered[0] - ordered[1]
+        prediction = self.adapter.predict(question)
+        if prediction.label not in {
+            "delivery_summary",
+            "compare_delivery_periods",
+            "unsupported",
+        }:
+            raise ValueError(f"Model adapter returned unapproved label: {prediction.label}")
+        if not 0 <= prediction.confidence <= 1 or not math.isfinite(prediction.confidence):
+            raise ValueError("Model adapter returned invalid confidence")
+        if not 0 <= prediction.confidence_margin <= 1 or not math.isfinite(
+            prediction.confidence_margin
+        ):
+            raise ValueError("Model adapter returned invalid confidence margin")
         guardrail = next(
             (name for name, pattern in BLOCKED_PATTERNS.items() if pattern.search(question)),
             None,
@@ -135,18 +124,22 @@ class LocalIntentModel:
             guardrail = "out_of_domain"
         accepted = (
             guardrail is None
-            and label != "unsupported"
-            and confidence >= self.confidence_threshold
+            and prediction.label != "unsupported"
+            and prediction.confidence >= self.confidence_threshold
         )
         return {
-            "label": label,
-            "confidence": round(confidence, 6),
-            "confidence_margin": round(confidence_margin, 6),
+            "label": prediction.label,
+            "confidence": round(prediction.confidence, 6),
+            "confidence_margin": round(prediction.confidence_margin, 6),
             "accepted": accepted,
             "threshold": self.confidence_threshold,
             "guardrail": guardrail,
-            "model": "local-tfidf-logistic-regression",
-            "model_version": self.version,
+            "model": self.adapter.model_name,
+            "model_version": self.adapter.model_version,
+            "model_adapter": self.adapter.adapter_name,
+            "inference_location": self.adapter.inference_location,
+            "network_required": self.adapter.network_required,
+            "model_artifact_sha256": self.adapter.artifact_sha256,
         }
 
     def route(self, request: QuestionRequest) -> tuple[ToolRequest | None, dict]:

@@ -97,7 +97,7 @@ def render_answer(tool_result: dict) -> dict:
         raise ValueError(f"Unsupported approved tool result: {tool_result.get('tool')!r}")
 
     return {
-        "mode": "deterministic-template; model inference not implemented",
+        "mode": "deterministic-template; no generative inference",
         "answer": answer,
         "claims": claims,
         "evidence": deepcopy(evidence),

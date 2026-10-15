@@ -5,3 +5,5 @@
 Dates are deliberately structured parameters. The classifier does not extract or invent them. Comparison requests still require two equal, non-overlapping periods, and unsupported, low-confidence, write, forecast and causal requests are rejected.
 
 The model trains in process from 30 versioned examples with a fixed random state. `make evaluate` executes 15 separate examples and retains predicted label, confidence and result. This is real local intent-model inference, but it is not a language model, a generative answer model or evidence of production accuracy. The dataset is too small for that claim.
+
+Day 11 places inference behind a tested [local model adapter](local-model-adapter.md). The adapter returns model-only predictions; deterministic guardrails, parameter validation and approved-tool selection remain outside it. Model provenance now fingerprints the training examples, settings and scikit-learn version.

@@ -105,6 +105,13 @@ def _validate_evaluation(report: dict) -> list[dict]:
         result["observed_outcome"] == "answered" for result in results
     ):
         raise ValueError("Question evaluation tool-execution total does not reconcile")
+    artifact_sha256 = report.get("model_artifact_sha256")
+    if (
+        not isinstance(artifact_sha256, str)
+        or len(artifact_sha256) != 64
+        or any(character not in "0123456789abcdef" for character in artifact_sha256)
+    ):
+        raise ValueError("Question evaluation must identify a verified model artifact")
     return results
 
 
@@ -160,6 +167,7 @@ def evaluate_question_release(report: dict, policy: dict) -> dict:
         "status": "approved" if not breaches else "blocked",
         "model": report.get("model"),
         "model_version": report.get("model_version"),
+        "model_artifact_sha256": report["model_artifact_sha256"],
         "cases": report["cases"],
         "passed": report["passed"],
         "answered_cases": answered,

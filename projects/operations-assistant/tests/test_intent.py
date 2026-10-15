@@ -69,6 +69,7 @@ def test_question_api_routes_then_executes_approved_read_only_tool(tmp_path: Pat
     result = response.json()
     assert result["routing"]["label"] == "compare_delivery_periods"
     assert result["routing"]["model"] == "local-tfidf-logistic-regression"
+    assert result["mode"] == "deterministic-template; local intent inference only"
     assert result["claims"]["change"]["due_change"] == 5
     assert result["evidence"]["evidence_id"] in result["answer"]
 

@@ -11,6 +11,7 @@ from operations_assistant.answers import render_answer
 from operations_assistant.decision_trace import build_decision_trace, verify_decision_trace
 from operations_assistant.evaluation import evaluate_answer
 from operations_assistant.intent import LocalIntentModel, QuestionRequest
+from operations_assistant.model_artifact import load_model_artifact
 from operations_assistant.tools import execute_tool
 
 SAFE_CASES = (
@@ -190,6 +191,7 @@ def run_question_evaluation(
         ),
         "model": "local-tfidf-logistic-regression",
         "model_version": model.version,
+        "model_artifact_sha256": model.adapter.artifact_sha256,
         "cases": len(results),
         "passed": passed,
         "failed": len(results) - passed,
@@ -206,10 +208,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, default=Path("data/operations.duckdb"))
     parser.add_argument(
+        "--model-artifact",
+        type=Path,
+        default=Path("artifacts/local-intent-model"),
+    )
+    parser.add_argument(
         "--output", type=Path, default=Path("reports/question-evaluation.json")
     )
     arguments = parser.parse_args()
-    result = run_question_evaluation(arguments.database)
+    result = run_question_evaluation(
+        arguments.database,
+        LocalIntentModel(adapter=load_model_artifact(arguments.model_artifact)),
+    )
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     temporary = arguments.output.with_suffix(f"{arguments.output.suffix}.tmp")
     temporary.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")

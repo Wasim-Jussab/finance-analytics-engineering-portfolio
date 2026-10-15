@@ -9,6 +9,7 @@ description = "A local operations dashboard with governed delivery metrics."
 requires-python = ">=3.11"
 dependencies = [
     "duckdb>=1.5,<2",
+    "pytz>=2024.1",
     "fastapi>=0.115,<1",
     "uvicorn>=0.30,<1",
     "pydantic>=2.8,<3",

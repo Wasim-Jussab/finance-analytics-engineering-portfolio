@@ -8,14 +8,17 @@ A local delivery-performance dashboard and governed analytics-assistant foundati
 - Two approved read-only tools with validated arguments and weekly comparisons.
 - Traceable snapshot/request evidence IDs and one consistent snapshot per tool call.
 - Evidence-cited answer templates with executable grounding checks.
-- Local intent-model routing with explicit abstention and validated dates.
+- Swappable local intent-model adapter with explicit abstention and validated dates.
+- Fingerprinted local model artifact with verify-before-load evaluation.
+- Read-only runtime provenance for the active classifier and artifact fingerprint.
 - Versioned release policy over held-out and adversarial routing evidence.
 - End-to-end evaluation, privacy-conscious traces and a question-path release gate.
+- Runtime readiness gate binding both approvals to the exact loaded artifact bytes.
 - On-time completion, late delivery and overdue-open counts.
 - Regional breakdown, daily trend and inspectable exceptions.
 - Tested period boundaries, denominator rules, empty results and invalid filters.
 
-The project now executes a small local TF-IDF logistic model for intent routing. It is not an LLM: figures and prose still come from deterministic metric and template services, and reporting dates remain explicit validated fields.
+The project executes a local TF-IDF logistic model through a tested adapter. It is not an LLM: figures and prose remain deterministic, and dates stay explicit.
 
 ## Metric definition
 
@@ -33,6 +36,8 @@ python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
 make test
+make model-artifact
+make model-artifact-verify
 make evaluate
 make demo
 ```
@@ -53,4 +58,10 @@ This is one row per shipment, with one shipment per order assumed. Cancellation 
 
 `POST /api/answers` renders a fixed, evidence-cited answer from either approved tool. The [grounding evaluation](docs/answer-grounding.md) executes four cases and records exact-claim and disclosure checks. Passing it does not constitute model evaluation because no model is invoked.
 
-`POST /api/questions` adds the [local intent model](docs/local-intent-model.md). Fifteen held-out cases cover summaries, comparisons and unsupported requests. A separate [adversarial evaluation](docs/adversarial-evaluation.md) tests mixed requests and named risk slices. The routing [release gate](docs/routing-release-gate.md) reconciles both suites; a separate [question-path gate](docs/question-release-gate.md) checks routing, tool execution, evidence and traces together. This is constrained local inference, not broad language accuracy or generative AI.
+`POST /api/questions` adds the [local intent model](docs/local-intent-model.md) through a [local adapter](docs/local-model-adapter.md). Held-out and [adversarial](docs/adversarial-evaluation.md) suites feed the routing [release gate](docs/routing-release-gate.md); the [question-path gate](docs/question-release-gate.md) checks routing, tools, evidence and traces together. The [runtime readiness gate](docs/runtime-readiness.md) requires both approvals to name the exact verified classifier bytes. This is constrained local inference, not broad language accuracy or generative AI.
+
+The [model artifact lifecycle](docs/model-artifact.md) records and verifies the fitted classifier bytes and compatible runtime metadata before loading. The held-out and adversarial reports name the exact artifact fingerprint used by the release gate. It only accepts locally generated trusted serialization; a matching hash does not make an untrusted pickle safe.
+
+`GET /api/model` exposes the active [runtime provenance](docs/model-provenance.md), including the local inference boundary and whether a verified artifact was loaded. It does not expose training examples or model weights.
+
+[Days 11–15 local-inference review](docs/local-inference-review.md)
