@@ -1,4 +1,4 @@
-.PHONY: data test model-artifact model-artifact-verify evaluate verify demo
+.PHONY: data test model-artifact model-artifact-verify evaluate runtime-readiness verify demo
 
 data:
 	python -m operations_assistant.generate
@@ -17,8 +17,12 @@ evaluate: data model-artifact-verify
 	python -m operations_assistant.intent_evaluation --model-artifact artifacts/local-intent-model
 	python -m operations_assistant.adversarial_evaluation --model-artifact artifacts/local-intent-model
 	python -m operations_assistant.routing_release
-	python -m operations_assistant.question_evaluation
+	python -m operations_assistant.question_evaluation --model-artifact artifacts/local-intent-model
 	python -m operations_assistant.question_release
+	$(MAKE) runtime-readiness
+
+runtime-readiness:
+	python -m operations_assistant.runtime_readiness
 
 verify: test model-artifact evaluate
 

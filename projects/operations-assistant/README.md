@@ -13,6 +13,7 @@ A local delivery-performance dashboard and governed analytics-assistant foundati
 - Read-only runtime provenance for the active classifier and artifact fingerprint.
 - Versioned release policy over held-out and adversarial routing evidence.
 - End-to-end evaluation, privacy-conscious traces and a question-path release gate.
+- Runtime readiness gate binding both approvals to the exact loaded artifact bytes.
 - On-time completion, late delivery and overdue-open counts.
 - Regional breakdown, daily trend and inspectable exceptions.
 - Tested period boundaries, denominator rules, empty results and invalid filters.
@@ -57,8 +58,10 @@ This is one row per shipment, with one shipment per order assumed. Cancellation 
 
 `POST /api/answers` renders a fixed, evidence-cited answer from either approved tool. The [grounding evaluation](docs/answer-grounding.md) executes four cases and records exact-claim and disclosure checks. Passing it does not constitute model evaluation because no model is invoked.
 
-`POST /api/questions` adds the [local intent model](docs/local-intent-model.md) through a [local adapter](docs/local-model-adapter.md). Held-out and [adversarial](docs/adversarial-evaluation.md) suites feed the routing [release gate](docs/routing-release-gate.md); the [question-path gate](docs/question-release-gate.md) checks routing, tools, evidence and traces together. This is constrained local inference, not broad language accuracy or generative AI.
+`POST /api/questions` adds the [local intent model](docs/local-intent-model.md) through a [local adapter](docs/local-model-adapter.md). Held-out and [adversarial](docs/adversarial-evaluation.md) suites feed the routing [release gate](docs/routing-release-gate.md); the [question-path gate](docs/question-release-gate.md) checks routing, tools, evidence and traces together. The [runtime readiness gate](docs/runtime-readiness.md) requires both approvals to name the exact verified classifier bytes. This is constrained local inference, not broad language accuracy or generative AI.
 
 The [model artifact lifecycle](docs/model-artifact.md) records and verifies the fitted classifier bytes and compatible runtime metadata before loading. The held-out and adversarial reports name the exact artifact fingerprint used by the release gate. It only accepts locally generated trusted serialization; a matching hash does not make an untrusted pickle safe.
 
 `GET /api/model` exposes the active [runtime provenance](docs/model-provenance.md), including the local inference boundary and whether a verified artifact was loaded. It does not expose training examples or model weights.
+
+[Days 11–15 local-inference review](docs/local-inference-review.md)
