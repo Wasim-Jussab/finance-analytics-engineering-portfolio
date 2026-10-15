@@ -125,3 +125,8 @@ account and reporting-date grain. The bands are downstream of the tested
 principal-only allocation and remain explicitly separate from contractual
 arrears, default and IFRS 9 staging. The next sessions can add portfolio movement
 and controlled risk assumptions without weakening that boundary.
+
+Day 52 adds the first governed summary over those bands. Product-level account
+shares use an explicit product population, while coverage uses summed due and
+allocated amounts. Unobserved bands remain absent rather than being silently
+zero-filled; complete reporting matrices and movement analysis remain later work.

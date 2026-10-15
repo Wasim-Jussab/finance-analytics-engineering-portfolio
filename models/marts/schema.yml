@@ -440,6 +440,45 @@ models:
           - accepted_values:
               arguments:
                 values: ['Current', '1-29 days', '30-89 days', '90+ days']
+  - name: agg_loan_delinquency_by_product
+    description: >
+      One row per reporting date, synthetic loan product and observed delinquency
+      proxy band. Counts and amounts reconcile to the account-level proxy fact;
+      they are not contractual arrears, default or regulatory staging measures.
+    columns:
+      - name: as_of_date
+        tests: [not_null]
+      - name: product_code
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['LOAN-A', 'LOAN-B', 'LOAN-C']
+      - name: delinquency_band_proxy
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Current', '1-29 days', '30-89 days', '90+ days']
+      - name: loan_account_count
+        description: "Accounts in this product and observed proxy band."
+        tests: [not_null]
+      - name: product_loan_account_count
+        description: "All accounts in the product, repeated as the share denominator."
+        tests: [not_null]
+      - name: product_account_share
+        description: "Band account count divided by all accounts in the product."
+        tests: [not_null]
+      - name: scheduled_principal_due_amount
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: due_principal_coverage_ratio
+        description: >
+          Assumed allocated completed payments divided by scheduled principal due
+          inside the product-band population; null when no principal is due.
   - name: agg_loan_portfolio_monthly
     description: >
       Monthly loan-portfolio summary by synthetic product. Schedule-position

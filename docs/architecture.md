@@ -350,6 +350,17 @@ consumers one reusable band definition rather than repeated report-level CASE
 expressions. The boundary and missing contractual inputs are documented in the
 [credit-risk proxy note](credit-risk-proxy.md).
 
+## Day 52 addition
+
+`mart.agg_loan_delinquency_by_product` rolls the account-level classifications up
+to reporting date, product and observed proxy band. It carries the product account
+population beside each row so the account-share denominator is visible, and it
+calculates coverage from summed amounts rather than averaging account ratios.
+
+The aggregate deliberately omits unobserved bands instead of manufacturing zero
+rows. A consumer that needs a complete product-by-band matrix can join an approved
+band spine later without changing the source-of-truth totals.
+
 ## Day 36 addition
 
 `finance_portfolio.run_pipeline` is now the operational entry point behind

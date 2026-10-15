@@ -2,6 +2,20 @@
 
 This page records checks that I have actually run. It is not a list of intended controls.
 
+## Product delinquency summary — 15 October 2026
+
+The aggregate produced four observed product-band rows and reconciled to 25
+account-level positions: £57,712.01 scheduled principal due, £6,025.00 assumed
+allocation and £51,687.01 proxy shortfall. LOAN-A contained one account in the
+30–89 day band and 14 in 90+; all five LOAN-B and five LOAN-C accounts were in
+90+. Each product's band shares summed to 1.0000 within rounding tolerance.
+
+The clean gate passed 9 freshness checks, 21 models, 2 snapshots, 371 dbt data
+tests and 395 of 395 build results including the checkpoint hook. All history,
+removal, incremental-payment and degraded-health scenarios passed, alongside 79
+Python tests, Ruff and dbt documentation generation. The new unique-grain,
+metric-consistency and source-reconciliation controls all passed.
+
 ## Delinquency-band proxy — 14 October 2026
 
 The complete `make verify` gate passed with 20 models, two snapshots, 357 dbt data

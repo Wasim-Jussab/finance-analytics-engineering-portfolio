@@ -570,3 +570,18 @@ reporting date. It carries the tested schedule-position measures and maps
 allocation rule. It includes both `Not Yet Due` and `On Schedule` accounts; the
 retained `schedule_position_status` keeps that distinction available. The bands
 are analytical proxies, not contractual arrears, default or IFRS 9 stages.
+
+## Day 52 product and delinquency-band summary
+
+| Output | Grain | Purpose |
+|---|---|---|
+| `agg_loan_delinquency_by_product` | One row per reporting date, product and observed proxy band | Reconciled account mix and scheduled-principal coverage reporting |
+
+`product_account_share` uses every account in the same product and reporting date
+as its denominator. `due_principal_coverage_ratio` divides the band-level sum of
+assumed allocated completed payments by the band-level sum of scheduled principal
+due. It is therefore amount-weighted and is NULL when no principal is due.
+
+The output contains only observed bands. An absent row means no account was
+classified into that product-band combination; it is not stored as an explicit
+zero. All counts and amounts reconcile to `fct_loan_delinquency_position`.

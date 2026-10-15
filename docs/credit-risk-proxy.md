@@ -20,3 +20,11 @@ classification could be defended.
 Validation checks one row per account, complete account coverage, accepted band
 values, exact reconciliation to `fct_loan_schedule_position` and consistency
 between the band, uncovered principal and oldest uncovered due date.
+
+`mart.agg_loan_delinquency_by_product` is the governed reporting view over that
+fact. Its grain is reporting date, product and observed proxy band. The account
+share denominator is every loan in the same product on the same reporting date;
+the coverage ratio is amount-weighted, using allocated completed payments divided
+by scheduled principal due within the band. Missing bands are not zero-filled:
+only bands observed in the portfolio are returned. Counts and amounts reconcile
+exactly to the account-level fact.
