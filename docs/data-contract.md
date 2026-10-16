@@ -585,3 +585,14 @@ due. It is therefore amount-weighted and is NULL when no principal is due.
 The output contains only observed bands. An absent row means no account was
 classified into that product-band combination; it is not stored as an explicit
 zero. All counts and amounts reconcile to `fct_loan_delinquency_position`.
+
+## Day 53 product risk prioritisation
+
+| Model | Grain | Purpose |
+|---|---|---|
+| `agg_loan_delinquency_product_risk` | One row per reporting date and product | Compare product size, severe-proxy incidence and scheduled-principal shortfall concentration |
+
+The severe count uses only the documented `90+ days` proxy band. Portfolio account
+and shortfall totals are repeated as explicit denominators. The shortfall share is
+null if the portfolio has no shortfall; product coverage is null if no principal
+is due. All additive metrics reconcile to `fct_loan_delinquency_position`.

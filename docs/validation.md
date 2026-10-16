@@ -2,6 +2,26 @@
 
 This page records checks that I have actually run. It is not a list of intended controls.
 
+## Product risk prioritisation — 16 October 2026
+
+The new aggregate produced three rows, one per synthetic loan product, and
+reconciled 25 accounts, 24 accounts in the project's 90+ day proxy band and
+£51,687.01 of scheduled-principal shortfall. LOAN-A represents 60.00% of accounts
+and 45.15% of shortfall; LOAN-B represents 20.00% of accounts and 27.05% of
+shortfall; LOAN-C represents 20.00% of accounts and 27.81% of shortfall. The
+figures demonstrate why account volume and monetary concentration are separate
+measures; they do not establish default risk or expected loss.
+
+The full gate passed 9 freshness checks, 22 models, 2 snapshots, 386 dbt data
+tests and 411 of 411 dbt build results including the checkpoint hook. All history,
+removal, incremental-payment and degraded-health scenarios passed, alongside 79
+Python tests, Ruff and dbt documentation generation.
+
+The recurring local DuckDB WAL replay conflict blocked a direct post-gate query of
+the working database. I rebuilt the seven-model loan lineage in a fresh temporary
+database; all 15 tests selected for the new aggregate passed there before I read
+the three stated rows.
+
 ## Product delinquency summary — 15 October 2026
 
 The aggregate produced four observed product-band rows and reconciled to 25

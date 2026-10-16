@@ -28,3 +28,11 @@ the coverage ratio is amount-weighted, using allocated completed payments divide
 by scheduled principal due within the band. Missing bands are not zero-filled:
 only bands observed in the portfolio are returned. Counts and amounts reconcile
 exactly to the account-level fact.
+
+`mart.agg_loan_delinquency_product_risk` reduces that band detail to one row per
+product and reporting date for portfolio prioritisation. It repeats the portfolio
+account and shortfall denominators, so both product size and shortfall
+concentration can be reconstructed. The severe account measure is explicitly the
+project's `90+ days` proxy band. It is not a default flag, probability of default
+or regulatory stage. Ratios are calculated from additive counts and amounts, not
+averaged from band-level percentages.

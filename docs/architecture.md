@@ -361,6 +361,18 @@ The aggregate deliberately omits unobserved bands instead of manufacturing zero
 rows. A consumer that needs a complete product-by-band matrix can join an approved
 band spine later without changing the source-of-truth totals.
 
+## Day 53 addition
+
+`mart.agg_loan_delinquency_product_risk` provides one row per reporting date and
+product for prioritisation. It calculates severe-proxy incidence directly from
+account counts and shortfall concentration directly from additive money values.
+Portfolio denominators are retained on every row so a consumer can reproduce the
+shares without returning to lower-grain data.
+
+The severe definition is the project's existing `90+ days` proxy band. The model
+does not translate that band into contractual default, probability of default or
+regulatory staging.
+
 ## Day 36 addition
 
 `finance_portfolio.run_pipeline` is now the operational entry point behind

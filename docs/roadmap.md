@@ -130,3 +130,8 @@ Day 52 adds the first governed summary over those bands. Product-level account
 shares use an explicit product population, while coverage uses summed due and
 allocated amounts. Unobserved bands remain absent rather than being silently
 zero-filled; complete reporting matrices and movement analysis remain later work.
+
+Day 53 adds a one-row-per-product prioritisation view. It distinguishes portfolio
+account share, the share of accounts in the project's 90+ day proxy band and the
+share of total scheduled-principal shortfall. Repeated denominators make those
+concentrations auditable without implying default risk or regulatory staging.

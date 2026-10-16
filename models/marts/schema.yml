@@ -479,6 +479,46 @@ models:
         description: >
           Assumed allocated completed payments divided by scheduled principal due
           inside the product-band population; null when no principal is due.
+  - name: agg_loan_delinquency_product_risk
+    description: >
+      One row per reporting date and synthetic loan product, retaining portfolio
+      denominators for account and principal-shortfall concentration. The severe
+      proxy is the project's 90+ day band, not contractual default or staging.
+    columns:
+      - name: as_of_date
+        tests: [not_null]
+      - name: product_code
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['LOAN-A', 'LOAN-B', 'LOAN-C']
+      - name: loan_account_count
+        tests: [not_null]
+      - name: portfolio_loan_account_count
+        description: "All portfolio accounts, repeated as the account-share denominator."
+        tests: [not_null]
+      - name: portfolio_account_share
+        tests: [not_null]
+      - name: severe_proxy_account_count
+        description: "Accounts in the project's 90+ day proxy band."
+        tests: [not_null]
+      - name: severe_proxy_account_share
+        description: "90+ proxy accounts divided by all accounts in the product."
+        tests: [not_null]
+      - name: scheduled_principal_due_amount
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: portfolio_scheduled_principal_shortfall_amount
+        description: "Portfolio shortfall repeated as the concentration denominator."
+        tests: [not_null]
+      - name: portfolio_shortfall_share
+        description: "Product shortfall divided by portfolio shortfall; null if none exists."
+      - name: due_principal_coverage_ratio
+        description: "Product allocated completed payments divided by product principal due."
   - name: agg_loan_portfolio_monthly
     description: >
       Monthly loan-portfolio summary by synthetic product. Schedule-position
