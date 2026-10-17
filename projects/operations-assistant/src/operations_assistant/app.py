@@ -11,7 +11,10 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 
 from operations_assistant.answers import render_answer
-from operations_assistant.decision_audit import append_decision_audit
+from operations_assistant.decision_audit import (
+    append_decision_audit,
+    decision_audit_status,
+)
 from operations_assistant.decision_trace import build_decision_trace
 from operations_assistant.generate import REGIONS
 from operations_assistant.intent import LocalIntentModel, QuestionRequest
@@ -50,6 +53,19 @@ def create_app(
     @app.get("/api/model")
     def model_provenance() -> dict:
         return intent_model.provenance()
+
+    @app.get("/api/audit/status")
+    def audit_status() -> dict:
+        try:
+            return decision_audit_status(decision_audit)
+        except ValueError as error:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Configured decision audit failed verification",
+                    "reason": str(error),
+                },
+            ) from error
 
     @app.post("/api/tools/execute")
     def run_tool(request: ToolRequest) -> dict:

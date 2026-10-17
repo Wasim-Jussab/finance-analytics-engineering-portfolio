@@ -62,6 +62,39 @@ def test_audit_binds_decision_to_active_model_artifact(tmp_path: Path) -> None:
     )
 
 
+def test_audit_status_reports_integrity_without_exposing_records(tmp_path: Path) -> None:
+    database = tmp_path / "operations.duckdb"
+    audit = tmp_path / "decision-audit.jsonl"
+    build_snapshot(database)
+    client = TestClient(create_app(database, decision_audit=audit))
+    client.post(
+        "/api/questions", json=_request("Give me delivery totals for this period")
+    )
+
+    response = client.get("/api/audit/status")
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["configured"] is True
+    assert payload["verification"] == "passed"
+    assert payload["record_count"] == 1
+    assert len(payload["head_record_sha256"]) == 64
+    assert payload["raw_question_retained"] is False
+    assert "decision_trace" not in payload
+    assert str(audit) not in response.text
+
+
+def test_audit_status_is_explicit_when_not_configured(tmp_path: Path) -> None:
+    database = tmp_path / "operations.duckdb"
+    build_snapshot(database)
+    response = TestClient(create_app(database)).get("/api/audit/status")
+
+    assert response.status_code == 200
+    assert response.json()["configured"] is False
+    assert response.json()["verification"] == "not_run"
+    assert response.json()["record_count"] is None
+
+
 def test_audit_verifier_detects_changed_record(tmp_path: Path) -> None:
     database = tmp_path / "operations.duckdb"
     audit = tmp_path / "decision-audit.jsonl"
@@ -76,6 +109,13 @@ def test_audit_verifier_detects_changed_record(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="changed content"):
         verify_decision_audit(audit)
+
+    status = client.get("/api/audit/status")
+    assert status.status_code == 409
+    assert status.json()["detail"]["message"] == (
+        "Configured decision audit failed verification"
+    )
+    assert "changed content" in status.json()["detail"]["reason"]
 
 
 def test_audit_verifier_detects_missing_middle_record(tmp_path: Path) -> None:

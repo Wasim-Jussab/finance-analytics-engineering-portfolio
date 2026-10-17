@@ -56,6 +56,30 @@ def verify_decision_audit(path: Path) -> dict:
     }
 
 
+def decision_audit_status(path: Path | None) -> dict:
+    """Return integrity metadata without exposing ledger records or its path."""
+
+    if path is None:
+        return {
+            "configured": False,
+            "verification": "not_run",
+            "record_version": RECORD_VERSION,
+            "record_count": None,
+            "head_record_sha256": None,
+            "raw_question_retained": False,
+            "storage": "local hash-linked JSONL; not immutable storage",
+        }
+    state = verify_decision_audit(path)
+    return {
+        "configured": True,
+        "verification": "passed",
+        "record_version": RECORD_VERSION,
+        **state,
+        "raw_question_retained": False,
+        "storage": "local hash-linked JSONL; not immutable storage",
+    }
+
+
 def append_decision_audit(path: Path, decision_trace: dict) -> dict:
     """Verify existing evidence, then append one privacy-conscious decision trace."""
 

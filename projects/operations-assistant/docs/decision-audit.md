@@ -13,3 +13,9 @@ immutable audit system: there is no external timestamp, access control, concurre
 writer lock or independently retained head fingerprint. A user with filesystem
 access can replace or truncate the complete file. Approved metric tools continue
 to open the DuckDB snapshot read-only; only the configured audit file is written.
+
+`GET /api/audit/status` verifies the complete configured ledger on demand and
+returns its record count, head fingerprint, record version and storage boundary.
+It returns HTTP 409 when verification fails. It does not expose the configured
+filesystem path, individual traces or raw questions; when no ledger is configured,
+it says verification was not run rather than implying that an empty ledger passed.

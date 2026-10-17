@@ -15,6 +15,7 @@ A local delivery-performance dashboard and governed analytics-assistant foundati
 - End-to-end evaluation, privacy-conscious traces and a question-path release gate.
 - Runtime readiness gate binding both approvals to the exact loaded artifact bytes.
 - Optional hash-linked local decision audit without retained raw question text.
+- Read-only audit integrity status without exposing ledger records or local paths.
 - On-time completion, late delivery and overdue-open counts.
 - Regional breakdown, daily trend and inspectable exceptions.
 - Tested period boundaries, denominator rules, empty results and invalid filters.
@@ -68,5 +69,6 @@ The [model artifact lifecycle](docs/model-artifact.md) records and verifies the 
 `OPERATIONS_DECISION_AUDIT=reports/decision-audit.jsonl` enables the optional
 [local decision audit](docs/decision-audit.md). It binds answered and blocked
 decisions to their model artifact and evidence, but is not immutable storage.
+`GET /api/audit/status` verifies that ledger and returns only integrity metadata.
 
 [Days 11–15 local-inference review](docs/local-inference-review.md)
