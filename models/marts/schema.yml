@@ -519,6 +519,45 @@ models:
         description: "Product shortfall divided by portfolio shortfall; null if none exists."
       - name: due_principal_coverage_ratio
         description: "Product allocated completed payments divided by product principal due."
+  - name: agg_loan_delinquency_portfolio_concentration
+    description: >
+      One row per reporting date summarising product concentration by account
+      count and scheduled-principal shortfall. HHI and effective-product counts
+      are descriptive project measures, not regulatory limits or a risk score.
+    columns:
+      - name: as_of_date
+        tests: [not_null, unique]
+      - name: observed_product_count
+        tests: [not_null]
+      - name: portfolio_loan_account_count
+        tests: [not_null]
+      - name: severe_proxy_account_count
+        tests: [not_null]
+      - name: severe_proxy_account_share
+        tests: [not_null]
+      - name: scheduled_principal_due_amount
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: largest_account_product_code
+        tests: [not_null]
+      - name: largest_account_product_count
+        tests: [not_null]
+      - name: largest_account_product_share
+        tests: [not_null]
+      - name: largest_shortfall_product_code
+        tests: [not_null]
+      - name: largest_product_shortfall_amount
+        tests: [not_null]
+      - name: largest_product_shortfall_share
+      - name: account_concentration_hhi
+        tests: [not_null]
+      - name: account_effective_product_count
+        tests: [not_null]
+      - name: shortfall_concentration_hhi
+      - name: shortfall_effective_product_count
   - name: agg_loan_portfolio_monthly
     description: >
       Monthly loan-portfolio summary by synthetic product. Schedule-position

@@ -373,6 +373,13 @@ The severe definition is the project's existing `90+ days` proxy band. The model
 does not translate that band into contractual default, probability of default or
 regulatory staging.
 
+## Day 54 addition
+
+`mart.agg_loan_delinquency_portfolio_concentration` compresses the product rows
+to one portfolio row. It identifies the largest account and shortfall products,
+then calculates HHI and reciprocal effective-product counts from unrounded
+denominators. No appetite threshold, risk grade or regulatory meaning is added.
+
 ## Day 36 addition
 
 `finance_portfolio.run_pipeline` is now the operational entry point behind

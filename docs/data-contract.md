@@ -596,3 +596,14 @@ The severe count uses only the documented `90+ days` proxy band. Portfolio accou
 and shortfall totals are repeated as explicit denominators. The shortfall share is
 null if the portfolio has no shortfall; product coverage is null if no principal
 is due. All additive metrics reconcile to `fct_loan_delinquency_position`.
+
+## Day 54 portfolio concentration summary
+
+| Model | Grain | Purpose |
+|---|---|---|
+| `agg_loan_delinquency_portfolio_concentration` | One row per reporting date | Compare account and shortfall concentration without an arbitrary composite score |
+
+The HHI measures sum squared product shares using unrounded counts and amounts.
+Its reciprocal is reported as an effective-product count. These are descriptive
+concentration measures only; no risk appetite, capital or regulatory threshold is
+implied. Largest-product fields use product code as a deterministic tie-breaker.
