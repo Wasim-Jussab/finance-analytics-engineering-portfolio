@@ -559,3 +559,51 @@ It is not the arithmetic mean of account-level percentages. Counts for `Not Yet
 Due`, `On Schedule` and `Behind Schedule` add back to the product-month population,
 and the monetary fields retain the same reconciliation equations as the account
 position. All labels remain subject to the principal-only project assumption.
+
+## Day 51 delinquency-band proxy
+
+`mart.fct_loan_delinquency_position` has one row per loan account at the fixed
+reporting date. It carries the tested schedule-position measures and maps
+`days_past_due_proxy` to `Current`, `1-29 days`, `30-89 days` or `90+ days`.
+
+`Current` means scheduled principal shortfall is zero under the project's stated
+allocation rule. It includes both `Not Yet Due` and `On Schedule` accounts; the
+retained `schedule_position_status` keeps that distinction available. The bands
+are analytical proxies, not contractual arrears, default or IFRS 9 stages.
+
+## Day 52 product and delinquency-band summary
+
+| Output | Grain | Purpose |
+|---|---|---|
+| `agg_loan_delinquency_by_product` | One row per reporting date, product and observed proxy band | Reconciled account mix and scheduled-principal coverage reporting |
+
+`product_account_share` uses every account in the same product and reporting date
+as its denominator. `due_principal_coverage_ratio` divides the band-level sum of
+assumed allocated completed payments by the band-level sum of scheduled principal
+due. It is therefore amount-weighted and is NULL when no principal is due.
+
+The output contains only observed bands. An absent row means no account was
+classified into that product-band combination; it is not stored as an explicit
+zero. All counts and amounts reconcile to `fct_loan_delinquency_position`.
+
+## Day 53 product risk prioritisation
+
+| Model | Grain | Purpose |
+|---|---|---|
+| `agg_loan_delinquency_product_risk` | One row per reporting date and product | Compare product size, severe-proxy incidence and scheduled-principal shortfall concentration |
+
+The severe count uses only the documented `90+ days` proxy band. Portfolio account
+and shortfall totals are repeated as explicit denominators. The shortfall share is
+null if the portfolio has no shortfall; product coverage is null if no principal
+is due. All additive metrics reconcile to `fct_loan_delinquency_position`.
+
+## Day 54 portfolio concentration summary
+
+| Model | Grain | Purpose |
+|---|---|---|
+| `agg_loan_delinquency_portfolio_concentration` | One row per reporting date | Compare account and shortfall concentration without an arbitrary composite score |
+
+The HHI measures sum squared product shares using unrounded counts and amounts.
+Its reciprocal is reported as an effective-product count. These are descriptive
+concentration measures only; no risk appetite, capital or regulatory threshold is
+implied. Largest-product fields use product code as a deterministic tie-breaker.

@@ -341,6 +341,45 @@ loan status-event history, so the current `status` field is not used to invent a
 historical active population. The output is suitable for local BI exploration of
 the project assumptions, not contractual arrears reporting.
 
+## Day 51 addition
+
+`mart.fct_loan_delinquency_position` is a thin governed classification layer over
+the account-level schedule-position fact. It does not recalculate allocation or
+days past due. That keeps one tested source for the financial amounts and gives BI
+consumers one reusable band definition rather than repeated report-level CASE
+expressions. The boundary and missing contractual inputs are documented in the
+[credit-risk proxy note](credit-risk-proxy.md).
+
+## Day 52 addition
+
+`mart.agg_loan_delinquency_by_product` rolls the account-level classifications up
+to reporting date, product and observed proxy band. It carries the product account
+population beside each row so the account-share denominator is visible, and it
+calculates coverage from summed amounts rather than averaging account ratios.
+
+The aggregate deliberately omits unobserved bands instead of manufacturing zero
+rows. A consumer that needs a complete product-by-band matrix can join an approved
+band spine later without changing the source-of-truth totals.
+
+## Day 53 addition
+
+`mart.agg_loan_delinquency_product_risk` provides one row per reporting date and
+product for prioritisation. It calculates severe-proxy incidence directly from
+account counts and shortfall concentration directly from additive money values.
+Portfolio denominators are retained on every row so a consumer can reproduce the
+shares without returning to lower-grain data.
+
+The severe definition is the project's existing `90+ days` proxy band. The model
+does not translate that band into contractual default, probability of default or
+regulatory staging.
+
+## Day 54 addition
+
+`mart.agg_loan_delinquency_portfolio_concentration` compresses the product rows
+to one portfolio row. It identifies the largest account and shortfall products,
+then calculates HHI and reciprocal effective-product counts from unrounded
+denominators. No appetite threshold, risk grade or regulatory meaning is added.
+
 ## Day 36 addition
 
 `finance_portfolio.run_pipeline` is now the operational entry point behind

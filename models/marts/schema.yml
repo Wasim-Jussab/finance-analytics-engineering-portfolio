@@ -388,6 +388,176 @@ models:
           - accepted_values:
               arguments:
                 values: ['Not Yet Due', 'On Schedule', 'Behind Schedule']
+  - name: fct_loan_delinquency_position
+    description: >
+      One row per loan at the fixed reporting date with a reusable delinquency
+      band derived from the project's days-past-due proxy. It is not contractual
+      arrears, default or regulatory staging.
+    columns:
+      - name: account_id
+        description: "Loan account represented by the proxy classification."
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('fct_loan_schedule_position')
+                field: account_id
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customer')
+                field: customer_id
+      - name: product_code
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['LOAN-A', 'LOAN-B', 'LOAN-C']
+      - name: source_loan_status
+        tests: [not_null]
+      - name: as_of_date
+        tests: [not_null]
+      - name: scheduled_principal_due_amount
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: oldest_uncovered_due_date
+      - name: days_past_due_proxy
+        tests: [not_null]
+      - name: schedule_position_status
+        tests: [not_null]
+      - name: delinquency_band_proxy
+        description: >
+          Reporting band derived only from days_past_due_proxy under the documented
+          synthetic principal-allocation assumption.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Current', '1-29 days', '30-89 days', '90+ days']
+  - name: agg_loan_delinquency_by_product
+    description: >
+      One row per reporting date, synthetic loan product and observed delinquency
+      proxy band. Counts and amounts reconcile to the account-level proxy fact;
+      they are not contractual arrears, default or regulatory staging measures.
+    columns:
+      - name: as_of_date
+        tests: [not_null]
+      - name: product_code
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['LOAN-A', 'LOAN-B', 'LOAN-C']
+      - name: delinquency_band_proxy
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Current', '1-29 days', '30-89 days', '90+ days']
+      - name: loan_account_count
+        description: "Accounts in this product and observed proxy band."
+        tests: [not_null]
+      - name: product_loan_account_count
+        description: "All accounts in the product, repeated as the share denominator."
+        tests: [not_null]
+      - name: product_account_share
+        description: "Band account count divided by all accounts in the product."
+        tests: [not_null]
+      - name: scheduled_principal_due_amount
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: due_principal_coverage_ratio
+        description: >
+          Assumed allocated completed payments divided by scheduled principal due
+          inside the product-band population; null when no principal is due.
+  - name: agg_loan_delinquency_product_risk
+    description: >
+      One row per reporting date and synthetic loan product, retaining portfolio
+      denominators for account and principal-shortfall concentration. The severe
+      proxy is the project's 90+ day band, not contractual default or staging.
+    columns:
+      - name: as_of_date
+        tests: [not_null]
+      - name: product_code
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['LOAN-A', 'LOAN-B', 'LOAN-C']
+      - name: loan_account_count
+        tests: [not_null]
+      - name: portfolio_loan_account_count
+        description: "All portfolio accounts, repeated as the account-share denominator."
+        tests: [not_null]
+      - name: portfolio_account_share
+        tests: [not_null]
+      - name: severe_proxy_account_count
+        description: "Accounts in the project's 90+ day proxy band."
+        tests: [not_null]
+      - name: severe_proxy_account_share
+        description: "90+ proxy accounts divided by all accounts in the product."
+        tests: [not_null]
+      - name: scheduled_principal_due_amount
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: portfolio_scheduled_principal_shortfall_amount
+        description: "Portfolio shortfall repeated as the concentration denominator."
+        tests: [not_null]
+      - name: portfolio_shortfall_share
+        description: "Product shortfall divided by portfolio shortfall; null if none exists."
+      - name: due_principal_coverage_ratio
+        description: "Product allocated completed payments divided by product principal due."
+  - name: agg_loan_delinquency_portfolio_concentration
+    description: >
+      One row per reporting date summarising product concentration by account
+      count and scheduled-principal shortfall. HHI and effective-product counts
+      are descriptive project measures, not regulatory limits or a risk score.
+    columns:
+      - name: as_of_date
+        tests: [not_null, unique]
+      - name: observed_product_count
+        tests: [not_null]
+      - name: portfolio_loan_account_count
+        tests: [not_null]
+      - name: severe_proxy_account_count
+        tests: [not_null]
+      - name: severe_proxy_account_share
+        tests: [not_null]
+      - name: scheduled_principal_due_amount
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: largest_account_product_code
+        tests: [not_null]
+      - name: largest_account_product_count
+        tests: [not_null]
+      - name: largest_account_product_share
+        tests: [not_null]
+      - name: largest_shortfall_product_code
+        tests: [not_null]
+      - name: largest_product_shortfall_amount
+        tests: [not_null]
+      - name: largest_product_shortfall_share
+      - name: account_concentration_hhi
+        tests: [not_null]
+      - name: account_effective_product_count
+        tests: [not_null]
+      - name: shortfall_concentration_hhi
+      - name: shortfall_effective_product_count
   - name: agg_loan_portfolio_monthly
     description: >
       Monthly loan-portfolio summary by synthetic product. Schedule-position
