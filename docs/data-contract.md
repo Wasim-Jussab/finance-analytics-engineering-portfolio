@@ -607,3 +607,16 @@ The HHI measures sum squared product shares using unrounded counts and amounts.
 Its reciprocal is reported as an effective-product count. These are descriptive
 concentration measures only; no risk appetite, capital or regulatory threshold is
 implied. Largest-product fields use product code as a deterministic tie-breaker.
+
+
+## Day 55 complete delinquency-band matrix
+
+| Model | Grain | Purpose |
+|---|---|---|
+| `agg_loan_delinquency_band_matrix` | One row per reporting date, product and governed proxy band | Complete BI matrix with explicit zero combinations |
+
+All four bands are present for every observed product and reporting date.
+Unobserved combinations have zero counts and money values, null coverage and
+`is_observed_band = false`. Observed rows reconcile exactly to
+`agg_loan_delinquency_by_product`; product account totals and shares reconcile
+across the complete four-row product matrix.

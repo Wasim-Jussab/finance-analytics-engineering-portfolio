@@ -558,6 +558,45 @@ models:
         tests: [not_null]
       - name: shortfall_concentration_hhi
       - name: shortfall_effective_product_count
+  - name: agg_loan_delinquency_band_matrix
+    description: >
+      Complete reporting matrix with one row per reporting date, synthetic loan
+      product and governed proxy band. Unobserved combinations are explicit zero
+      rows; they are not evidence that the production portfolio has zero risk.
+    columns:
+      - name: as_of_date
+        tests: [not_null]
+      - name: product_code
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['LOAN-A', 'LOAN-B', 'LOAN-C']
+      - name: delinquency_band_proxy
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Current', '1-29 days', '30-89 days', '90+ days']
+      - name: loan_account_count
+        tests: [not_null]
+      - name: product_loan_account_count
+        description: "All accounts in the reporting-date product population."
+        tests: [not_null]
+      - name: product_account_share
+        description: "Band accounts divided by the complete product population."
+        tests: [not_null]
+      - name: scheduled_principal_due_amount
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: due_principal_coverage_ratio
+        description: "Null for zero-due rows, including unobserved combinations."
+      - name: is_observed_band
+        description: "True only when the source aggregate contains the combination."
+        tests: [not_null]
   - name: agg_loan_portfolio_monthly
     description: >
       Monthly loan-portfolio summary by synthetic product. Schedule-position

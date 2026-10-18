@@ -406,3 +406,12 @@ cleanup checks the run ID before deletion so one invocation cannot remove a lock
 that has been replaced by another owner. Abrupt process or machine termination can
 still leave a stale file. The runner deliberately does not infer liveness from age
 or delete stale locks automatically; that requires operator inspection.
+
+
+## Day 55 addition
+
+`mart.agg_loan_delinquency_band_matrix` is a presentation-safe layer over the
+sparse observed-band aggregate. It cross joins each observed reporting-date product
+population to the four governed proxy bands, then left joins the observed measures.
+Generated combinations are explicit zero rows with `is_observed_band = false`.
+The sparse aggregate remains the reconciliation source.

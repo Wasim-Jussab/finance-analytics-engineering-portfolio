@@ -36,3 +36,13 @@ concentration can be reconstructed. The severe account measure is explicitly the
 project's `90+ days` proxy band. It is not a default flag, probability of default
 or regulatory stage. Ratios are calculated from additive counts and amounts, not
 averaged from band-level percentages.
+
+
+`mart.agg_loan_delinquency_portfolio_concentration` summarises account and
+scheduled-principal-shortfall concentration using HHI and reciprocal effective
+product counts. These are descriptive distribution measures, not risk limits.
+
+`mart.agg_loan_delinquency_band_matrix` provides all four governed bands for each
+observed product and reporting date. Generated zero rows are marked with
+`is_observed_band = false`; they support stable BI axes without rewriting the
+sparse observed-band source.

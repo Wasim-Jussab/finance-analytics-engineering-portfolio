@@ -135,3 +135,13 @@ Day 53 adds a one-row-per-product prioritisation view. It distinguishes portfoli
 account share, the share of accounts in the project's 90+ day proxy band and the
 share of total scheduled-principal shortfall. Repeated denominators make those
 concentrations auditable without implying default risk or regulatory staging.
+
+
+Day 54 compresses product-level risk indicators into one portfolio concentration
+row. Account and shortfall HHI are calculated from unrounded denominators and remain
+descriptive measures without an invented appetite threshold.
+
+Day 55 closes the proxy-reporting milestone with a complete product-by-band matrix.
+It keeps the sparse observed aggregate as the source of truth while adding explicit
+zero rows and an observation flag for BI consumers. The five-day review records the
+remaining contractual, default and impairment gaps.
