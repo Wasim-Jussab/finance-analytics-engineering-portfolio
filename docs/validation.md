@@ -2,6 +2,60 @@
 
 This page records checks that I have actually run. It is not a list of intended controls.
 
+## Product risk prioritisation — 16 October 2026
+
+The new aggregate produced three rows, one per synthetic loan product, and
+reconciled 25 accounts, 24 accounts in the project's 90+ day proxy band and
+£51,687.01 of scheduled-principal shortfall. LOAN-A represents 60.00% of accounts
+and 45.15% of shortfall; LOAN-B represents 20.00% of accounts and 27.05% of
+shortfall; LOAN-C represents 20.00% of accounts and 27.81% of shortfall. The
+figures demonstrate why account volume and monetary concentration are separate
+measures; they do not establish default risk or expected loss.
+
+The full gate passed 9 freshness checks, 22 models, 2 snapshots, 386 dbt data
+tests and 411 of 411 dbt build results including the checkpoint hook. All history,
+removal, incremental-payment and degraded-health scenarios passed, alongside 79
+Python tests, Ruff and dbt documentation generation.
+
+The recurring local DuckDB WAL replay conflict blocked a direct post-gate query of
+the working database. I rebuilt the seven-model loan lineage in a fresh temporary
+database; all 15 tests selected for the new aggregate passed there before I read
+the three stated rows.
+
+## Product delinquency summary — 15 October 2026
+
+The aggregate produced four observed product-band rows and reconciled to 25
+account-level positions: £57,712.01 scheduled principal due, £6,025.00 assumed
+allocation and £51,687.01 proxy shortfall. LOAN-A contained one account in the
+30–89 day band and 14 in 90+; all five LOAN-B and five LOAN-C accounts were in
+90+. Each product's band shares summed to 1.0000 within rounding tolerance.
+
+The clean gate passed 9 freshness checks, 21 models, 2 snapshots, 371 dbt data
+tests and 395 of 395 build results including the checkpoint hook. All history,
+removal, incremental-payment and degraded-health scenarios passed, alongside 79
+Python tests, Ruff and dbt documentation generation. The new unique-grain,
+metric-consistency and source-reconciliation controls all passed.
+
+## Delinquency-band proxy — 14 October 2026
+
+The complete `make verify` gate passed with 20 models, two snapshots, 357 dbt data
+tests, 79 Python tests, all historical and incremental scenarios, Ruff and dbt
+documentation. Including the checkpoint hook, the full dbt build returned 380
+successful results.
+
+The new fact contains 25 rows for 25 accounts and reconciles £51,687.01 of
+scheduled-principal shortfall to the existing schedule-position fact. The fixed
+fixture produces one account in `30-89 days` and 24 in `90+ days`; no account is
+`Current` or `1-29 days`. The accepted-values test governs all four possible labels
+without pretending this small fixture represents a realistic portfolio mix.
+
+A direct read of the working DuckDB file after the full gate encountered the known
+local WAL replay conflict. I obtained the stated counts from a freshly loaded
+temporary database and rebuilt the new model plus its upstream loan lineage there;
+all 18 new model checks passed. Two unrelated global singular tests could not
+resolve date and subscription models omitted by that narrow selector. The full
+repository gate had already completed successfully.
+
 ## Retained evidence inventory — 12 October 2026
 
 The Day 49 gate verified every content-addressed evidence bundle before writing and then independently rebuilding the retention inventory. The clean local run contained one retained bundle, seven indexed artifacts and one unique identity each for the pipeline run, health decision and dbt invocation. Python tests cover two valid retained bundles, deterministic rewriting, a changed index, duplicate run identity, a tampered bundle and an unmanaged root file.

@@ -119,3 +119,29 @@ Day 49 adds one verified inventory across every retained bundle and rejects reus
 pipeline, health or dbt execution identities. Day 50 closes the milestone with a
 versioned acceptance policy and a reproducible approved-or-blocked decision. The
 gate is useful local evidence, not an external approval or a retention service.
+
+Day 51 returns to loan risk reporting with a reusable delinquency-band proxy at
+account and reporting-date grain. The bands are downstream of the tested
+principal-only allocation and remain explicitly separate from contractual
+arrears, default and IFRS 9 staging. The next sessions can add portfolio movement
+and controlled risk assumptions without weakening that boundary.
+
+Day 52 adds the first governed summary over those bands. Product-level account
+shares use an explicit product population, while coverage uses summed due and
+allocated amounts. Unobserved bands remain absent rather than being silently
+zero-filled; complete reporting matrices and movement analysis remain later work.
+
+Day 53 adds a one-row-per-product prioritisation view. It distinguishes portfolio
+account share, the share of accounts in the project's 90+ day proxy band and the
+share of total scheduled-principal shortfall. Repeated denominators make those
+concentrations auditable without implying default risk or regulatory staging.
+
+
+Day 54 compresses product-level risk indicators into one portfolio concentration
+row. Account and shortfall HHI are calculated from unrounded denominators and remain
+descriptive measures without an invented appetite threshold.
+
+Day 55 closes the proxy-reporting milestone with a complete product-by-band matrix.
+It keeps the sparse observed aggregate as the source of truth while adding explicit
+zero rows and an observation flag for BI consumers. The five-day review records the
+remaining contractual, default and impairment gaps.
