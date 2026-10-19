@@ -440,6 +440,77 @@ models:
           - accepted_values:
               arguments:
                 values: ['Current', '1-29 days', '30-89 days', '90+ days']
+  - name: rpt_loan_delinquency_exception_queue
+    description: >
+      One row per account and reporting date with positive scheduled-principal
+      shortfall. Rows are ordered by the documented proxy band, shortfall and
+      account ID; this is an operational queue, not a risk score or default list.
+    columns:
+      - name: account_id
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('fct_loan_delinquency_position')
+                field: account_id
+      - name: customer_id
+        tests: [not_null]
+      - name: product_code
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['LOAN-A', 'LOAN-B', 'LOAN-C']
+      - name: source_loan_status
+        tests: [not_null]
+      - name: as_of_date
+        tests: [not_null]
+      - name: scheduled_principal_due_amount
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: oldest_uncovered_due_date
+        tests: [not_null]
+      - name: days_past_due_proxy
+        tests: [not_null]
+      - name: schedule_position_status
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Behind Schedule']
+      - name: delinquency_band_proxy
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['1-29 days', '30-89 days', '90+ days']
+      - name: band_priority
+        description: "Transparent ordering: 90+ is 3, 30–89 is 2 and 1–29 is 1."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3]
+      - name: portfolio_exception_rank
+        tests: [not_null]
+      - name: product_exception_rank
+        tests: [not_null]
+      - name: portfolio_exception_count
+        tests: [not_null]
+      - name: product_exception_count
+        tests: [not_null]
+      - name: portfolio_shortfall_amount
+        tests: [not_null]
+      - name: product_shortfall_amount
+        tests: [not_null]
+      - name: portfolio_shortfall_share
+        tests: [not_null]
+      - name: product_shortfall_share
+        tests: [not_null]
   - name: agg_loan_delinquency_by_product
     description: >
       One row per reporting date, synthetic loan product and observed delinquency

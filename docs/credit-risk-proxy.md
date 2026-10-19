@@ -46,3 +46,9 @@ product counts. These are descriptive distribution measures, not risk limits.
 observed product and reporting date. Generated zero rows are marked with
 `is_observed_band = false`; they support stable BI axes without rewriting the
 sparse observed-band source.
+
+`mart.rpt_loan_delinquency_exception_queue` includes only accounts with positive
+scheduled-principal shortfall. Its order is the existing proxy band first,
+shortfall second and account ID as a stable tie-breaker. Portfolio and product
+denominators make each shortfall share reproducible. This is an analyst work queue,
+not a probability of default, customer treatment decision or regulatory score.

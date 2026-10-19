@@ -415,3 +415,14 @@ sparse observed-band aggregate. It cross joins each observed reporting-date prod
 population to the four governed proxy bands, then left joins the observed measures.
 Generated combinations are explicit zero rows with `is_observed_band = false`.
 The sparse aggregate remains the reconciliation source.
+
+## Day 56 addition
+
+`mart.rpt_loan_delinquency_exception_queue` turns the account-level proxy fact
+into a deterministic work queue. It includes only rows with positive scheduled-
+principal shortfall, then orders them by the existing proxy band, shortfall and
+account ID. Portfolio and product ranks, counts and shortfall denominators remain
+on each row so an analyst can explain both inclusion and ordering.
+
+The queue adds no model score, probability, service-level target or regulatory
+meaning. Its ordering is a transparent reporting rule over synthetic data.

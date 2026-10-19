@@ -620,3 +620,17 @@ Unobserved combinations have zero counts and money values, null coverage and
 `is_observed_band = false`. Observed rows reconcile exactly to
 `agg_loan_delinquency_by_product`; product account totals and shares reconcile
 across the complete four-row product matrix.
+
+## Day 56 delinquency exception queue
+
+| Model | Grain | Inclusion rule |
+|---|---|---|
+| `rpt_loan_delinquency_exception_queue` | One account and reporting date | Positive `scheduled_principal_shortfall_amount` |
+
+Rows sort first by the governed proxy band (`90+`, `30–89`, `1–29`), then by
+shortfall descending and account ID ascending. The same rule is applied within
+each product. Repeated portfolio and product counts and shortfall totals are the
+explicit denominators for the two account-level shortfall shares.
+
+This ordering is deterministic triage, not a credit-risk score. Every included
+row and carried financial field reconciles to `fct_loan_delinquency_position`.

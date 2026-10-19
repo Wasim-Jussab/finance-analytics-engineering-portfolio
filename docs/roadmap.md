@@ -145,3 +145,8 @@ Day 55 closes the proxy-reporting milestone with a complete product-by-band matr
 It keeps the sparse observed aggregate as the source of truth while adding explicit
 zero rows and an observation flag for BI consumers. The five-day review records the
 remaining contractual, default and impairment gaps.
+
+Day 56 starts a controlled delinquency-operations milestone. A deterministic
+exception queue exposes exactly which synthetic accounts have scheduled-principal
+shortfall and why they appear in their order. It deliberately avoids an invented
+score or service-level rule; assignment, outcomes and movement remain later work.
