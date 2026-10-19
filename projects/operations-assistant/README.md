@@ -14,6 +14,9 @@ A local delivery-performance dashboard and governed analytics-assistant foundati
 - Versioned release policy over held-out and adversarial routing evidence.
 - End-to-end evaluation, privacy-conscious traces and a question-path release gate.
 - Runtime readiness gate binding both approvals to the exact loaded artifact bytes.
+- Optional hash-linked local decision audit with single-writer protection and no retained raw question text.
+- Read-only audit integrity status without exposing ledger records or local paths.
+- Optional external head and count expectations to detect valid whole-file replacement.
 - On-time completion, late delivery and overdue-open counts.
 - Regional breakdown, daily trend and inspectable exceptions.
 - Tested period boundaries, denominator rules, empty results and invalid filters.
@@ -63,5 +66,12 @@ This is one row per shipment, with one shipment per order assumed. Cancellation 
 The [model artifact lifecycle](docs/model-artifact.md) records and verifies the fitted classifier bytes and compatible runtime metadata before loading. The held-out and adversarial reports name the exact artifact fingerprint used by the release gate. It only accepts locally generated trusted serialization; a matching hash does not make an untrusted pickle safe.
 
 `GET /api/model` exposes the active [runtime provenance](docs/model-provenance.md), including the local inference boundary and whether a verified artifact was loaded. It does not expose training examples or model weights.
+
+`OPERATIONS_DECISION_AUDIT=reports/decision-audit.jsonl` enables the optional
+[local decision audit](docs/decision-audit.md). It binds answered and blocked
+decisions to their model artifact and evidence, but is not immutable storage.
+`GET /api/audit/status` verifies that ledger and returns only integrity metadata.
+An operator can supply an independently retained expected head and record count to
+detect replacement by a shorter, internally valid ledger.
 
 [Days 11–15 local-inference review](docs/local-inference-review.md)
