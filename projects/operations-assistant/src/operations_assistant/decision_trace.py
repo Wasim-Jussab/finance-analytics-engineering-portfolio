@@ -9,7 +9,7 @@ from typing import Literal
 from operations_assistant.intent import QuestionRequest
 from operations_assistant.tools import ToolRequest
 
-TRACE_VERSION = "1.0.0"
+TRACE_VERSION = "1.1.0"
 
 
 def _fingerprint(value: object) -> str:
@@ -48,6 +48,10 @@ def build_decision_trace(
                 "threshold",
                 "guardrail",
                 "accepted",
+                "model_adapter",
+                "inference_location",
+                "network_required",
+                "model_artifact_sha256",
             )
         },
         "tool": tool_request.name if tool_request else None,
