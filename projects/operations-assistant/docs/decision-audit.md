@@ -40,3 +40,12 @@ Abrupt process termination can leave a stale lock. Recovery is deliberately
 manual because file age does not prove that a slow writer is dead. This is local
 single-host coordination, not a distributed lock or a substitute for immutable
 storage.
+
+## Standalone verification
+
+`python -m operations_assistant.audit_cli --path <ledger>` runs the same read-only
+chain verification without starting FastAPI. Optional `--expected-head-sha256`
+and `--expected-record-count` arguments apply the external-anchor checks. Success
+prints integrity metadata as JSON and exits zero. A changed ledger or expectation
+mismatch prints a path-free failure object and exits one; it never prints records,
+decision traces or raw questions.

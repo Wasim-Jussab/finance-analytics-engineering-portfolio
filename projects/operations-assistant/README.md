@@ -16,6 +16,7 @@ A local delivery-performance dashboard and governed analytics-assistant foundati
 - Runtime readiness gate binding both approvals to the exact loaded artifact bytes.
 - Optional hash-linked local decision audit with single-writer protection and no retained raw question text.
 - Read-only audit integrity status without exposing ledger records or local paths.
+- Standalone read-only ledger verification for operational checks without the API.
 - Optional external head and count expectations to detect valid whole-file replacement.
 - On-time completion, late delivery and overdue-open counts.
 - Regional breakdown, daily trend and inspectable exceptions.
@@ -71,7 +72,17 @@ The [model artifact lifecycle](docs/model-artifact.md) records and verifies the 
 [local decision audit](docs/decision-audit.md). It binds answered and blocked
 decisions to their model artifact and evidence, but is not immutable storage.
 `GET /api/audit/status` verifies that ledger and returns only integrity metadata.
+The same verification can run without the web service:
+
+```bash
+python -m operations_assistant.audit_cli \
+  --path reports/decision-audit.jsonl \
+  --expected-head-sha256 <trusted-head> \
+  --expected-record-count <trusted-count>
+```
 An operator can supply an independently retained expected head and record count to
 detect replacement by a shorter, internally valid ledger.
 
 [Days 11–15 local-inference review](docs/local-inference-review.md)
+
+[Days 16–20 decision-evidence review](docs/decision-evidence-review.md)
