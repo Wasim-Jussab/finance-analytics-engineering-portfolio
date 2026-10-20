@@ -634,3 +634,15 @@ explicit denominators for the two account-level shortfall shares.
 
 This ordering is deterministic triage, not a credit-risk score. Every included
 row and carried financial field reconciles to `fct_loan_delinquency_position`.
+
+## Day 57 synthetic collection actions
+
+| Model | Grain | Purpose |
+|---|---|---|
+| `fct_loan_collection_action` | One row per synthetic action ID | Preserve action-event history without multiplying queue accounts |
+| `rpt_loan_delinquency_case_status` | One row per exception account and reporting date | Add action count and latest-action context while retaining untouched accounts |
+
+The fixed seed contains 12 entirely synthetic events across eight queue accounts.
+`latest` means greatest `action_at`, with `action_id` as a deterministic tie-breaker.
+The remaining accounts have `recorded_action_count = 0`, `has_recorded_action =
+false` and null action detail. Absence is not interpreted as an SLA breach.

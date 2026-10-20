@@ -150,3 +150,8 @@ Day 56 starts a controlled delinquency-operations milestone. A deterministic
 exception queue exposes exactly which synthetic accounts have scheduled-principal
 shortfall and why they appear in their order. It deliberately avoids an invented
 score or service-level rule; assignment, outcomes and movement remain later work.
+
+Day 57 adds event-grain synthetic collection actions and a queue-complete case
+status view. Accounts without actions stay visible, and operational events cannot
+alter financial classification or priority. The project still has no approved
+contact strategy, SLA or customer-treatment policy.

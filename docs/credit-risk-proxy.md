@@ -52,3 +52,8 @@ scheduled-principal shortfall. Its order is the existing proxy band first,
 shortfall second and account ID as a stable tie-breaker. Portfolio and product
 denominators make each shortfall share reproducible. This is an analyst work queue,
 not a probability of default, customer treatment decision or regulatory score.
+
+`mart.rpt_loan_delinquency_case_status` adds synthetic action history without
+changing that boundary. It reports the event count and latest recorded action for
+each queue account, including explicit zero-action accounts. The event seed is a
+demonstration fixture, not customer contact evidence or a treatment recommendation.

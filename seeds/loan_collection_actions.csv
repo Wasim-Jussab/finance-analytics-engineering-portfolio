@@ -1,0 +1,13 @@
+action_id,account_id,action_at,action_type,action_outcome,agent_team
+ACT-000001,ACC-000001,2025-10-15 09:30:00,Contact Attempt,No Answer,Team A
+ACT-000002,ACC-000001,2025-11-03 10:15:00,Contact Attempt,Contacted,Team A
+ACT-000003,ACC-000001,2025-11-03 10:45:00,Payment Discussion,Promise Recorded,Team A
+ACT-000004,ACC-000018,2025-10-20 14:00:00,Contact Attempt,Contacted,Team B
+ACT-000005,ACC-000018,2025-12-01 11:20:00,Review,Referred for Review,Team B
+ACT-000006,ACC-000013,2025-11-12 15:10:00,Contact Attempt,No Answer,Team A
+ACT-000007,ACC-000012,2025-12-04 09:05:00,Payment Discussion,Contacted,Team B
+ACT-000008,ACC-000023,2025-11-18 13:40:00,Review,Referred for Review,Team A
+ACT-000009,ACC-000007,2025-10-28 16:25:00,Contact Attempt,No Answer,Team B
+ACT-000010,ACC-000007,2025-12-08 10:00:00,Contact Attempt,Contacted,Team B
+ACT-000011,ACC-000008,2025-12-10 12:30:00,Payment Discussion,Promise Recorded,Team A
+ACT-000012,ACC-000019,2025-12-15 08:50:00,Review,Referred for Review,Team B

@@ -1,0 +1,31 @@
+version: 2
+seeds:
+  - name: loan_collection_actions
+    description: >
+      Synthetic collection-action events used to demonstrate operational case
+      reporting. They are not real customer contacts or an approved treatment policy.
+    columns:
+      - name: action_id
+        tests: [not_null, unique]
+      - name: account_id
+        tests: [not_null]
+      - name: action_at
+        tests: [not_null]
+      - name: action_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Contact Attempt', 'Payment Discussion', 'Review']
+      - name: action_outcome
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['No Answer', 'Contacted', 'Promise Recorded', 'Referred for Review']
+      - name: agent_team
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Team A', 'Team B']

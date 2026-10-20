@@ -426,3 +426,15 @@ on each row so an analyst can explain both inclusion and ordering.
 
 The queue adds no model score, probability, service-level target or regulatory
 meaning. Its ordering is a transparent reporting rule over synthetic data.
+
+## Day 57 addition
+
+`mart.fct_loan_collection_action` keeps synthetic operational actions at event
+grain. `mart.rpt_loan_delinquency_case_status` then left joins an action summary
+and the latest deterministic event to every queue account. The left join is
+intentional: an account with no recorded action remains visible with a zero count
+rather than disappearing from operational reporting.
+
+Financial queue fields remain sourced from the tested delinquency fact. Action
+events do not rewrite shortfall, band or rank, and no contact SLA or treatment
+policy is inferred from an absent event.

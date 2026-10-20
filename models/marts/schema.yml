@@ -511,6 +511,76 @@ models:
         tests: [not_null]
       - name: product_shortfall_share
         tests: [not_null]
+  - name: fct_loan_collection_action
+    description: >
+      One row per synthetic collection-action event. This demonstrates event-grain
+      case reporting and is not real customer contact history or an approved policy.
+    columns:
+      - name: action_id
+        tests: [not_null, unique]
+      - name: account_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('rpt_loan_delinquency_exception_queue')
+                field: account_id
+      - name: action_at
+        tests: [not_null]
+      - name: action_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Contact Attempt', 'Payment Discussion', 'Review']
+      - name: action_outcome
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['No Answer', 'Contacted', 'Promise Recorded', 'Referred for Review']
+      - name: agent_team
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Team A', 'Team B']
+  - name: rpt_loan_delinquency_case_status
+    description: >
+      One row per exception-queue account with optional latest synthetic action
+      context. Accounts without actions remain visible with a zero action count.
+    columns:
+      - name: account_id
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('rpt_loan_delinquency_exception_queue')
+                field: account_id
+      - name: customer_id
+        tests: [not_null]
+      - name: product_code
+        tests: [not_null]
+      - name: as_of_date
+        tests: [not_null]
+      - name: delinquency_band_proxy
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: portfolio_exception_rank
+        tests: [not_null]
+      - name: recorded_action_count
+        tests: [not_null]
+      - name: has_recorded_action
+        tests: [not_null]
+      - name: first_action_at
+      - name: latest_action_at
+      - name: latest_action_id
+        description: "Latest event by action timestamp, with action ID as tie-breaker."
+      - name: latest_action_type
+      - name: latest_action_outcome
+      - name: latest_agent_team
   - name: agg_loan_delinquency_by_product
     description: >
       One row per reporting date, synthetic loan product and observed delinquency
