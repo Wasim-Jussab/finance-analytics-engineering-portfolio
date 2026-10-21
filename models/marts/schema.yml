@@ -545,6 +545,34 @@ models:
           - accepted_values:
               arguments:
                 values: ['Team A', 'Team B']
+  - name: fct_loan_case_assignment
+    description: >
+      One row per synthetic assignment event. Latest-event reporting is an observed
+      ownership state, not a workload target, treatment strategy or service level.
+    columns:
+      - name: assignment_id
+        tests: [not_null, unique]
+      - name: account_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('rpt_loan_delinquency_exception_queue')
+                field: account_id
+      - name: assigned_at
+        tests: [not_null]
+      - name: assigned_team
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Team A', 'Team B']
+      - name: assignment_reason
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Initial Queue Assignment', 'Capacity Rebalance', 'Specialist Review']
   - name: rpt_loan_delinquency_case_status
     description: >
       One row per exception-queue account with optional latest synthetic action
@@ -581,6 +609,16 @@ models:
       - name: latest_action_type
       - name: latest_action_outcome
       - name: latest_agent_team
+      - name: assignment_event_count
+        tests: [not_null]
+      - name: has_recorded_assignment
+        tests: [not_null]
+      - name: first_assigned_at
+      - name: latest_assigned_at
+      - name: current_assignment_id
+        description: "Latest assignment event by timestamp, with assignment ID as tie-breaker."
+      - name: current_assigned_team
+      - name: current_assignment_reason
   - name: agg_loan_delinquency_by_product
     description: >
       One row per reporting date, synthetic loan product and observed delinquency

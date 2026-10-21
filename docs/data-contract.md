@@ -646,3 +646,15 @@ The fixed seed contains 12 entirely synthetic events across eight queue accounts
 `latest` means greatest `action_at`, with `action_id` as a deterministic tie-breaker.
 The remaining accounts have `recorded_action_count = 0`, `has_recorded_action =
 false` and null action detail. Absence is not interpreted as an SLA breach.
+
+## Day 58 synthetic assignment history
+
+| Model | Grain | Purpose |
+|---|---|---|
+| `fct_loan_case_assignment` | One row per synthetic assignment ID | Preserve team ownership changes without overwriting prior events |
+| `rpt_loan_delinquency_case_status` | One row per exception account and reporting date | Add latest observed ownership while retaining assigned and unassigned accounts |
+
+The seed contains 10 synthetic assignment events across eight queue accounts.
+Two accounts are reassigned, so latest ownership is selected by `assigned_at`
+then `assignment_id`. Seventeen queue accounts remain explicitly unassigned.
+Assignment does not change financial rank, band, shortfall or action history.

@@ -20,6 +20,27 @@ latest_action as (
         partition by account_id
         order by action_at desc, action_id desc
     ) = 1
+),
+assignment_summary as (
+    select
+        account_id,
+        count(*) as assignment_event_count,
+        min(assigned_at) as first_assigned_at,
+        max(assigned_at) as latest_assigned_at
+    from {{ ref('fct_loan_case_assignment') }}
+    group by account_id
+),
+latest_assignment as (
+    select
+        account_id,
+        assignment_id as current_assignment_id,
+        assigned_team as current_assigned_team,
+        assignment_reason as current_assignment_reason
+    from {{ ref('fct_loan_case_assignment') }}
+    qualify row_number() over (
+        partition by account_id
+        order by assigned_at desc, assignment_id desc
+    ) = 1
 )
 select
     queue.account_id,
@@ -36,7 +57,16 @@ select
     latest_action.latest_action_id,
     latest_action.latest_action_type,
     latest_action.latest_action_outcome,
-    latest_action.latest_agent_team
+    latest_action.latest_agent_team,
+    coalesce(assignment_summary.assignment_event_count, 0) as assignment_event_count,
+    assignment_summary.assignment_event_count is not null as has_recorded_assignment,
+    assignment_summary.first_assigned_at,
+    assignment_summary.latest_assigned_at,
+    latest_assignment.current_assignment_id,
+    latest_assignment.current_assigned_team,
+    latest_assignment.current_assignment_reason
 from {{ ref('rpt_loan_delinquency_exception_queue') }} as queue
 left join action_summary using (account_id)
 left join latest_action using (account_id)
+left join assignment_summary using (account_id)
+left join latest_assignment using (account_id)

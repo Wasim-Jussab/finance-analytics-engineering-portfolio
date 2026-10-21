@@ -438,3 +438,13 @@ rather than disappearing from operational reporting.
 Financial queue fields remain sourced from the tested delinquency fact. Action
 events do not rewrite shortfall, band or rank, and no contact SLA or treatment
 policy is inferred from an absent event.
+
+## Day 58 addition
+
+`mart.fct_loan_case_assignment` preserves synthetic ownership changes at one row
+per assignment event. The case-status view derives the latest observed team by
+assignment timestamp and assignment ID, while keeping every queue account visible.
+
+Assignment history is separate from action history and financial priority. The
+project does not infer capacity, performance, treatment strategy or an SLA from
+assigned or unassigned status.

@@ -57,3 +57,8 @@ not a probability of default, customer treatment decision or regulatory score.
 changing that boundary. It reports the event count and latest recorded action for
 each queue account, including explicit zero-action accounts. The event seed is a
 demonstration fixture, not customer contact evidence or a treatment recommendation.
+
+`mart.fct_loan_case_assignment` and the assignment fields on the case-status view
+add synthetic team ownership without altering the financial source of truth.
+Unassigned accounts remain visible, reassignment history is retained, and no
+capacity, performance, SLA or customer-treatment meaning is inferred.

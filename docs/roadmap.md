@@ -155,3 +155,9 @@ Day 57 adds event-grain synthetic collection actions and a queue-complete case
 status view. Accounts without actions stay visible, and operational events cannot
 alter financial classification or priority. The project still has no approved
 contact strategy, SLA or customer-treatment policy.
+
+Day 58 adds synthetic assignment history without turning ownership into a hidden
+priority rule. Ten events cover eight queue accounts, including two reassignments;
+the other 17 accounts remain visible as unassigned. Latest ownership is derived
+deterministically, while workload targets, SLAs and treatment policy remain outside
+the available source contract.
