@@ -77,3 +77,15 @@ Tools share the dashboard service. Compare equally long, non-overlapping promise
 ## Evidence envelope
 
 The tool holds one read-only connection for source fingerprinting and both cohorts. Atomic replacement of the source file cannot mix the periods within that invocation. SHA-256 snapshot IDs use sorted shipment rows and snapshot metadata; evidence IDs bind that snapshot, request, delivery-v1 contract and returned result. Repeated inputs produce stable IDs. These IDs provide identity and traceability, not digital signatures or correctness guarantees.
+
+## Bounded exception detail
+
+The `delivery_exceptions` tool returns shipment-grain late-delivered and
+overdue-open rows from the same promised-date cohort used by the summary metric.
+Current cancelled rows are excluded. Open rows measure delay to the fixed snapshot;
+late-delivered rows measure delay to actual delivery.
+
+Results report the full exception count before applying a caller limit of 1 to 100.
+Ordering is deterministic: overdue open first, then greatest delay, promised
+timestamp and shipment ID. The direct tool is implemented and tested; model routing
+and answer rendering are deliberately outside Day 21.

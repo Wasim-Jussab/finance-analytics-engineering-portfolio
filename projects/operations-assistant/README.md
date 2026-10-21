@@ -5,7 +5,7 @@ A local delivery-performance dashboard and governed analytics-assistant foundati
 ## Current behaviour
 
 - Deterministic synthetic data: 448 shipments across four regions and two weeks.
-- Two approved read-only tools with validated arguments and weekly comparisons.
+- Three approved read-only tools with validated arguments, weekly comparisons and bounded exception detail.
 - Traceable snapshot/request evidence IDs and one consistent snapshot per tool call.
 - Evidence-cited answer templates with executable grounding checks.
 - Swappable local intent-model adapter with explicit abstention and validated dates.
@@ -86,3 +86,14 @@ detect replacement by a shorter, internally valid ledger.
 [Days 11–15 local-inference review](docs/local-inference-review.md)
 
 [Days 16–20 decision-evidence review](docs/decision-evidence-review.md)
+
+## Day 21 exception-detail boundary
+
+`delivery_exceptions` is a direct approved tool for shipment-grain investigation.
+It returns non-cancelled late-delivered and overdue-open rows from an explicit
+promised-date period, with an optional region and a limit from 1 to 100. Overdue
+open rows sort first, followed by greatest observed delay and stable tie-breakers.
+
+The tool is read-only, parameterised and evidence-bound to one snapshot. It is not
+yet available through natural-language routing or deterministic answer templates;
+those paths will only be added after separate training and grounding evaluation.

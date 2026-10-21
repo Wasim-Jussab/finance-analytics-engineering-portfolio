@@ -47,7 +47,11 @@ def create_app(
         return {
             "mode": "deterministic read-only tools; no model invocation",
             "request_schema": ToolRequest.model_json_schema(),
-            "tools": ["delivery_summary", "compare_delivery_periods"],
+            "tools": [
+                "delivery_summary",
+                "compare_delivery_periods",
+                "delivery_exceptions",
+            ],
         }
 
     @app.get("/api/model")
