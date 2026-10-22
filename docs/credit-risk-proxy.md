@@ -62,3 +62,9 @@ demonstration fixture, not customer contact evidence or a treatment recommendati
 add synthetic team ownership without altering the financial source of truth.
 Unassigned accounts remain visible, reassignment history is retained, and no
 capacity, performance, SLA or customer-treatment meaning is inferred.
+
+
+The Day 59 team-workload aggregate only groups the existing synthetic case status
+by current observed assignment. It does not convert assignment, action coverage or
+shortfall distribution into credit scoring, default status, treatment strategy,
+staffing capacity or an SLA.

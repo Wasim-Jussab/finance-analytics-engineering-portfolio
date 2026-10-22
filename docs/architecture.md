@@ -448,3 +448,14 @@ assignment timestamp and assignment ID, while keeping every queue account visibl
 Assignment history is separate from action history and financial priority. The
 project does not infer capacity, performance, treatment strategy or an SLA from
 assigned or unassigned status.
+
+
+## Day 59 addition
+
+`mart.agg_loan_delinquency_team_workload` groups the queue-complete case-status
+view by latest observed assignment team and an explicit `Unassigned` bucket.
+It carries case, action-coverage and scheduled-principal-shortfall measures with
+portfolio denominators, and reconciles exactly to the 25 case-status rows.
+
+This is a descriptive distribution of synthetic work, not staffing capacity,
+agent performance, an SLA threshold or a customer-treatment recommendation.

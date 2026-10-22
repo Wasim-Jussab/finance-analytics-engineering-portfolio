@@ -161,3 +161,9 @@ priority rule. Ten events cover eight queue accounts, including two reassignment
 the other 17 accounts remain visible as unassigned. Latest ownership is derived
 deterministically, while workload targets, SLAs and treatment policy remain outside
 the available source contract.
+
+
+Day 59 adds a current-assignment workload aggregate over the queue-complete case
+status. Team A, Team B and Unassigned remain explicit buckets; their case counts,
+action coverage and scheduled-principal shortfalls reconcile to the account grain.
+No staffing capacity, productivity benchmark or SLA is inferred.

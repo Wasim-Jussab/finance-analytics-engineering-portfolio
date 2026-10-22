@@ -619,6 +619,44 @@ models:
         description: "Latest assignment event by timestamp, with assignment ID as tie-breaker."
       - name: current_assigned_team
       - name: current_assignment_reason
+  - name: agg_loan_delinquency_team_workload
+    description: >
+      One row per reporting date and current assignment bucket, including an
+      explicit Unassigned bucket. Counts and shortfalls reconcile to case status;
+      they are observed distribution measures, not capacity targets or SLAs.
+    columns:
+      - name: as_of_date
+        tests: [not_null]
+      - name: workload_bucket
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Team A', 'Team B', 'Unassigned']
+      - name: case_count
+        tests: [not_null]
+      - name: assigned_case_count
+        tests: [not_null]
+      - name: unassigned_case_count
+        tests: [not_null]
+      - name: actioned_case_count
+        tests: [not_null]
+      - name: no_action_case_count
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: highest_portfolio_priority_rank
+        tests: [not_null]
+      - name: lowest_portfolio_priority_rank
+        tests: [not_null]
+      - name: portfolio_case_count
+        tests: [not_null]
+      - name: portfolio_scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: portfolio_case_share
+        tests: [not_null]
+      - name: portfolio_shortfall_share
+        tests: [not_null]
   - name: agg_loan_delinquency_by_product
     description: >
       One row per reporting date, synthetic loan product and observed delinquency

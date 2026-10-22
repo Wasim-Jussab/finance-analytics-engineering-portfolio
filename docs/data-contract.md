@@ -658,3 +658,18 @@ The seed contains 10 synthetic assignment events across eight queue accounts.
 Two accounts are reassigned, so latest ownership is selected by `assigned_at`
 then `assignment_id`. Seventeen queue accounts remain explicitly unassigned.
 Assignment does not change financial rank, band, shortfall or action history.
+
+
+## Day 59 current-assignment workload
+
+| Model | Grain | Purpose |
+|---|---|---|
+| `agg_loan_delinquency_team_workload` | One reporting date and current assignment bucket | Reconcile observed case and shortfall distribution, including unassigned work |
+
+`workload_bucket` is the latest observed team or the explicit value
+`Unassigned`. Case counts split exactly between assigned and unassigned, while
+actioned and no-action counts form a separate complete split. Repeated portfolio
+counts and shortfall totals are the share denominators.
+
+The aggregate does not contain a capacity target, productivity measure, SLA or
+treatment rule. A larger bucket describes the synthetic snapshot only.
