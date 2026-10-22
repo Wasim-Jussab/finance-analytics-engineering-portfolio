@@ -14,14 +14,14 @@ def test_question_evaluation_executes_supported_and_blocked_paths(
 
     result = run_question_evaluation(database)
 
-    assert result["cases"] == result["passed"] == 8
+    assert result["cases"] == result["passed"] == 9
     assert result["failed"] == 0
-    assert result["answered_cases"] == result["tool_executions"] == 4
+    assert result["answered_cases"] == result["tool_executions"] == 5
     assert result["blocked_cases"] == 4
-    assert result["decision_traces"] == 8
+    assert result["decision_traces"] == 9
     assert result["database_unchanged"] is True
-    assert all(row["evidence_id"] for row in result["results"][:4])
-    assert all(row["tool"] is None for row in result["results"][4:])
+    assert all(row["evidence_id"] for row in result["results"][:5])
+    assert all(row["tool"] is None for row in result["results"][5:])
 
 
 def test_explicit_parameters_remain_authoritative_over_question_wording(

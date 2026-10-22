@@ -28,6 +28,16 @@ def _expected_claims(tool_result: dict) -> dict:
 
     if tool_result["tool"] == "delivery_summary":
         return summary_claims(tool_result["result"])
+    if tool_result["tool"] == "delivery_exceptions":
+        return {
+            "period": tool_result["period"],
+            "selected_region": tool_result["selected_region"],
+            "exception_count": tool_result["exception_count"],
+            "returned_count": tool_result["returned_count"],
+            "limit": tool_result["limit"],
+            "truncated": tool_result["truncated"],
+            "rows": tool_result["rows"],
+        }
     regional_decreases = [
         row for row in tool_result["regional_changes"] if row["on_time_change"] < 0
     ]
@@ -58,10 +68,12 @@ def evaluate_answer(tool_result: dict, answer: dict) -> list[str]:
         failures.append("answer text uses an unapproved causal phrase")
     if tool_result["tool"] == "delivery_summary":
         rate = tool_result["result"]["totals"]["on_time_rate"]
-    else:
+        if rate is None and "not calculable" not in text.lower():
+            failures.append("null rate is not described as not calculable")
+    elif tool_result["tool"] == "compare_delivery_periods":
         rate = tool_result["change"]["on_time_rate_change_percentage_points"]
-    if rate is None and "not calculable" not in text.lower():
-        failures.append("null rate is not described as not calculable")
+        if rate is None and "not calculable" not in text.lower():
+            failures.append("null rate is not described as not calculable")
     return failures
 
 
@@ -93,6 +105,12 @@ def evaluation_requests() -> tuple[ToolRequest, ...]:
                 "baseline_start": "2026-09-14",
                 "baseline_end": "2026-09-21",
                 "region": "Midlands",
+            },
+            {
+                "name": "delivery_exceptions",
+                "start": "2026-09-21",
+                "end": "2026-09-28",
+                "limit": 5,
             },
         )
     )

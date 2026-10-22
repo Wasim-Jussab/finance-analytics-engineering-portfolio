@@ -50,6 +50,35 @@ def render_answer(tool_result: dict) -> dict:
             "This is a deterministic rendering of one approved metric result, not model "
             "inference or a causal explanation."
         )
+    elif tool_result["tool"] == "delivery_exceptions":
+        claims = {
+            "period": deepcopy(tool_result["period"]),
+            "selected_region": tool_result["selected_region"],
+            "exception_count": tool_result["exception_count"],
+            "returned_count": tool_result["returned_count"],
+            "limit": tool_result["limit"],
+            "truncated": tool_result["truncated"],
+            "rows": deepcopy(tool_result["rows"]),
+        }
+        scope = claims["selected_region"] or "all regions"
+        shipment_ids = ", ".join(row["shipment_id"] for row in claims["rows"])
+        truncation = (
+            f" The response is truncated at the approved limit of {claims['limit']}."
+            if claims["truncated"]
+            else " The complete exception set is returned."
+        )
+        answer = (
+            f"For {scope}, {tool_result['period']['start_inclusive']} to "
+            f"{tool_result['period']['end_exclusive']} (exclusive end), the synthetic "
+            f"snapshot contains {claims['exception_count']} late-delivered or overdue-open "
+            f"shipment exceptions. Returning {claims['returned_count']} in the governed "
+            f"order: {shipment_ids}.{truncation} Snapshot as of {tool_result['as_of']}. "
+            f"Evidence: {evidence_id}."
+        )
+        limitations = (
+            "This is a deterministic rendering of bounded shipment-level evidence. "
+            "It does not infer cause, treatment priority or a live operational state."
+        )
     elif tool_result["tool"] == "compare_delivery_periods":
         baseline = tool_result["baseline"]
         current = tool_result["current"]

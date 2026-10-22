@@ -83,6 +83,28 @@ def test_answer_api_and_fixed_evaluation_execute(tmp_path: Path) -> None:
     assert response.status_code == 200
     assert response.json()["mode"].startswith("deterministic-template")
     evaluation = run_evaluation(database)
-    assert evaluation["cases"] == 4
-    assert evaluation["passed"] == 4
+    assert evaluation["cases"] == 5
+    assert evaluation["passed"] == 5
     assert evaluation["failed"] == 0
+
+
+def test_exception_answer_cites_bounded_rows_and_evidence(tmp_path: Path) -> None:
+    database = tmp_path / "operations.duckdb"
+    build_snapshot(database)
+    request = ToolRequest.model_validate(
+        {
+            "name": "delivery_exceptions",
+            "start": "2026-09-21",
+            "end": "2026-09-28",
+            "limit": 5,
+        }
+    )
+    tool_result = execute_tool(database, request)
+    answer = render_answer(tool_result)
+
+    assert answer["claims"]["exception_count"] == 65
+    assert answer["claims"]["returned_count"] == 5
+    assert answer["claims"]["truncated"] is True
+    assert len(answer["claims"]["rows"]) == 5
+    assert tool_result["evidence"]["evidence_id"] in answer["answer"]
+    assert evaluate_answer(tool_result, answer) == []

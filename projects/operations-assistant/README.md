@@ -58,9 +58,9 @@ This is one row per shipment, with one shipment per order assumed. Cancellation 
 
 ## Approved tools
 
-`GET /api/tools` publishes the schema. `POST /api/tools/execute` accepts two approved tools, date boundaries and an optional region. Comparisons require equal, non-overlapping periods. SQL and unrecognised arguments are rejected. Responses identify the snapshot, request, contract and result; evidence IDs are not proof of correctness.
+`GET /api/tools` publishes the schema. `POST /api/tools/execute` accepts three approved tools, date boundaries and an optional region. Comparisons require equal, non-overlapping periods. SQL and unrecognised arguments are rejected. Responses identify the snapshot, request, contract and result; evidence IDs are not proof of correctness.
 
-`POST /api/answers` renders a fixed, evidence-cited answer from either approved tool. The [grounding evaluation](docs/answer-grounding.md) executes four cases and records exact-claim and disclosure checks. Passing it does not constitute model evaluation because no model is invoked.
+`POST /api/answers` renders a fixed, evidence-cited answer from each approved tool. The [grounding evaluation](docs/answer-grounding.md) executes four cases and records exact-claim and disclosure checks. Passing it does not constitute model evaluation because no model is invoked.
 
 `POST /api/questions` adds the [local intent model](docs/local-intent-model.md) through a [local adapter](docs/local-model-adapter.md). Held-out and [adversarial](docs/adversarial-evaluation.md) suites feed the routing [release gate](docs/routing-release-gate.md); the [question-path gate](docs/question-release-gate.md) checks routing, tools, evidence and traces together. The [runtime readiness gate](docs/runtime-readiness.md) requires both approvals to name the exact verified classifier bytes. This is constrained local inference, not broad language accuracy or generative AI.
 
@@ -97,3 +97,16 @@ open rows sort first, followed by greatest observed delay and stable tie-breaker
 The tool is read-only, parameterised and evidence-bound to one snapshot. It is not
 yet available through natural-language routing or deterministic answer templates;
 those paths will only be added after separate training and grounding evaluation.
+
+
+## Day 22 evaluated exception questions
+
+The local classifier now has an approved `delivery_exceptions` label for explicit
+row-level requests. A question must still provide governed dates and an optional
+region and limit; the model does not extract or invent those parameters. The
+deterministic answer reports the full exception count, bounded returned rows,
+truncation state and evidence ID.
+
+The updated artifact, held-out, adversarial, grounding and end-to-end suites must
+all pass before runtime readiness is described as ready. This remains narrow local
+intent classification, not generative answering or broad language understanding.

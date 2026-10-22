@@ -104,7 +104,7 @@ def test_verified_artifact_executes_both_routing_evaluations(tmp_path: Path) -> 
     held_out = run_intent_evaluation(model)
     adversarial = run_adversarial_evaluation(model)
 
-    assert held_out["passed"] == held_out["cases"] == 15
-    assert adversarial["passed"] == adversarial["cases"] == 24
+    assert held_out["passed"] == held_out["cases"] == 18
+    assert adversarial["passed"] == adversarial["cases"] == 27
     assert held_out["model_artifact_sha256"] == manifest["artifact_sha256"]
     assert adversarial["model_artifact_sha256"] == manifest["artifact_sha256"]

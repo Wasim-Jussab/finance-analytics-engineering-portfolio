@@ -89,3 +89,16 @@ Results report the full exception count before applying a caller limit of 1 to 1
 Ordering is deterministic: overdue open first, then greatest delay, promised
 timestamp and shipment ID. The direct tool is implemented and tested; model routing
 and answer rendering are deliberately outside Day 21.
+
+
+## Evaluated exception-question path
+
+Day 22 adds `delivery_exceptions` to the local intent classifier and deterministic
+answer renderer. The classifier selects only the approved tool name; dates, region
+and limit remain explicit validated request fields. The renderer exposes total and
+returned counts, truncation state and the exact bounded rows in structured claims.
+
+Grounding evaluation now executes the exception result and checks all structured
+claims against the tool output. Held-out, adversarial and end-to-end evaluations
+include independent exception-detail questions. Passing those fixed fixtures does
+not establish broad language accuracy or generative capability.
