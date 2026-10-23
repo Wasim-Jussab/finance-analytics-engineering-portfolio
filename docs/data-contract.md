@@ -673,3 +673,18 @@ counts and shortfall totals are the share denominators.
 
 The aggregate does not contain a capacity target, productivity measure, SLA or
 treatment rule. A larger bucket describes the synthetic snapshot only.
+
+
+## Day 60 unified case activity
+
+| Model | Grain | Purpose |
+|---|---|---|
+| `fct_loan_case_activity` | One synthetic source event | Preserve action and assignment chronology in one inspectable timeline |
+
+The fixed fixture contains 22 events: 12 actions and 10 assignments. Event keys
+namespace the source type and source ID. Sequence uses event timestamp, event type
+and source ID as deterministic tie-breakers. The model reconciles exactly to both
+source facts, and elapsed minutes are null for each account's first event.
+
+Elapsed time is not compared with a target. The project has no contractual response
+deadline, approved contact cadence or treatment outcome measure.

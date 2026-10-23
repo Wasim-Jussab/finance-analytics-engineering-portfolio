@@ -459,3 +459,15 @@ portfolio denominators, and reconciles exactly to the 25 case-status rows.
 
 This is a descriptive distribution of synthetic work, not staffing capacity,
 agent performance, an SLA threshold or a customer-treatment recommendation.
+
+
+## Day 60 addition
+
+`mart.fct_loan_case_activity` unions the action and assignment facts without
+collapsing either source. A namespaced event key preserves source identity, and
+events are sequenced within account by timestamp, type and source ID. The previous
+event timestamp and elapsed minutes are audit context only.
+
+The timeline does not change the exception queue, latest case status or workload
+aggregate. It cannot establish response quality, SLA compliance or treatment
+effectiveness because those business rules are absent.

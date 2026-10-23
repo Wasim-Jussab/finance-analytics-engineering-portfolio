@@ -657,6 +657,45 @@ models:
         tests: [not_null]
       - name: portfolio_shortfall_share
         tests: [not_null]
+  - name: fct_loan_case_activity
+    description: >
+      Unified synthetic action and assignment timeline at one row per source
+      operational event. Sequence is descriptive audit context, not an SLA or
+      treatment recommendation.
+    columns:
+      - name: case_event_key
+        tests: [not_null, unique]
+      - name: source_event_id
+        tests: [not_null]
+      - name: account_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('rpt_loan_delinquency_exception_queue')
+                field: account_id
+      - name: event_at
+        tests: [not_null]
+      - name: event_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Action', 'Assignment']
+      - name: event_name
+        tests: [not_null]
+      - name: event_detail
+        tests: [not_null]
+      - name: event_team
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Team A', 'Team B']
+      - name: event_sequence
+        tests: [not_null]
+      - name: prior_event_at
+      - name: minutes_since_prior_event
   - name: agg_loan_delinquency_by_product
     description: >
       One row per reporting date, synthetic loan product and observed delinquency
