@@ -91,7 +91,7 @@ detect replacement by a shorter, internally valid ledger.
 
 `delivery_exceptions` is a direct approved tool for shipment-grain investigation.
 It returns non-cancelled late-delivered and overdue-open rows from an explicit
-promised-date period, with an optional region and a limit from 1 to 100. Overdue
+promised-date period, with optional governed region and outcome filters and a limit from 1 to 100. Overdue
 open rows sort first, followed by greatest observed delay and stable tie-breakers.
 
 The tool is read-only, parameterised and evidence-bound to one snapshot. It is not
@@ -110,3 +110,10 @@ truncation state and evidence ID.
 The updated artifact, held-out, adversarial, grounding and end-to-end suites must
 all pass before runtime readiness is described as ready. This remains narrow local
 intent classification, not generative answering or broad language understanding.
+
+
+## Day 23 explicit outcome filter
+
+Callers can now select `late_delivered` or `overdue_open` as a typed field on the direct tool and question endpoint. Filtering happens before counts, truncation and evidence are produced. The fixed second-week fixture reconciles to 44 late-delivered plus 21 overdue-open exceptions.
+
+The model still selects only the approved tool. It does not infer outcome, dates, region or limit from prose. Grounding and end-to-end suites execute the overdue-open path; this adds governed retrieval, not a new AI capability.

@@ -46,6 +46,7 @@ class QuestionRequest(BaseModel):
     start: date
     end: date
     region: Literal["London", "Midlands", "North", "South"] | None = None
+    outcome: Literal["late_delivered", "overdue_open"] | None = None
     baseline_start: date | None = None
     baseline_end: date | None = None
     limit: int | None = Field(default=None, ge=1, le=100)

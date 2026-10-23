@@ -111,6 +111,7 @@ def exceptions_from_connection(
     start: date,
     end: date,
     region: str | None = None,
+    outcome: str | None = None,
     limit: int = 25,
 ) -> dict:
     """Return bounded shipment-grain exceptions from one read-only snapshot."""
@@ -119,6 +120,8 @@ def exceptions_from_connection(
         raise ValueError("Start must precede the exclusive end date")
     if region is not None and region not in REGIONS:
         raise ValueError("Unknown region")
+    if outcome not in (None, "late_delivered", "overdue_open"):
+        raise ValueError("Unknown exception outcome")
     if not 1 <= limit <= 100:
         raise ValueError("Exception limit must be between 1 and 100")
 
@@ -144,6 +147,9 @@ def exceptions_from_connection(
     for shipment_id, shipment_region, dispatched, promised, delivered in source_rows:
         observed_at = delivered if delivered is not None else as_of
         delay_minutes = int((observed_at - promised).total_seconds() // 60)
+        row_outcome = "late_delivered" if delivered is not None else "overdue_open"
+        if outcome is not None and row_outcome != outcome:
+            continue
         rows.append(
             {
                 "shipment_id": shipment_id,
@@ -151,7 +157,7 @@ def exceptions_from_connection(
                 "dispatched_at": dispatched.isoformat(),
                 "promised_at": promised.isoformat(),
                 "delivered_at": delivered.isoformat() if delivered is not None else None,
-                "outcome": "late_delivered" if delivered is not None else "overdue_open",
+                "outcome": row_outcome,
                 "delay_minutes": delay_minutes,
             }
         )
@@ -173,6 +179,7 @@ def exceptions_from_connection(
         },
         "as_of": as_of.isoformat(),
         "selected_region": region,
+        "selected_outcome": outcome,
         "exception_count": len(rows),
         "returned_count": min(len(rows), limit),
         "limit": limit,
@@ -180,7 +187,8 @@ def exceptions_from_connection(
         "rows": rows[:limit],
         "definition": (
             "Non-cancelled shipments promised in the selected UTC period that were "
-            "delivered after promise or remained open at the snapshot. Overdue-open "
-            "rows sort first, then greatest observed delay, promise and shipment ID."
+            "delivered after promise or remained open at the snapshot, optionally filtered "
+            "to one explicit outcome. Overdue-open rows sort first, then greatest observed "
+            "delay, promise and shipment ID."
         ),
     }

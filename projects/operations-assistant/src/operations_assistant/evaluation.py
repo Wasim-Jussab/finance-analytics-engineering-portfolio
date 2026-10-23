@@ -32,6 +32,7 @@ def _expected_claims(tool_result: dict) -> dict:
         return {
             "period": tool_result["period"],
             "selected_region": tool_result["selected_region"],
+            "selected_outcome": tool_result["selected_outcome"],
             "exception_count": tool_result["exception_count"],
             "returned_count": tool_result["returned_count"],
             "limit": tool_result["limit"],
@@ -110,6 +111,13 @@ def evaluation_requests() -> tuple[ToolRequest, ...]:
                 "name": "delivery_exceptions",
                 "start": "2026-09-21",
                 "end": "2026-09-28",
+                "limit": 5,
+            },
+            {
+                "name": "delivery_exceptions",
+                "start": "2026-09-21",
+                "end": "2026-09-28",
+                "outcome": "overdue_open",
                 "limit": 5,
             },
         )

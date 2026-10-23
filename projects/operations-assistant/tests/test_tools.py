@@ -155,6 +155,24 @@ def test_exception_tool_returns_bounded_reconciled_rows_without_mutation(
         ),
     )
     assert result["evidence"]["request"]["limit"] == 5
+
+    overdue = execute_tool(
+        db,
+        ToolRequest.model_validate(
+            {
+                "name": "delivery_exceptions",
+                "start": "2026-09-21",
+                "end": "2026-09-28",
+                "outcome": "overdue_open",
+                "limit": 100,
+            }
+        ),
+    )
+    assert overdue["selected_outcome"] == "overdue_open"
+    assert overdue["exception_count"] == overdue["returned_count"] == 21
+    assert overdue["truncated"] is False
+    assert {row["outcome"] for row in overdue["rows"]} == {"overdue_open"}
+    assert overdue["evidence"]["request"]["outcome"] == "overdue_open"
     assert hashlib.sha256(db.read_bytes()).hexdigest() == fingerprint
 
 
@@ -178,6 +196,7 @@ def test_exception_tool_validates_bounds_and_rejects_comparison_fields(
         {**request, "limit": 0},
         {**request, "limit": 101},
         {**request, "baseline_start": "2026-09-14"},
+        {**request, "outcome": "on_time"},
         {**request, "sql": "SELECT * FROM shipments"},
     ):
         assert client.post("/api/tools/execute", json=invalid).status_code == 422

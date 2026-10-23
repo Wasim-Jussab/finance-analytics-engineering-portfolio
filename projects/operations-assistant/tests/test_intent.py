@@ -105,6 +105,7 @@ def test_question_api_routes_bounded_exception_detail(tmp_path: Path) -> None:
         "/api/questions",
         json={
             **_question("List the five worst delivery exceptions"),
+            "outcome": "overdue_open",
             "limit": 5,
         },
     )
@@ -112,7 +113,8 @@ def test_question_api_routes_bounded_exception_detail(tmp_path: Path) -> None:
     assert response.status_code == 200
     result = response.json()
     assert result["routing"]["label"] == "delivery_exceptions"
-    assert result["claims"]["exception_count"] == 65
+    assert result["claims"]["selected_outcome"] == "overdue_open"
+    assert result["claims"]["exception_count"] == 21
     assert result["claims"]["returned_count"] == 5
     assert result["claims"]["truncated"] is True
     assert result["evidence"]["evidence_id"] in result["answer"]

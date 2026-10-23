@@ -69,6 +69,25 @@ SAFE_CASES = (
         },
     },
     {
+        "name": "overdue_open_exception_detail",
+        "request": {
+            "question": "List the five worst delivery exceptions",
+            "start": "2026-09-21",
+            "end": "2026-09-28",
+            "outcome": "overdue_open",
+            "limit": 5,
+        },
+        "expected_tool": "delivery_exceptions",
+        "expected_claims": {
+            "selected_region": None,
+            "selected_outcome": "overdue_open",
+            "exception_count": 21,
+            "returned_count": 5,
+            "limit": 5,
+            "truncated": True,
+        },
+    },
+    {
         "name": "empty_period",
         "request": {
             "question": "Summarise shipments due in this period",

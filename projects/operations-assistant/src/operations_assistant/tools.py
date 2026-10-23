@@ -19,6 +19,7 @@ class ToolRequest(BaseModel):
     start: date
     end: date
     region: Literal["London", "Midlands", "North", "South"] | None = None
+    outcome: Literal["late_delivered", "overdue_open"] | None = None
     baseline_start: date | None = None
     baseline_end: date | None = None
     limit: int | None = Field(default=None, ge=1, le=100)
@@ -32,6 +33,8 @@ class ToolRequest(BaseModel):
                 raise ValueError("Summary does not accept a baseline")
             if self.limit is not None:
                 raise ValueError("Summary does not accept a row limit")
+            if self.outcome is not None:
+                raise ValueError("Summary does not accept an exception outcome")
         elif self.name == "compare_delivery_periods":
             if self.baseline_start is None or self.baseline_end is None:
                 raise ValueError("Comparison requires both baseline dates")
@@ -43,6 +46,8 @@ class ToolRequest(BaseModel):
                 raise ValueError("Comparison periods must have equal calendar duration")
             if self.limit is not None:
                 raise ValueError("Comparison does not accept a row limit")
+            if self.outcome is not None:
+                raise ValueError("Comparison does not accept an exception outcome")
         elif self.baseline_start is not None or self.baseline_end is not None:
             raise ValueError("Exception detail does not accept a baseline")
         return self
@@ -93,6 +98,7 @@ def _execute_from_connection(connection, request: ToolRequest) -> dict:
             request.start,
             request.end,
             request.region,
+            request.outcome,
             request.limit or 25,
         )
 

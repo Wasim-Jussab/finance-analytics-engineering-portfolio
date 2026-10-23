@@ -102,3 +102,10 @@ Grounding evaluation now executes the exception result and checks all structured
 claims against the tool output. Held-out, adversarial and end-to-end evaluations
 include independent exception-detail questions. Passing those fixed fixtures does
 not establish broad language accuracy or generative capability.
+
+
+## Explicit exception outcome
+
+Day 23 adds an optional governed `outcome` filter with exactly two accepted values: `late_delivered` and `overdue_open`. The filter is applied before `exception_count`, row limiting and truncation. In the seed-42 second-week cohort, 44 late-delivered plus 21 overdue-open rows reconcile to all 65 exceptions.
+
+Outcome remains an explicit typed request field for both direct and question paths. The local classifier chooses the approved tool only; it does not extract this parameter from text. Unsupported outcome values and outcome fields on summary or comparison tools are rejected.
