@@ -620,3 +620,71 @@ Unobserved combinations have zero counts and money values, null coverage and
 `is_observed_band = false`. Observed rows reconcile exactly to
 `agg_loan_delinquency_by_product`; product account totals and shares reconcile
 across the complete four-row product matrix.
+
+## Day 56 delinquency exception queue
+
+| Model | Grain | Inclusion rule |
+|---|---|---|
+| `rpt_loan_delinquency_exception_queue` | One account and reporting date | Positive `scheduled_principal_shortfall_amount` |
+
+Rows sort first by the governed proxy band (`90+`, `30–89`, `1–29`), then by
+shortfall descending and account ID ascending. The same rule is applied within
+each product. Repeated portfolio and product counts and shortfall totals are the
+explicit denominators for the two account-level shortfall shares.
+
+This ordering is deterministic triage, not a credit-risk score. Every included
+row and carried financial field reconciles to `fct_loan_delinquency_position`.
+
+## Day 57 synthetic collection actions
+
+| Model | Grain | Purpose |
+|---|---|---|
+| `fct_loan_collection_action` | One row per synthetic action ID | Preserve action-event history without multiplying queue accounts |
+| `rpt_loan_delinquency_case_status` | One row per exception account and reporting date | Add action count and latest-action context while retaining untouched accounts |
+
+The fixed seed contains 12 entirely synthetic events across eight queue accounts.
+`latest` means greatest `action_at`, with `action_id` as a deterministic tie-breaker.
+The remaining accounts have `recorded_action_count = 0`, `has_recorded_action =
+false` and null action detail. Absence is not interpreted as an SLA breach.
+
+## Day 58 synthetic assignment history
+
+| Model | Grain | Purpose |
+|---|---|---|
+| `fct_loan_case_assignment` | One row per synthetic assignment ID | Preserve team ownership changes without overwriting prior events |
+| `rpt_loan_delinquency_case_status` | One row per exception account and reporting date | Add latest observed ownership while retaining assigned and unassigned accounts |
+
+The seed contains 10 synthetic assignment events across eight queue accounts.
+Two accounts are reassigned, so latest ownership is selected by `assigned_at`
+then `assignment_id`. Seventeen queue accounts remain explicitly unassigned.
+Assignment does not change financial rank, band, shortfall or action history.
+
+
+## Day 59 current-assignment workload
+
+| Model | Grain | Purpose |
+|---|---|---|
+| `agg_loan_delinquency_team_workload` | One reporting date and current assignment bucket | Reconcile observed case and shortfall distribution, including unassigned work |
+
+`workload_bucket` is the latest observed team or the explicit value
+`Unassigned`. Case counts split exactly between assigned and unassigned, while
+actioned and no-action counts form a separate complete split. Repeated portfolio
+counts and shortfall totals are the share denominators.
+
+The aggregate does not contain a capacity target, productivity measure, SLA or
+treatment rule. A larger bucket describes the synthetic snapshot only.
+
+
+## Day 60 unified case activity
+
+| Model | Grain | Purpose |
+|---|---|---|
+| `fct_loan_case_activity` | One synthetic source event | Preserve action and assignment chronology in one inspectable timeline |
+
+The fixed fixture contains 22 events: 12 actions and 10 assignments. Event keys
+namespace the source type and source ID. Sequence uses event timestamp, event type
+and source ID as deterministic tie-breakers. The model reconciles exactly to both
+source facts, and elapsed minutes are null for each account's first event.
+
+Elapsed time is not compared with a target. The project has no contractual response
+deadline, approved contact cadence or treatment outcome measure.

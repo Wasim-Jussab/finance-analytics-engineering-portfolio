@@ -415,3 +415,59 @@ sparse observed-band aggregate. It cross joins each observed reporting-date prod
 population to the four governed proxy bands, then left joins the observed measures.
 Generated combinations are explicit zero rows with `is_observed_band = false`.
 The sparse aggregate remains the reconciliation source.
+
+## Day 56 addition
+
+`mart.rpt_loan_delinquency_exception_queue` turns the account-level proxy fact
+into a deterministic work queue. It includes only rows with positive scheduled-
+principal shortfall, then orders them by the existing proxy band, shortfall and
+account ID. Portfolio and product ranks, counts and shortfall denominators remain
+on each row so an analyst can explain both inclusion and ordering.
+
+The queue adds no model score, probability, service-level target or regulatory
+meaning. Its ordering is a transparent reporting rule over synthetic data.
+
+## Day 57 addition
+
+`mart.fct_loan_collection_action` keeps synthetic operational actions at event
+grain. `mart.rpt_loan_delinquency_case_status` then left joins an action summary
+and the latest deterministic event to every queue account. The left join is
+intentional: an account with no recorded action remains visible with a zero count
+rather than disappearing from operational reporting.
+
+Financial queue fields remain sourced from the tested delinquency fact. Action
+events do not rewrite shortfall, band or rank, and no contact SLA or treatment
+policy is inferred from an absent event.
+
+## Day 58 addition
+
+`mart.fct_loan_case_assignment` preserves synthetic ownership changes at one row
+per assignment event. The case-status view derives the latest observed team by
+assignment timestamp and assignment ID, while keeping every queue account visible.
+
+Assignment history is separate from action history and financial priority. The
+project does not infer capacity, performance, treatment strategy or an SLA from
+assigned or unassigned status.
+
+
+## Day 59 addition
+
+`mart.agg_loan_delinquency_team_workload` groups the queue-complete case-status
+view by latest observed assignment team and an explicit `Unassigned` bucket.
+It carries case, action-coverage and scheduled-principal-shortfall measures with
+portfolio denominators, and reconciles exactly to the 25 case-status rows.
+
+This is a descriptive distribution of synthetic work, not staffing capacity,
+agent performance, an SLA threshold or a customer-treatment recommendation.
+
+
+## Day 60 addition
+
+`mart.fct_loan_case_activity` unions the action and assignment facts without
+collapsing either source. A namespaced event key preserves source identity, and
+events are sequenced within account by timestamp, type and source ID. The previous
+event timestamp and elapsed minutes are audit context only.
+
+The timeline does not change the exception queue, latest case status or workload
+aggregate. It cannot establish response quality, SLA compliance or treatment
+effectiveness because those business rules are absent.

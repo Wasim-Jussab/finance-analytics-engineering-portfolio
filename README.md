@@ -12,7 +12,7 @@ Second project: [Operations Intelligence](projects/operations-assistant/README.m
 
 - How many billing attempts completed, and how much was collected each month?
 - How do agreement starts and cancellations explain the closing population?
-- Which loans fall into each clearly labelled days-past-due proxy band?
+- Which loans enter the proxy exception queue, and what assignment and action history is recorded?
 - What changed between loads, and can the current reporting totals reconcile to source?
 
 ## Engineering behind the reports

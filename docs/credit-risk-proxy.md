@@ -46,3 +46,30 @@ product counts. These are descriptive distribution measures, not risk limits.
 observed product and reporting date. Generated zero rows are marked with
 `is_observed_band = false`; they support stable BI axes without rewriting the
 sparse observed-band source.
+
+`mart.rpt_loan_delinquency_exception_queue` includes only accounts with positive
+scheduled-principal shortfall. Its order is the existing proxy band first,
+shortfall second and account ID as a stable tie-breaker. Portfolio and product
+denominators make each shortfall share reproducible. This is an analyst work queue,
+not a probability of default, customer treatment decision or regulatory score.
+
+`mart.rpt_loan_delinquency_case_status` adds synthetic action history without
+changing that boundary. It reports the event count and latest recorded action for
+each queue account, including explicit zero-action accounts. The event seed is a
+demonstration fixture, not customer contact evidence or a treatment recommendation.
+
+`mart.fct_loan_case_assignment` and the assignment fields on the case-status view
+add synthetic team ownership without altering the financial source of truth.
+Unassigned accounts remain visible, reassignment history is retained, and no
+capacity, performance, SLA or customer-treatment meaning is inferred.
+
+
+The Day 59 team-workload aggregate only groups the existing synthetic case status
+by current observed assignment. It does not convert assignment, action coverage or
+shortfall distribution into credit scoring, default status, treatment strategy,
+staffing capacity or an SLA.
+
+
+The Day 60 case timeline is operational audit structure only. Event order and
+elapsed minutes do not alter the days-past-due proxy, shortfall, exception rank or
+any customer classification.

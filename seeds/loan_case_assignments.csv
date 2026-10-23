@@ -1,0 +1,11 @@
+assignment_id,account_id,assigned_at,assigned_team,assignment_reason
+ASN-000001,ACC-000001,2025-10-14 09:00:00,Team A,Initial Queue Assignment
+ASN-000002,ACC-000001,2025-11-01 09:00:00,Team B,Capacity Rebalance
+ASN-000003,ACC-000018,2025-10-19 09:00:00,Team B,Initial Queue Assignment
+ASN-000004,ACC-000018,2025-11-30 09:00:00,Team A,Specialist Review
+ASN-000005,ACC-000013,2025-11-11 09:00:00,Team A,Initial Queue Assignment
+ASN-000006,ACC-000012,2025-12-03 09:00:00,Team B,Initial Queue Assignment
+ASN-000007,ACC-000023,2025-11-17 09:00:00,Team A,Initial Queue Assignment
+ASN-000008,ACC-000007,2025-10-27 09:00:00,Team B,Initial Queue Assignment
+ASN-000009,ACC-000008,2025-12-09 09:00:00,Team A,Initial Queue Assignment
+ASN-000010,ACC-000019,2025-12-14 09:00:00,Team B,Initial Queue Assignment

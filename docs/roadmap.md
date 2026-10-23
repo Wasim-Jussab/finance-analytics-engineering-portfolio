@@ -145,3 +145,32 @@ Day 55 closes the proxy-reporting milestone with a complete product-by-band matr
 It keeps the sparse observed aggregate as the source of truth while adding explicit
 zero rows and an observation flag for BI consumers. The five-day review records the
 remaining contractual, default and impairment gaps.
+
+Day 56 starts a controlled delinquency-operations milestone. A deterministic
+exception queue exposes exactly which synthetic accounts have scheduled-principal
+shortfall and why they appear in their order. It deliberately avoids an invented
+score or service-level rule; assignment, outcomes and movement remain later work.
+
+Day 57 adds event-grain synthetic collection actions and a queue-complete case
+status view. Accounts without actions stay visible, and operational events cannot
+alter financial classification or priority. The project still has no approved
+contact strategy, SLA or customer-treatment policy.
+
+Day 58 adds synthetic assignment history without turning ownership into a hidden
+priority rule. Ten events cover eight queue accounts, including two reassignments;
+the other 17 accounts remain visible as unassigned. Latest ownership is derived
+deterministically, while workload targets, SLAs and treatment policy remain outside
+the available source contract.
+
+
+Day 59 adds a current-assignment workload aggregate over the queue-complete case
+status. Team A, Team B and Unassigned remain explicit buckets; their case counts,
+action coverage and scheduled-principal shortfalls reconcile to the account grain.
+No staffing capacity, productivity benchmark or SLA is inferred.
+
+
+Day 60 closes the controlled delinquency-operations milestone with a unified
+22-event case timeline and a five-day technical review. Actions and assignments
+remain separate source facts while the timeline makes their chronology inspectable.
+The review records the missing contractual arrears, policy, SLA, capacity and
+outcome evidence rather than presenting proxy operations as production decisions.
