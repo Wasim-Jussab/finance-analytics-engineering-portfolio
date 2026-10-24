@@ -179,7 +179,7 @@ def evaluate_question_release(report: dict, policy: dict) -> dict:
         "breaches": breaches,
         "criteria": policy,
         "interpretation": (
-            "Release gate over eight fixed local question fixtures; not a production "
+            "Release gate over fixed local question fixtures; not a production "
             "accuracy, safety or generative-model evaluation."
         ),
     }

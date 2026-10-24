@@ -23,8 +23,8 @@ def _question(text: str, comparison: bool = False) -> dict:
 def test_held_out_intent_evaluation_executes_without_failures() -> None:
     result = run_intent_evaluation()
 
-    assert result["cases"] == 15
-    assert result["passed"] == 15
+    assert result["cases"] == 18
+    assert result["passed"] == 18
     assert result["failed"] == 0
 
 
@@ -39,8 +39,8 @@ def test_local_model_abstains_from_write_and_causal_requests() -> None:
 def test_adversarial_evaluation_passes_every_risk_slice() -> None:
     result = run_adversarial_evaluation()
 
-    assert result["cases"] == 24
-    assert result["passed"] == 24
+    assert result["cases"] == 27
+    assert result["passed"] == 27
     assert result["failed"] == 0
     assert all(risk_slice["failed"] == 0 for risk_slice in result["slices"])
 
@@ -94,3 +94,31 @@ def test_model_version_and_prediction_are_repeatable() -> None:
 
     assert first.version == second.version
     assert first.predict(question) == second.predict(question)
+
+
+def test_question_api_routes_bounded_exception_detail(tmp_path: Path) -> None:
+    database = tmp_path / "operations.duckdb"
+    build_snapshot(database)
+    client = TestClient(create_app(database))
+
+    response = client.post(
+        "/api/questions",
+        json={
+            **_question("List the five worst delivery exceptions"),
+            "outcome": "overdue_open",
+            "limit": 5,
+            "offset": 5,
+        },
+    )
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["routing"]["label"] == "delivery_exceptions"
+    assert result["claims"]["selected_outcome"] == "overdue_open"
+    assert result["claims"]["exception_count"] == 21
+    assert result["claims"]["returned_count"] == 5
+    assert result["claims"]["offset"] == 5
+    assert result["claims"]["has_more"] is True
+    assert result["claims"]["next_offset"] == 10
+    assert result["claims"]["truncated"] is True
+    assert result["evidence"]["evidence_id"] in result["answer"]

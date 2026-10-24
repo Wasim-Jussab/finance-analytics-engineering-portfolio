@@ -47,6 +47,7 @@ def test_catalog_and_api_reject_unapproved_calls(tmp_path: Path):
     assert client.get("/api/tools").json()["tools"] == [
         "delivery_summary",
         "compare_delivery_periods",
+        "delivery_exceptions",
     ]
     response = client.post("/api/tools/execute", json=comparison())
     assert response.status_code == 200
@@ -121,3 +122,111 @@ def test_comparison_uses_one_snapshot_when_source_is_replaced(tmp_path: Path, mo
     assert len(calls) == 2
     assert calls[0] is calls[1]
     assert observed == expected
+
+def test_exception_tool_returns_bounded_reconciled_rows_without_mutation(
+    tmp_path: Path,
+):
+    db = tmp_path / "operations.duckdb"
+    build_snapshot(db)
+    fingerprint = hashlib.sha256(db.read_bytes()).hexdigest()
+    request = ToolRequest.model_validate(
+        {
+            "name": "delivery_exceptions",
+            "start": "2026-09-21",
+            "end": "2026-09-28",
+            "limit": 5,
+        }
+    )
+
+    result = execute_tool(db, request)
+
+    assert result["exception_count"] == 65
+    assert result["returned_count"] == 5
+    assert result["offset"] == 0
+    assert result["has_more"] is True
+    assert result["next_offset"] == 5
+    assert result["truncated"] is True
+    assert len(result["rows"]) == 5
+    assert all(row["outcome"] == "overdue_open" for row in result["rows"])
+    assert result["rows"] == sorted(
+        result["rows"],
+        key=lambda row: (
+            0 if row["outcome"] == "overdue_open" else 1,
+            -row["delay_minutes"],
+            row["promised_at"],
+            row["shipment_id"],
+        ),
+    )
+    assert result["evidence"]["request"]["limit"] == 5
+
+    overdue = execute_tool(
+        db,
+        ToolRequest.model_validate(
+            {
+                "name": "delivery_exceptions",
+                "start": "2026-09-21",
+                "end": "2026-09-28",
+                "outcome": "overdue_open",
+                "limit": 100,
+            }
+        ),
+    )
+    assert overdue["selected_outcome"] == "overdue_open"
+    assert overdue["exception_count"] == overdue["returned_count"] == 21
+    assert overdue["offset"] == 0
+    assert overdue["has_more"] is False
+    assert overdue["next_offset"] is None
+    assert overdue["truncated"] is False
+    assert {row["outcome"] for row in overdue["rows"]} == {"overdue_open"}
+    assert overdue["evidence"]["request"]["outcome"] == "overdue_open"
+
+    second_page = execute_tool(
+        db,
+        ToolRequest.model_validate(
+            {
+                "name": "delivery_exceptions",
+                "start": "2026-09-21",
+                "end": "2026-09-28",
+                "outcome": "overdue_open",
+                "limit": 5,
+                "offset": 5,
+            }
+        ),
+    )
+    assert second_page["exception_count"] == 21
+    assert second_page["returned_count"] == 5
+    assert second_page["offset"] == 5
+    assert second_page["has_more"] is True
+    assert second_page["next_offset"] == 10
+    assert second_page["rows"] == overdue["rows"][5:10]
+    assert second_page["evidence"]["request"]["offset"] == 5
+    assert second_page["evidence"]["evidence_id"] != overdue["evidence"]["evidence_id"]
+    assert hashlib.sha256(db.read_bytes()).hexdigest() == fingerprint
+
+
+def test_exception_tool_validates_bounds_and_rejects_comparison_fields(
+    tmp_path: Path,
+):
+    db = tmp_path / "operations.duckdb"
+    build_snapshot(db)
+    client = TestClient(create_app(db))
+    request = {
+        "name": "delivery_exceptions",
+        "start": "2026-09-21",
+        "end": "2026-09-28",
+    }
+
+    response = client.post("/api/tools/execute", json={**request, "limit": 3})
+    assert response.status_code == 200
+    assert response.json()["returned_count"] == 3
+
+    for invalid in (
+        {**request, "limit": 0},
+        {**request, "limit": 101},
+        {**request, "baseline_start": "2026-09-14"},
+        {**request, "outcome": "on_time"},
+        {**request, "offset": -1},
+        {**request, "offset": 10001},
+        {**request, "sql": "SELECT * FROM shipments"},
+    ):
+        assert client.post("/api/tools/execute", json=invalid).status_code == 422

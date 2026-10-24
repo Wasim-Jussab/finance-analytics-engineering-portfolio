@@ -5,7 +5,7 @@ A local delivery-performance dashboard and governed analytics-assistant foundati
 ## Current behaviour
 
 - Deterministic synthetic data: 448 shipments across four regions and two weeks.
-- Two approved read-only tools with validated arguments and weekly comparisons.
+- Three approved read-only tools with validated arguments, weekly comparisons and bounded exception detail.
 - Traceable snapshot/request evidence IDs and one consistent snapshot per tool call.
 - Evidence-cited answer templates with executable grounding checks.
 - Swappable local intent-model adapter with explicit abstention and validated dates.
@@ -58,9 +58,9 @@ This is one row per shipment, with one shipment per order assumed. Cancellation 
 
 ## Approved tools
 
-`GET /api/tools` publishes the schema. `POST /api/tools/execute` accepts two approved tools, date boundaries and an optional region. Comparisons require equal, non-overlapping periods. SQL and unrecognised arguments are rejected. Responses identify the snapshot, request, contract and result; evidence IDs are not proof of correctness.
+`GET /api/tools` publishes the schema. `POST /api/tools/execute` accepts three approved tools, date boundaries and an optional region. Comparisons require equal, non-overlapping periods. SQL and unrecognised arguments are rejected. Responses identify the snapshot, request, contract and result; evidence IDs are not proof of correctness.
 
-`POST /api/answers` renders a fixed, evidence-cited answer from either approved tool. The [grounding evaluation](docs/answer-grounding.md) executes four cases and records exact-claim and disclosure checks. Passing it does not constitute model evaluation because no model is invoked.
+`POST /api/answers` renders a fixed, evidence-cited answer from each approved tool. The [grounding evaluation](docs/answer-grounding.md) executes four cases and records exact-claim and disclosure checks. Passing it does not constitute model evaluation because no model is invoked.
 
 `POST /api/questions` adds the [local intent model](docs/local-intent-model.md) through a [local adapter](docs/local-model-adapter.md). Held-out and [adversarial](docs/adversarial-evaluation.md) suites feed the routing [release gate](docs/routing-release-gate.md); the [question-path gate](docs/question-release-gate.md) checks routing, tools, evidence and traces together. The [runtime readiness gate](docs/runtime-readiness.md) requires both approvals to name the exact verified classifier bytes. This is constrained local inference, not broad language accuracy or generative AI.
 
@@ -86,3 +86,46 @@ detect replacement by a shorter, internally valid ledger.
 [Days 11–15 local-inference review](docs/local-inference-review.md)
 
 [Days 16–20 decision-evidence review](docs/decision-evidence-review.md)
+
+## Day 21 exception-detail boundary
+
+`delivery_exceptions` is a direct approved tool for shipment-grain investigation.
+It returns non-cancelled late-delivered and overdue-open rows from an explicit
+promised-date period, with optional governed region and outcome filters and a limit from 1 to 100. Overdue
+open rows sort first, followed by greatest observed delay and stable tie-breakers.
+
+The tool is read-only, parameterised and evidence-bound to one snapshot. It is not
+yet available through natural-language routing or deterministic answer templates;
+those paths will only be added after separate training and grounding evaluation.
+
+
+## Day 22 evaluated exception questions
+
+The local classifier now has an approved `delivery_exceptions` label for explicit
+row-level requests. A question must still provide governed dates and an optional
+region and limit; the model does not extract or invent those parameters. The
+deterministic answer reports the full exception count, bounded returned rows,
+truncation state and evidence ID.
+
+The updated artifact, held-out, adversarial, grounding and end-to-end suites must
+all pass before runtime readiness is described as ready. This remains narrow local
+intent classification, not generative answering or broad language understanding.
+
+
+## Day 23 explicit outcome filter
+
+Callers can now select `late_delivered` or `overdue_open` as a typed field on the direct tool and question endpoint. Filtering happens before counts, truncation and evidence are produced. The fixed second-week fixture reconciles to 44 late-delivered plus 21 overdue-open exceptions.
+
+The model still selects only the approved tool. It does not infer outcome, dates, region or limit from prose. Grounding and end-to-end suites execute the overdue-open path; this adds governed retrieval, not a new AI capability.
+
+
+## Day 24 stable exception pagination
+
+`delivery_exceptions` now accepts an explicit offset from 0 to 10,000 after the
+existing deterministic sort and before the row limit. Responses return the full
+filtered exception count, current offset, returned count, `has_more` and
+`next_offset`. The offset is part of the evidence-bound request.
+
+Grounding and end-to-end evaluation execute the second page of overdue-open
+exceptions. The model still selects only the approved tool; offset, limit, dates,
+region and outcome remain typed caller inputs rather than inferred parameters.

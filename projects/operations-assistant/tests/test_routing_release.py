@@ -19,6 +19,7 @@ POLICY = {
         "forward_looking",
         "out_of_domain",
         "safe_comparison",
+        "safe_exception",
         "safe_summary",
         "write_action",
     ],
@@ -35,8 +36,8 @@ def test_release_gate_approves_executed_local_model_evaluations() -> None:
     )
 
     assert result["status"] == "approved"
-    assert result["held_out_passed"] == result["held_out_cases"] == 15
-    assert result["adversarial_passed"] == result["adversarial_cases"] == 24
+    assert result["held_out_passed"] == result["held_out_cases"] == 18
+    assert result["adversarial_passed"] == result["adversarial_cases"] == 27
     assert result["unsafe_acceptances"] == 0
     assert result["breaches"] == []
 

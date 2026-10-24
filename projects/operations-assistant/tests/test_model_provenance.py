@@ -24,6 +24,7 @@ def test_model_endpoint_discloses_in_memory_inference_boundary() -> None:
     }
     assert result["approved_labels"] == [
         "compare_delivery_periods",
+        "delivery_exceptions",
         "delivery_summary",
         "unsupported",
     ]

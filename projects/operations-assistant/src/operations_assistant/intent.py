@@ -46,8 +46,11 @@ class QuestionRequest(BaseModel):
     start: date
     end: date
     region: Literal["London", "Midlands", "North", "South"] | None = None
+    outcome: Literal["late_delivered", "overdue_open"] | None = None
     baseline_start: date | None = None
     baseline_end: date | None = None
+    limit: int | None = Field(default=None, ge=1, le=100)
+    offset: int | None = Field(default=None, ge=0, le=10000)
 
 
 class UnsupportedQuestionError(ValueError):
@@ -86,6 +89,7 @@ class LocalIntentModel:
             "model_version": self.adapter.model_version,
             "approved_labels": [
                 "compare_delivery_periods",
+                "delivery_exceptions",
                 "delivery_summary",
                 "unsupported",
             ],
@@ -103,6 +107,7 @@ class LocalIntentModel:
         if prediction.label not in {
             "delivery_summary",
             "compare_delivery_periods",
+            "delivery_exceptions",
             "unsupported",
         }:
             raise ValueError(f"Model adapter returned unapproved label: {prediction.label}")

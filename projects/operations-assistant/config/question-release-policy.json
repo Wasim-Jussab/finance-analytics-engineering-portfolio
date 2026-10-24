@@ -1,6 +1,6 @@
 {
   "require_all_cases_pass": true,
-  "expected_answered_cases": 4,
+  "expected_answered_cases": 6,
   "expected_blocked_cases": 4,
   "maximum_blocked_tool_executions": 0,
   "require_database_unchanged": true,

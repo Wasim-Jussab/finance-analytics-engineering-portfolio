@@ -50,6 +50,44 @@ def render_answer(tool_result: dict) -> dict:
             "This is a deterministic rendering of one approved metric result, not model "
             "inference or a causal explanation."
         )
+    elif tool_result["tool"] == "delivery_exceptions":
+        claims = {
+            "period": deepcopy(tool_result["period"]),
+            "selected_region": tool_result["selected_region"],
+            "selected_outcome": tool_result["selected_outcome"],
+            "exception_count": tool_result["exception_count"],
+            "returned_count": tool_result["returned_count"],
+            "limit": tool_result["limit"],
+            "offset": tool_result["offset"],
+            "has_more": tool_result["has_more"],
+            "next_offset": tool_result["next_offset"],
+            "truncated": tool_result["truncated"],
+            "rows": deepcopy(tool_result["rows"]),
+        }
+        scope = claims["selected_region"] or "all regions"
+        outcome_scope = claims["selected_outcome"] or "late-delivered or overdue-open"
+        shipment_ids = ", ".join(row["shipment_id"] for row in claims["rows"])
+        if claims["has_more"]:
+            page_status = (
+                f" Further rows remain; request offset {claims['next_offset']} for the next page."
+            )
+        elif claims["offset"] > 0:
+            page_status = " No further rows remain; earlier rows were omitted by the offset."
+        else:
+            page_status = " The complete exception set is returned."
+        answer = (
+            f"For {scope}, {tool_result['period']['start_inclusive']} to "
+            f"{tool_result['period']['end_exclusive']} (exclusive end), the synthetic "
+            f"snapshot contains {claims['exception_count']} {outcome_scope} "
+            f"shipment exceptions. Returning {claims['returned_count']} from offset "
+            f"{claims['offset']} in the governed order: {shipment_ids}.{page_status} "
+            f"Snapshot as of {tool_result['as_of']}. "
+            f"Evidence: {evidence_id}."
+        )
+        limitations = (
+            "This is a deterministic rendering of bounded shipment-level evidence. "
+            "It does not infer cause, treatment priority or a live operational state."
+        )
     elif tool_result["tool"] == "compare_delivery_periods":
         baseline = tool_result["baseline"]
         current = tool_result["current"]
