@@ -174,3 +174,10 @@ Day 60 closes the controlled delinquency-operations milestone with a unified
 remain separate source facts while the timeline makes their chronology inspectable.
 The review records the missing contractual arrears, policy, SLA, capacity and
 outcome evidence rather than presenting proxy operations as production decisions.
+
+
+Day 61 starts a new case-monitoring milestone with a queue-complete activity
+summary. It distinguishes eight accounts with recorded synthetic events from 17
+without them, reconciles all 22 action and assignment events, and exposes recency
+without inventing an SLA threshold. Later sessions can add movement or approved
+policy only if the source contract genuinely supports it.

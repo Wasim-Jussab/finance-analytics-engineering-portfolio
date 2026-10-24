@@ -1247,3 +1247,62 @@ models:
         description: "Change in current completed billing attempts."
       - name: collected_amount_delta
         description: "Change in current completed collection amount; not revenue."
+
+  - name: rpt_loan_case_activity_summary
+    description: >
+      One row per delinquency-proxy exception account and reporting date,
+      summarising recorded action and assignment activity without applying an SLA.
+    columns:
+      - name: account_id
+        description: "Exception account represented by the activity summary."
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('rpt_loan_delinquency_case_status')
+                field: account_id
+      - name: customer_id
+        tests: [not_null]
+      - name: product_code
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['LOAN-A', 'LOAN-B', 'LOAN-C']
+      - name: as_of_date
+        tests: [not_null]
+      - name: delinquency_band_proxy
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['1-29 days', '30-89 days', '90+ days']
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: portfolio_exception_rank
+        tests: [not_null]
+      - name: current_assigned_team
+        description: "Latest observed assignment; null where no assignment is recorded."
+      - name: total_activity_count
+        tests: [not_null]
+      - name: action_event_count
+        tests: [not_null]
+      - name: assignment_event_count
+        tests: [not_null]
+      - name: has_recorded_activity
+        tests: [not_null]
+      - name: first_activity_at
+        description: "Earliest recorded action or assignment timestamp."
+      - name: latest_activity_at
+        description: "Latest recorded action or assignment timestamp."
+      - name: days_since_latest_activity
+        description: >
+          Calendar days from latest recorded activity to the fixed reporting date;
+          null when the account has no recorded activity. This is not an SLA.
+      - name: activity_state
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Activity recorded', 'No recorded activity']
