@@ -50,6 +50,7 @@ class QuestionRequest(BaseModel):
     baseline_start: date | None = None
     baseline_end: date | None = None
     limit: int | None = Field(default=None, ge=1, le=100)
+    offset: int | None = Field(default=None, ge=0, le=10000)
 
 
 class UnsupportedQuestionError(ValueError):

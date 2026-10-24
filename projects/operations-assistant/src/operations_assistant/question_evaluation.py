@@ -76,6 +76,7 @@ SAFE_CASES = (
             "end": "2026-09-28",
             "outcome": "overdue_open",
             "limit": 5,
+            "offset": 5,
         },
         "expected_tool": "delivery_exceptions",
         "expected_claims": {
@@ -84,6 +85,9 @@ SAFE_CASES = (
             "exception_count": 21,
             "returned_count": 5,
             "limit": 5,
+            "offset": 5,
+            "has_more": True,
+            "next_offset": 10,
             "truncated": True,
         },
     },

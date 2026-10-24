@@ -109,3 +109,16 @@ not establish broad language accuracy or generative capability.
 Day 23 adds an optional governed `outcome` filter with exactly two accepted values: `late_delivered` and `overdue_open`. The filter is applied before `exception_count`, row limiting and truncation. In the seed-42 second-week cohort, 44 late-delivered plus 21 overdue-open rows reconcile to all 65 exceptions.
 
 Outcome remains an explicit typed request field for both direct and question paths. The local classifier chooses the approved tool only; it does not extract this parameter from text. Unsupported outcome values and outcome fields on summary or comparison tools are rejected.
+
+
+## Stable exception pages
+
+Day 24 applies the caller's validated offset only after the complete filtered
+exception set is sorted by the governed deterministic keys. The response retains
+the pre-pagination `exception_count`, reports the rows returned on this page and
+exposes `has_more` plus `next_offset`.
+
+Offsets range from 0 to 10,000 and are included in the evidence request. This is
+stable for the fixed content-addressed snapshot; it is not a promise of consistency
+across changing live source snapshots. The local intent model does not infer page
+parameters from prose.

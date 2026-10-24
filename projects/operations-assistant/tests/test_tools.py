@@ -142,6 +142,9 @@ def test_exception_tool_returns_bounded_reconciled_rows_without_mutation(
 
     assert result["exception_count"] == 65
     assert result["returned_count"] == 5
+    assert result["offset"] == 0
+    assert result["has_more"] is True
+    assert result["next_offset"] == 5
     assert result["truncated"] is True
     assert len(result["rows"]) == 5
     assert all(row["outcome"] == "overdue_open" for row in result["rows"])
@@ -170,9 +173,34 @@ def test_exception_tool_returns_bounded_reconciled_rows_without_mutation(
     )
     assert overdue["selected_outcome"] == "overdue_open"
     assert overdue["exception_count"] == overdue["returned_count"] == 21
+    assert overdue["offset"] == 0
+    assert overdue["has_more"] is False
+    assert overdue["next_offset"] is None
     assert overdue["truncated"] is False
     assert {row["outcome"] for row in overdue["rows"]} == {"overdue_open"}
     assert overdue["evidence"]["request"]["outcome"] == "overdue_open"
+
+    second_page = execute_tool(
+        db,
+        ToolRequest.model_validate(
+            {
+                "name": "delivery_exceptions",
+                "start": "2026-09-21",
+                "end": "2026-09-28",
+                "outcome": "overdue_open",
+                "limit": 5,
+                "offset": 5,
+            }
+        ),
+    )
+    assert second_page["exception_count"] == 21
+    assert second_page["returned_count"] == 5
+    assert second_page["offset"] == 5
+    assert second_page["has_more"] is True
+    assert second_page["next_offset"] == 10
+    assert second_page["rows"] == overdue["rows"][5:10]
+    assert second_page["evidence"]["request"]["offset"] == 5
+    assert second_page["evidence"]["evidence_id"] != overdue["evidence"]["evidence_id"]
     assert hashlib.sha256(db.read_bytes()).hexdigest() == fingerprint
 
 
@@ -197,6 +225,8 @@ def test_exception_tool_validates_bounds_and_rejects_comparison_fields(
         {**request, "limit": 101},
         {**request, "baseline_start": "2026-09-14"},
         {**request, "outcome": "on_time"},
+        {**request, "offset": -1},
+        {**request, "offset": 10001},
         {**request, "sql": "SELECT * FROM shipments"},
     ):
         assert client.post("/api/tools/execute", json=invalid).status_code == 422

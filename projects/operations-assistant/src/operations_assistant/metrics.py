@@ -113,6 +113,7 @@ def exceptions_from_connection(
     region: str | None = None,
     outcome: str | None = None,
     limit: int = 25,
+    offset: int = 0,
 ) -> dict:
     """Return bounded shipment-grain exceptions from one read-only snapshot."""
 
@@ -124,6 +125,8 @@ def exceptions_from_connection(
         raise ValueError("Unknown exception outcome")
     if not 1 <= limit <= 100:
         raise ValueError("Exception limit must be between 1 and 100")
+    if not 0 <= offset <= 10000:
+        raise ValueError("Exception offset must be between 0 and 10000")
 
     as_of = connection.execute("SELECT as_of FROM snapshot_metadata").fetchone()[0]
     if end > as_of.date():
@@ -170,6 +173,8 @@ def exceptions_from_connection(
             row["shipment_id"],
         )
     )
+    page_rows = rows[offset : offset + limit]
+    has_more = offset + len(page_rows) < len(rows)
     return {
         "tool": "delivery_exceptions",
         "mode": "deterministic",
@@ -181,14 +186,17 @@ def exceptions_from_connection(
         "selected_region": region,
         "selected_outcome": outcome,
         "exception_count": len(rows),
-        "returned_count": min(len(rows), limit),
+        "returned_count": len(page_rows),
         "limit": limit,
-        "truncated": len(rows) > limit,
-        "rows": rows[:limit],
+        "offset": offset,
+        "has_more": has_more,
+        "next_offset": offset + len(page_rows) if has_more else None,
+        "truncated": bool(rows) and (offset > 0 or has_more),
+        "rows": page_rows,
         "definition": (
             "Non-cancelled shipments promised in the selected UTC period that were "
             "delivered after promise or remained open at the snapshot, optionally filtered "
             "to one explicit outcome. Overdue-open rows sort first, then greatest observed "
-            "delay, promise and shipment ID."
+            "delay, promise and shipment ID before a validated offset and limit are applied."
         ),
     }

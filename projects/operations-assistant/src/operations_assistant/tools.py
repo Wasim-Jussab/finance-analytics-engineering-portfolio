@@ -23,6 +23,7 @@ class ToolRequest(BaseModel):
     baseline_start: date | None = None
     baseline_end: date | None = None
     limit: int | None = Field(default=None, ge=1, le=100)
+    offset: int | None = Field(default=None, ge=0, le=10000)
 
     @model_validator(mode="after")
     def validate_periods(self):
@@ -35,6 +36,8 @@ class ToolRequest(BaseModel):
                 raise ValueError("Summary does not accept a row limit")
             if self.outcome is not None:
                 raise ValueError("Summary does not accept an exception outcome")
+            if self.offset is not None:
+                raise ValueError("Summary does not accept a row offset")
         elif self.name == "compare_delivery_periods":
             if self.baseline_start is None or self.baseline_end is None:
                 raise ValueError("Comparison requires both baseline dates")
@@ -48,6 +51,8 @@ class ToolRequest(BaseModel):
                 raise ValueError("Comparison does not accept a row limit")
             if self.outcome is not None:
                 raise ValueError("Comparison does not accept an exception outcome")
+            if self.offset is not None:
+                raise ValueError("Comparison does not accept a row offset")
         elif self.baseline_start is not None or self.baseline_end is not None:
             raise ValueError("Exception detail does not accept a baseline")
         return self
@@ -100,6 +105,7 @@ def _execute_from_connection(connection, request: ToolRequest) -> dict:
             request.region,
             request.outcome,
             request.limit or 25,
+            request.offset or 0,
         )
 
     current = summary_from_connection(connection, request.start, request.end, request.region)

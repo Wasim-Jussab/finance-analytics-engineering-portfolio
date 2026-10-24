@@ -104,6 +104,9 @@ def test_exception_answer_cites_bounded_rows_and_evidence(tmp_path: Path) -> Non
 
     assert answer["claims"]["exception_count"] == 65
     assert answer["claims"]["returned_count"] == 5
+    assert answer["claims"]["offset"] == 0
+    assert answer["claims"]["has_more"] is True
+    assert answer["claims"]["next_offset"] == 5
     assert answer["claims"]["truncated"] is True
     assert len(answer["claims"]["rows"]) == 5
     assert tool_result["evidence"]["evidence_id"] in answer["answer"]

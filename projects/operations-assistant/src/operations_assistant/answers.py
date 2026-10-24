@@ -58,23 +58,30 @@ def render_answer(tool_result: dict) -> dict:
             "exception_count": tool_result["exception_count"],
             "returned_count": tool_result["returned_count"],
             "limit": tool_result["limit"],
+            "offset": tool_result["offset"],
+            "has_more": tool_result["has_more"],
+            "next_offset": tool_result["next_offset"],
             "truncated": tool_result["truncated"],
             "rows": deepcopy(tool_result["rows"]),
         }
         scope = claims["selected_region"] or "all regions"
         outcome_scope = claims["selected_outcome"] or "late-delivered or overdue-open"
         shipment_ids = ", ".join(row["shipment_id"] for row in claims["rows"])
-        truncation = (
-            f" The response is truncated at the approved limit of {claims['limit']}."
-            if claims["truncated"]
-            else " The complete exception set is returned."
-        )
+        if claims["has_more"]:
+            page_status = (
+                f" Further rows remain; request offset {claims['next_offset']} for the next page."
+            )
+        elif claims["offset"] > 0:
+            page_status = " No further rows remain; earlier rows were omitted by the offset."
+        else:
+            page_status = " The complete exception set is returned."
         answer = (
             f"For {scope}, {tool_result['period']['start_inclusive']} to "
             f"{tool_result['period']['end_exclusive']} (exclusive end), the synthetic "
             f"snapshot contains {claims['exception_count']} {outcome_scope} "
-            f"shipment exceptions. Returning {claims['returned_count']} in the governed "
-            f"order: {shipment_ids}.{truncation} Snapshot as of {tool_result['as_of']}. "
+            f"shipment exceptions. Returning {claims['returned_count']} from offset "
+            f"{claims['offset']} in the governed order: {shipment_ids}.{page_status} "
+            f"Snapshot as of {tool_result['as_of']}. "
             f"Evidence: {evidence_id}."
         )
         limitations = (

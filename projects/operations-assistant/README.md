@@ -117,3 +117,15 @@ intent classification, not generative answering or broad language understanding.
 Callers can now select `late_delivered` or `overdue_open` as a typed field on the direct tool and question endpoint. Filtering happens before counts, truncation and evidence are produced. The fixed second-week fixture reconciles to 44 late-delivered plus 21 overdue-open exceptions.
 
 The model still selects only the approved tool. It does not infer outcome, dates, region or limit from prose. Grounding and end-to-end suites execute the overdue-open path; this adds governed retrieval, not a new AI capability.
+
+
+## Day 24 stable exception pagination
+
+`delivery_exceptions` now accepts an explicit offset from 0 to 10,000 after the
+existing deterministic sort and before the row limit. Responses return the full
+filtered exception count, current offset, returned count, `has_more` and
+`next_offset`. The offset is part of the evidence-bound request.
+
+Grounding and end-to-end evaluation execute the second page of overdue-open
+exceptions. The model still selects only the approved tool; offset, limit, dates,
+region and outcome remain typed caller inputs rather than inferred parameters.

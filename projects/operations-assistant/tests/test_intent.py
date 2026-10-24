@@ -107,6 +107,7 @@ def test_question_api_routes_bounded_exception_detail(tmp_path: Path) -> None:
             **_question("List the five worst delivery exceptions"),
             "outcome": "overdue_open",
             "limit": 5,
+            "offset": 5,
         },
     )
 
@@ -116,5 +117,8 @@ def test_question_api_routes_bounded_exception_detail(tmp_path: Path) -> None:
     assert result["claims"]["selected_outcome"] == "overdue_open"
     assert result["claims"]["exception_count"] == 21
     assert result["claims"]["returned_count"] == 5
+    assert result["claims"]["offset"] == 5
+    assert result["claims"]["has_more"] is True
+    assert result["claims"]["next_offset"] == 10
     assert result["claims"]["truncated"] is True
     assert result["evidence"]["evidence_id"] in result["answer"]
