@@ -688,3 +688,16 @@ source facts, and elapsed minutes are null for each account's first event.
 
 Elapsed time is not compared with a target. The project has no contractual response
 deadline, approved contact cadence or treatment outcome measure.
+
+
+## Day 61 activity-summary contract
+
+`rpt_loan_case_activity_summary` has one row per account in the complete synthetic
+exception queue at the fixed reporting date. `total_activity_count` must equal
+action plus assignment event counts from `fct_loan_case_activity`. First and latest
+timestamps are null only when the count is zero.
+
+`days_since_latest_activity` is the whole calendar-day difference between the
+latest recorded event date and `as_of_date`. It is null for untouched accounts and
+cannot be negative. It is not an SLA breach measure because the source contains no
+approved response deadline or contact policy.
