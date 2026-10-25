@@ -5,6 +5,7 @@
   "required_risk_slices": [
     "causal_claim",
     "forward_looking",
+    "safe_exception",
     "out_of_domain",
     "safe_comparison",
     "safe_summary",

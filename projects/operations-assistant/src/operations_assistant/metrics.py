@@ -105,3 +105,98 @@ def summary_from_connection(connection, start: date, end: date, region: str | No
             "cancelled_rows_excluded": totals["cancelled"],
         },
     }
+
+def exceptions_from_connection(
+    connection,
+    start: date,
+    end: date,
+    region: str | None = None,
+    outcome: str | None = None,
+    limit: int = 25,
+    offset: int = 0,
+) -> dict:
+    """Return bounded shipment-grain exceptions from one read-only snapshot."""
+
+    if start >= end:
+        raise ValueError("Start must precede the exclusive end date")
+    if region is not None and region not in REGIONS:
+        raise ValueError("Unknown region")
+    if outcome not in (None, "late_delivered", "overdue_open"):
+        raise ValueError("Unknown exception outcome")
+    if not 1 <= limit <= 100:
+        raise ValueError("Exception limit must be between 1 and 100")
+    if not 0 <= offset <= 10000:
+        raise ValueError("Exception offset must be between 0 and 10000")
+
+    as_of = connection.execute("SELECT as_of FROM snapshot_metadata").fetchone()[0]
+    if end > as_of.date():
+        raise ValueError("Period must contain complete days within the snapshot")
+
+    source_rows = connection.execute(
+        """
+        SELECT shipment_id, region, dispatched_at, promised_at, delivered_at
+        FROM shipments
+        WHERE promised_at >= CAST(? AS DATE)
+          AND promised_at < CAST(? AS DATE)
+          AND dispatched_at <= ?
+          AND source_status <> 'Cancelled'
+          AND (delivered_at IS NULL OR delivered_at > promised_at)
+          AND (? IS NULL OR region = ?)
+        """,
+        [start, end, as_of, region, region],
+    ).fetchall()
+
+    rows = []
+    for shipment_id, shipment_region, dispatched, promised, delivered in source_rows:
+        observed_at = delivered if delivered is not None else as_of
+        delay_minutes = int((observed_at - promised).total_seconds() // 60)
+        row_outcome = "late_delivered" if delivered is not None else "overdue_open"
+        if outcome is not None and row_outcome != outcome:
+            continue
+        rows.append(
+            {
+                "shipment_id": shipment_id,
+                "region": shipment_region,
+                "dispatched_at": dispatched.isoformat(),
+                "promised_at": promised.isoformat(),
+                "delivered_at": delivered.isoformat() if delivered is not None else None,
+                "outcome": row_outcome,
+                "delay_minutes": delay_minutes,
+            }
+        )
+
+    rows.sort(
+        key=lambda row: (
+            0 if row["outcome"] == "overdue_open" else 1,
+            -row["delay_minutes"],
+            row["promised_at"],
+            row["shipment_id"],
+        )
+    )
+    page_rows = rows[offset : offset + limit]
+    has_more = offset + len(page_rows) < len(rows)
+    return {
+        "tool": "delivery_exceptions",
+        "mode": "deterministic",
+        "period": {
+            "start_inclusive": start.isoformat(),
+            "end_exclusive": end.isoformat(),
+        },
+        "as_of": as_of.isoformat(),
+        "selected_region": region,
+        "selected_outcome": outcome,
+        "exception_count": len(rows),
+        "returned_count": len(page_rows),
+        "limit": limit,
+        "offset": offset,
+        "has_more": has_more,
+        "next_offset": offset + len(page_rows) if has_more else None,
+        "truncated": bool(rows) and (offset > 0 or has_more),
+        "rows": page_rows,
+        "definition": (
+            "Non-cancelled shipments promised in the selected UTC period that were "
+            "delivered after promise or remained open at the snapshot, optionally filtered "
+            "to one explicit outcome. Overdue-open rows sort first, then greatest observed "
+            "delay, promise and shipment ID before a validated offset and limit are applied."
+        ),
+    }

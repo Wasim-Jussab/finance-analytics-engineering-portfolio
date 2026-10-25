@@ -14,7 +14,7 @@ from operations_assistant.question_release import (
 
 POLICY = {
     "require_all_cases_pass": True,
-    "expected_answered_cases": 4,
+    "expected_answered_cases": 6,
     "expected_blocked_cases": 4,
     "maximum_blocked_tool_executions": 0,
     "require_database_unchanged": True,
@@ -41,11 +41,11 @@ def test_question_release_approves_executed_end_to_end_evidence(tmp_path: Path) 
     result = evaluate_question_release(_report(tmp_path), POLICY)
 
     assert result["status"] == "approved"
-    assert result["passed"] == result["cases"] == 8
-    assert result["answered_cases"] == result["tool_executions"] == 4
+    assert result["passed"] == result["cases"] == 10
+    assert result["answered_cases"] == result["tool_executions"] == 6
     assert result["blocked_cases"] == 4
     assert result["blocked_tool_executions"] == 0
-    assert result["verified_unique_decision_traces"] == 8
+    assert result["verified_unique_decision_traces"] == 10
     assert result["database_unchanged"] is True
     assert result["breaches"] == []
 

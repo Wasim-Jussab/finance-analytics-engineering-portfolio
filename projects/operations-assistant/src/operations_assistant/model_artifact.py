@@ -21,7 +21,12 @@ from operations_assistant.model_adapter import (
 ARTIFACT_VERSION = "1.0.0"
 MODEL_FILENAME = "intent-model.joblib"
 MANIFEST_FILENAME = "model-manifest.json"
-EXPECTED_LABELS = ["compare_delivery_periods", "delivery_summary", "unsupported"]
+EXPECTED_LABELS = [
+    "compare_delivery_periods",
+    "delivery_exceptions",
+    "delivery_summary",
+    "unsupported",
+]
 
 
 def _sha256(path: Path) -> str:

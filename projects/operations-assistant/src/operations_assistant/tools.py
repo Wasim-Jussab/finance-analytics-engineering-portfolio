@@ -7,20 +7,23 @@ from pathlib import Path
 from typing import Literal
 
 import duckdb
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from operations_assistant.metrics import summary_from_connection
+from operations_assistant.metrics import exceptions_from_connection, summary_from_connection
 
 
 class ToolRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    name: Literal["delivery_summary", "compare_delivery_periods"]
+    name: Literal["delivery_summary", "compare_delivery_periods", "delivery_exceptions"]
     start: date
     end: date
     region: Literal["London", "Midlands", "North", "South"] | None = None
+    outcome: Literal["late_delivered", "overdue_open"] | None = None
     baseline_start: date | None = None
     baseline_end: date | None = None
+    limit: int | None = Field(default=None, ge=1, le=100)
+    offset: int | None = Field(default=None, ge=0, le=10000)
 
     @model_validator(mode="after")
     def validate_periods(self):
@@ -29,7 +32,13 @@ class ToolRequest(BaseModel):
         if self.name == "delivery_summary":
             if self.baseline_start is not None or self.baseline_end is not None:
                 raise ValueError("Summary does not accept a baseline")
-        else:
+            if self.limit is not None:
+                raise ValueError("Summary does not accept a row limit")
+            if self.outcome is not None:
+                raise ValueError("Summary does not accept an exception outcome")
+            if self.offset is not None:
+                raise ValueError("Summary does not accept a row offset")
+        elif self.name == "compare_delivery_periods":
             if self.baseline_start is None or self.baseline_end is None:
                 raise ValueError("Comparison requires both baseline dates")
             if self.baseline_start >= self.baseline_end:
@@ -38,6 +47,14 @@ class ToolRequest(BaseModel):
                 raise ValueError("Baseline must finish before the current period starts")
             if self.end - self.start != self.baseline_end - self.baseline_start:
                 raise ValueError("Comparison periods must have equal calendar duration")
+            if self.limit is not None:
+                raise ValueError("Comparison does not accept a row limit")
+            if self.outcome is not None:
+                raise ValueError("Comparison does not accept an exception outcome")
+            if self.offset is not None:
+                raise ValueError("Comparison does not accept a row offset")
+        elif self.baseline_start is not None or self.baseline_end is not None:
+            raise ValueError("Exception detail does not accept a baseline")
         return self
 
 
@@ -80,6 +97,17 @@ def execute_tool(database: Path, request: ToolRequest) -> dict:
 
 
 def _execute_from_connection(connection, request: ToolRequest) -> dict:
+    if request.name == "delivery_exceptions":
+        return exceptions_from_connection(
+            connection,
+            request.start,
+            request.end,
+            request.region,
+            request.outcome,
+            request.limit or 25,
+            request.offset or 0,
+        )
+
     current = summary_from_connection(connection, request.start, request.end, request.region)
     if request.name == "delivery_summary":
         return {"tool": request.name, "mode": "deterministic", "result": current}

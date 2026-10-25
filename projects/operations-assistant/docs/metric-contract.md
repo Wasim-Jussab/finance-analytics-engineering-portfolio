@@ -77,3 +77,48 @@ Tools share the dashboard service. Compare equally long, non-overlapping promise
 ## Evidence envelope
 
 The tool holds one read-only connection for source fingerprinting and both cohorts. Atomic replacement of the source file cannot mix the periods within that invocation. SHA-256 snapshot IDs use sorted shipment rows and snapshot metadata; evidence IDs bind that snapshot, request, delivery-v1 contract and returned result. Repeated inputs produce stable IDs. These IDs provide identity and traceability, not digital signatures or correctness guarantees.
+
+## Bounded exception detail
+
+The `delivery_exceptions` tool returns shipment-grain late-delivered and
+overdue-open rows from the same promised-date cohort used by the summary metric.
+Current cancelled rows are excluded. Open rows measure delay to the fixed snapshot;
+late-delivered rows measure delay to actual delivery.
+
+Results report the full exception count before applying a caller limit of 1 to 100.
+Ordering is deterministic: overdue open first, then greatest delay, promised
+timestamp and shipment ID. The direct tool is implemented and tested; model routing
+and answer rendering are deliberately outside Day 21.
+
+
+## Evaluated exception-question path
+
+Day 22 adds `delivery_exceptions` to the local intent classifier and deterministic
+answer renderer. The classifier selects only the approved tool name; dates, region
+and limit remain explicit validated request fields. The renderer exposes total and
+returned counts, truncation state and the exact bounded rows in structured claims.
+
+Grounding evaluation now executes the exception result and checks all structured
+claims against the tool output. Held-out, adversarial and end-to-end evaluations
+include independent exception-detail questions. Passing those fixed fixtures does
+not establish broad language accuracy or generative capability.
+
+
+## Explicit exception outcome
+
+Day 23 adds an optional governed `outcome` filter with exactly two accepted values: `late_delivered` and `overdue_open`. The filter is applied before `exception_count`, row limiting and truncation. In the seed-42 second-week cohort, 44 late-delivered plus 21 overdue-open rows reconcile to all 65 exceptions.
+
+Outcome remains an explicit typed request field for both direct and question paths. The local classifier chooses the approved tool only; it does not extract this parameter from text. Unsupported outcome values and outcome fields on summary or comparison tools are rejected.
+
+
+## Stable exception pages
+
+Day 24 applies the caller's validated offset only after the complete filtered
+exception set is sorted by the governed deterministic keys. The response retains
+the pre-pagination `exception_count`, reports the rows returned on this page and
+exposes `has_more` plus `next_offset`.
+
+Offsets range from 0 to 10,000 and are included in the evidence request. This is
+stable for the fixed content-addressed snapshot; it is not a promise of consistency
+across changing live source snapshots. The local intent model does not infer page
+parameters from prose.
