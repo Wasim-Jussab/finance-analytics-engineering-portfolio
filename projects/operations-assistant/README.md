@@ -60,7 +60,7 @@ This is one row per shipment, with one shipment per order assumed. Cancellation 
 
 `GET /api/tools` publishes the schema. `POST /api/tools/execute` accepts three approved tools, date boundaries and an optional region. Comparisons require equal, non-overlapping periods. SQL and unrecognised arguments are rejected. Responses identify the snapshot, request, contract and result; evidence IDs are not proof of correctness.
 
-`POST /api/answers` renders a fixed, evidence-cited answer from each approved tool. The [grounding evaluation](docs/answer-grounding.md) executes four cases and records exact-claim and disclosure checks. Passing it does not constitute model evaluation because no model is invoked.
+`POST /api/answers` renders a fixed, evidence-cited answer from each approved tool. The grounding evaluation executes six cases and records exact-claim and disclosure checks. Passing it alone does not constitute model evaluation because no model is invoked.
 
 `POST /api/questions` adds the [local intent model](docs/local-intent-model.md) through a [local adapter](docs/local-model-adapter.md). Held-out and [adversarial](docs/adversarial-evaluation.md) suites feed the routing [release gate](docs/routing-release-gate.md); the [question-path gate](docs/question-release-gate.md) checks routing, tools, evidence and traces together. The [runtime readiness gate](docs/runtime-readiness.md) requires both approvals to name the exact verified classifier bytes. This is constrained local inference, not broad language accuracy or generative AI.
 
@@ -94,9 +94,9 @@ It returns non-cancelled late-delivered and overdue-open rows from an explicit
 promised-date period, with optional governed region and outcome filters and a limit from 1 to 100. Overdue
 open rows sort first, followed by greatest observed delay and stable tie-breakers.
 
-The tool is read-only, parameterised and evidence-bound to one snapshot. It is not
-yet available through natural-language routing or deterministic answer templates;
-those paths will only be added after separate training and grounding evaluation.
+The tool is read-only, parameterised and evidence-bound to one snapshot. It is
+available through natural-language routing and deterministic answer templates,
+with explicit caller-supplied dates and filters.
 
 
 ## Day 22 evaluated exception questions
@@ -129,3 +129,10 @@ filtered exception count, current offset, returned count, `has_more` and
 Grounding and end-to-end evaluation execute the second page of overdue-open
 exceptions. The model still selects only the approved tool; offset, limit, dates,
 region and outcome remain typed caller inputs rather than inferred parameters.
+
+## Completed exception-investigation milestone
+
+The [review and runnable API example](docs/exception-investigation-review.md)
+explain the three tools, pagination reconciliation and actual inference boundary.
+The full-pagination API test reconstructs all exceptions and both outcome subsets
+without gaps or duplicates, including exact-boundary and exhausted-offset cases.
