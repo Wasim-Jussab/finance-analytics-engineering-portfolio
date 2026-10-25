@@ -701,3 +701,12 @@ timestamps are null only when the count is zero.
 latest recorded event date and `as_of_date`. It is null for untouched accounts and
 cannot be negative. It is not an SLA breach measure because the source contains no
 approved response deadline or contact policy.
+
+## Current-team activity coverage (Day 62)
+
+`agg_loan_case_team_coverage` has reporting-date/current-assigned-team grain.
+NULL team means unassigned and remains in the denominator. Activity coverage is
+accounts with any recorded case event divided by all queue accounts in that group.
+Assignment events count as activity; coverage is not contact success or recovery.
+All historical activity is grouped under current ownership, not the event actor.
+Shortfall is the synthetic principal-schedule proxy, not regulatory exposure.
