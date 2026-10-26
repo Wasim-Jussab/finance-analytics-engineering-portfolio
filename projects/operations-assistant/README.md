@@ -1,5 +1,8 @@
 # Operations Intelligence
 
+[Snapshot-pinned investigation requests](docs/snapshot-guard.md) prevent a caller
+from silently combining pages from different snapshots when an expected ID is supplied.
+
 A local delivery-performance dashboard and governed analytics-assistant foundation. It highlights missed promises by region, then exposes the shipments behind each total.
 
 ## Current behaviour

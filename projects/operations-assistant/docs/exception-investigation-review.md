@@ -29,7 +29,9 @@ and end-to-end tests actually execute the classifier through its adapter.
 
 This is a small, fixed synthetic snapshot. Offsets are not a production cursor
 protocol. If snapshot IDs differ between pages, a caller must restart rather
-than combine results. The current application does not enforce that across calls.
+than combine results. Callers can now send the optional
+[`expected_snapshot_id` guard](snapshot-guard.md) to enforce this before metric
+execution. Unpinned requests still require caller-side identity checks.
 Evidence hashes establish identity, not business correctness or immutable storage.
 Observed delay is descriptive, not a contractual service breach or causal finding.
 

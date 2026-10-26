@@ -24,6 +24,7 @@ class ToolRequest(BaseModel):
     baseline_end: date | None = None
     limit: int | None = Field(default=None, ge=1, le=100)
     offset: int | None = Field(default=None, ge=0, le=10000)
+    expected_snapshot_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
     @model_validator(mode="after")
     def validate_periods(self):
@@ -72,6 +73,8 @@ def execute_tool(database: Path, request: ToolRequest) -> dict:
         snapshot_id = hashlib.sha256(
             json.dumps(source, sort_keys=True, default=str).encode()
         ).hexdigest()
+        if request.expected_snapshot_id is not None and request.expected_snapshot_id != snapshot_id:
+            raise ValueError("Snapshot changed; restart the investigation from its first page")
         result = _execute_from_connection(connection, request)
     evidence = {
         "snapshot_id": snapshot_id,
