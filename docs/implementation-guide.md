@@ -330,3 +330,8 @@ The daily notes record what changed, what failed and what remains unresolved. Th
 - [Day 37: preventing overlapping pipeline runs](../notes/day-37.md)
 
 This repository demonstrates how I structure and validate analytics-engineering work. My production experience with Redshift, AWS Glue/Python, Power BI, regulatory reporting and financial reconciliations is described separately in my professional profile.
+
+## Current assignment observation
+
+The [assignment/action contract](current-assignment-action.md) documents the
+account-grain observation report, timestamp boundaries and limitations added on Day 63.
