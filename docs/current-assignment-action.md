@@ -1,5 +1,8 @@
 # Current assignment and observed action
 
+The [team coverage rollup](assignment-action-coverage.md) keeps assigned and
+unassigned populations distinct and documents its denominator explicitly.
+
 `rpt_loan_current_assignment_action` has one row per exception-queue account at the
 fixed `as_of_date`. It joins by the current assignment ID, then selects the earliest
 recorded action by that account at or after `assigned_at` and on or before the UTC
