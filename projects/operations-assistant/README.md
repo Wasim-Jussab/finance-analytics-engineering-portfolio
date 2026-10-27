@@ -1,5 +1,8 @@
 # Operations Intelligence
 
+[Run a complete pinned exception investigation](docs/pinned-investigation.md)
+using the local collector, with row caps and page-level evidence.
+
 [Snapshot-pinned investigation requests](docs/snapshot-guard.md) prevent a caller
 from silently combining pages from different snapshots when an expected ID is supplied.
 
