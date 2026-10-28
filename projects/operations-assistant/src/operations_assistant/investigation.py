@@ -18,6 +18,7 @@ def collect_exceptions(database: Path, request: ToolRequest, max_rows: int = 100
         raise ValueError("Investigation row cap must be between 1 and 1000")
     rows: list[dict] = []
     pages: list[dict] = []
+    complete_pages: list[dict] = []
     snapshot_id = request.expected_snapshot_id
     total = None
     offset = 0
@@ -42,6 +43,7 @@ def collect_exceptions(database: Path, request: ToolRequest, max_rows: int = 100
         if len(rows) > total or len(rows) > max_rows:
             raise ValueError("Investigation returned more rows than expected")
         pages.append(page["evidence"])
+        complete_pages.append(page)
         if not page["has_more"]:
             if page["next_offset"] is not None or len(rows) != total:
                 raise ValueError("Investigation ended before its population reconciled")
@@ -53,6 +55,7 @@ def collect_exceptions(database: Path, request: ToolRequest, max_rows: int = 100
     if len({row["shipment_id"] for row in rows}) != total:
         raise ValueError("Investigation contains duplicate shipment IDs")
     return {
+        "contract_version": "investigation-v1",
         "mode": "deterministic read-only investigation; no model inference",
         "request": request.model_dump(mode="json"),
         "max_rows": max_rows,
@@ -60,6 +63,7 @@ def collect_exceptions(database: Path, request: ToolRequest, max_rows: int = 100
         "exception_count": total,
         "rows": rows,
         "page_evidence": pages,
+        "pages": complete_pages,
     }
 
 

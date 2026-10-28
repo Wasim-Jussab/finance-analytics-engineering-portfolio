@@ -1,5 +1,8 @@
 # Operations Intelligence
 
+[Verify saved investigation evidence offline](docs/offline-investigation-verification.md)
+without opening DuckDB; integrity is not authenticity.
+
 [Run a complete pinned exception investigation](docs/pinned-investigation.md)
 using the local collector, with row caps and page-level evidence.
 
