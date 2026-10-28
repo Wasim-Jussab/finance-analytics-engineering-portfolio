@@ -1,0 +1,17 @@
+version: 2
+models:
+  - name: rpt_loan_current_assignment_action
+    description: >-
+      One row per queue account at the fixed reporting date. First recorded action
+      at or after current assignment, by any team. Not an SLA or causal response metric.
+    columns:
+      - name: account_id
+        data_tests: [not_null, unique]
+      - name: as_of_date
+        data_tests: [not_null]
+      - name: assignment_action_state
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Unassigned', 'No action since current assignment', 'Action observed since current assignment']

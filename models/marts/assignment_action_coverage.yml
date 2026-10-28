@@ -1,0 +1,20 @@
+version: 2
+models:
+  - name: agg_loan_assignment_action_coverage
+    description: >-
+      Reporting date/current team grain. Assigned-action coverage uses assigned
+      accounts only; no assigned denominator yields NULL, not zero. Actions may be
+      recorded by any team. This is observation coverage, not productivity or an SLA.
+    columns:
+      - name: as_of_date
+        data_tests: [not_null]
+      - name: queue_account_count
+        data_tests: [not_null]
+      - name: assigned_account_count
+        data_tests: [not_null]
+      - name: unassigned_account_count
+        data_tests: [not_null]
+      - name: assigned_accounts_with_action
+        data_tests: [not_null]
+      - name: assigned_accounts_without_action
+        data_tests: [not_null]

@@ -73,3 +73,9 @@ staffing capacity or an SLA.
 The Day 60 case timeline is operational audit structure only. Event order and
 elapsed minutes do not alter the days-past-due proxy, shortfall, exception rank or
 any customer classification.
+
+
+The Day 61 activity summary describes whether an exception account has recorded
+synthetic action or assignment events and how many calendar days have passed since
+the latest one. It does not convert inactivity into default risk, customer
+treatment, staff performance or an SLA breach.
