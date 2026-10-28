@@ -12,7 +12,7 @@ Second project: [Operations Intelligence](projects/operations-assistant/README.m
 
 - How many billing attempts completed, and how much was collected each month?
 - How do agreement starts and cancellations explain the closing population?
-- Which loans enter the proxy exception queue, and what assignment and action history is recorded?
+- Which assigned cases have a later recorded action, and which remain untouched?
 - What changed between loads, and can the current reporting totals reconcile to source?
 
 ## Engineering behind the reports
@@ -63,6 +63,7 @@ Collections are cash received, not recognised revenue. Loan schedules are synthe
 ## Read further
 
 - [Operations project](projects/operations-assistant/README.md)
+- [Case monitoring review](docs/case-monitoring-review.md)
 - [Local pipeline runbook](docs/local-pipeline-runbook.md)
 - [Pipeline health summary](docs/pipeline-health.md)
 - [Implementation guide and model catalogue](docs/implementation-guide.md)
