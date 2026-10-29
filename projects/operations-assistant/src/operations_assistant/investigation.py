@@ -7,6 +7,7 @@ import json
 from datetime import date
 from pathlib import Path
 
+from operations_assistant.evidence import investigation_digest
 from operations_assistant.tools import ToolRequest, execute_tool
 
 
@@ -54,8 +55,8 @@ def collect_exceptions(database: Path, request: ToolRequest, max_rows: int = 100
         offset = next_offset
     if len({row["shipment_id"] for row in rows}) != total:
         raise ValueError("Investigation contains duplicate shipment IDs")
-    return {
-        "contract_version": "investigation-v1",
+    report = {
+        "contract_version": "investigation-v2",
         "mode": "deterministic read-only investigation; no model inference",
         "request": request.model_dump(mode="json"),
         "max_rows": max_rows,
@@ -65,6 +66,7 @@ def collect_exceptions(database: Path, request: ToolRequest, max_rows: int = 100
         "page_evidence": pages,
         "pages": complete_pages,
     }
+    return {**report, "report_sha256": investigation_digest(report)}
 
 
 def main() -> None:

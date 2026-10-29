@@ -1,5 +1,8 @@
 # Operations Intelligence
 
+[Anchor saved reports with an independently retained digest](docs/report-digest-anchor.md);
+an embedded hash is not authenticity or immutable storage.
+
 [Verify saved investigation evidence offline](docs/offline-investigation-verification.md)
 without opening DuckDB; integrity is not authenticity.
 

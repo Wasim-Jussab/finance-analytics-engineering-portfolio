@@ -1,7 +1,8 @@
 # Offline investigation verification
 
 The collector now includes complete page results alongside the existing evidence
-references in version `investigation-v1`. Save its JSON output, then run:
+references. New output uses `investigation-v2` with a whole-report digest;
+legacy `investigation-v1` structural verification remains supported. Save its JSON output, then run:
 
 ```bash
 python -m operations_assistant.investigation_verify investigation.json
@@ -14,6 +15,8 @@ page pinning, ordered pagination, complete unique rows and each page's recompute
 Legacy collector reports without full pages must be regenerated, not assumed verified.
 
 Tool digest calculation is shared without changing its established byte contract.
+The [external report expectation](report-digest-anchor.md) adds a separately
+reported anchor check; an embedded hash alone does not reject a fully rehashed rewrite.
 Tests include JSON round trips, empty populations, retained external expectations,
 row/evidence/request/count/page tampering, removal of a pin with a recalculated
 digest and command-line success/rejection.

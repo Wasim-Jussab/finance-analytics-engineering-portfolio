@@ -7,7 +7,7 @@ from pathlib import Path
 
 import duckdb
 import pytest
-from operations_assistant.evidence import evidence_digest
+from operations_assistant.evidence import evidence_digest, investigation_digest
 from operations_assistant.generate import build_snapshot
 from operations_assistant.investigation import collect_exceptions
 from operations_assistant.investigation_verify import verify_investigation
@@ -80,6 +80,7 @@ def test_tampered_or_incomplete_report_is_rejected(tmp_path: Path, fault):
             {k: v for k, v in page.items() if k != "evidence"},
             "delivery-v1",
         )
+    saved["report_sha256"] = investigation_digest(saved)
     with pytest.raises(ValueError):
         verify_investigation(saved)
 

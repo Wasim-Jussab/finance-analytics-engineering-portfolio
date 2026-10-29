@@ -2,16 +2,32 @@
 
 import argparse
 import json
+import re
 from pathlib import Path
 
-from operations_assistant.evidence import evidence_digest
+from operations_assistant.evidence import evidence_digest, investigation_digest
 from operations_assistant.tools import ToolRequest
 
 
-def verify_investigation(report: dict, expected_snapshot_id: str | None = None) -> dict:
+def verify_investigation(
+    report: dict,
+    expected_snapshot_id: str | None = None,
+    expected_report_sha256: str | None = None,
+) -> dict:
     try:
-        if report["contract_version"] != "investigation-v1":
+        version = report["contract_version"]
+        if version not in ("investigation-v1", "investigation-v2"):
             raise ValueError("Unsupported investigation contract")
+        digest = investigation_digest(report)
+        if version == "investigation-v2" and report["report_sha256"] != digest:
+            raise ValueError("Whole-report digest does not match")
+        if version == "investigation-v1" and "report_sha256" in report:
+            raise ValueError("Legacy report must not carry a v2 digest field")
+        if expected_report_sha256 is not None:
+            if re.fullmatch(r"[0-9a-f]{64}", expected_report_sha256) is None:
+                raise ValueError("Expected report digest must be lowercase SHA-256")
+            if digest != expected_report_sha256:
+                raise ValueError("Report does not match the externally retained digest")
         if report["mode"] != "deterministic read-only investigation; no model inference":
             raise ValueError("Unsupported investigation mode")
         request = ToolRequest.model_validate(report["request"])
@@ -99,6 +115,9 @@ def verify_investigation(report: dict, expected_snapshot_id: str | None = None) 
             "rows": total,
             "pages": len(pages),
             "database_opened": False,
+            "report_sha256": digest,
+            "embedded_report_digest_checked": version == "investigation-v2",
+            "external_report_anchor_checked": expected_report_sha256 is not None,
             "limitation": "Integrity is not authenticity or business-rule correctness",
         }
     except (KeyError, TypeError, IndexError) as error:
@@ -109,10 +128,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("report", type=Path)
     parser.add_argument("--expected-snapshot-id")
+    parser.add_argument("--expected-report-sha256")
     args = parser.parse_args()
     try:
         result = verify_investigation(
-            json.loads(args.report.read_text()), args.expected_snapshot_id
+            json.loads(args.report.read_text()),
+            args.expected_snapshot_id,
+            args.expected_report_sha256,
         )
     except (ValueError, OSError) as error:
         parser.exit(1, f"Investigation verification failed: {error}\n")
