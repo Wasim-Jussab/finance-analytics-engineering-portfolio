@@ -1,5 +1,8 @@
 # Case monitoring: Days 61–65 review
 
+The [direct-reader probe](reader-readiness.md) provides a separate fail-closed
+consumer check. A successful build is not a direct-reader readiness claim.
+
 I separated three questions that are easy to conflate:
 
 | Question | Model | Meaning |
