@@ -9,6 +9,7 @@ from typing import Literal
 import duckdb
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from operations_assistant.evidence import evidence_digest
 from operations_assistant.metrics import exceptions_from_connection, summary_from_connection
 
 
@@ -24,6 +25,7 @@ class ToolRequest(BaseModel):
     baseline_end: date | None = None
     limit: int | None = Field(default=None, ge=1, le=100)
     offset: int | None = Field(default=None, ge=0, le=10000)
+    expected_snapshot_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
     @model_validator(mode="after")
     def validate_periods(self):
@@ -72,16 +74,12 @@ def execute_tool(database: Path, request: ToolRequest) -> dict:
         snapshot_id = hashlib.sha256(
             json.dumps(source, sort_keys=True, default=str).encode()
         ).hexdigest()
+        if request.expected_snapshot_id is not None and request.expected_snapshot_id != snapshot_id:
+            raise ValueError("Snapshot changed; restart the investigation from its first page")
         result = _execute_from_connection(connection, request)
-    evidence = {
-        "snapshot_id": snapshot_id,
-        "request": request.model_dump(mode="json"),
-        "result": result,
-        "contract_version": "delivery-v1",
-    }
-    evidence_id = hashlib.sha256(
-        json.dumps(evidence, sort_keys=True, default=str).encode()
-    ).hexdigest()
+    evidence_id = evidence_digest(
+        snapshot_id, request.model_dump(mode="json"), result, "delivery-v1"
+    )
     return {
         **result,
         "evidence": {
