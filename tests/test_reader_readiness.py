@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import duckdb
+import pytest
 
 from finance_portfolio import reader_readiness
 
@@ -13,8 +14,10 @@ def healthy_database(path: Path):
     with duckdb.connect(str(path)) as connection:
         connection.execute("""
             create schema mart;
-            create table mart.rpt_loan_case_activity_summary as select 1 as account_id;
-            create table mart.rpt_loan_current_assignment_action as select 1 as account_id;
+            create table mart.rpt_loan_case_activity_summary as
+                select 1 as account_id, date '2025-12-31' as as_of_date;
+            create table mart.rpt_loan_current_assignment_action as
+                select 1 as account_id, date '2025-12-31' as as_of_date;
             create table mart.agg_loan_case_team_coverage as select 1 as account_count;
             create table mart.agg_loan_assignment_action_coverage as
                 select 1 as queue_account_count;
@@ -72,6 +75,7 @@ def test_incomplete_schema_returns_no_partial_counts(tmp_path: Path):
     assert report["status"] == "unavailable"
     assert report["reason"] == "database_read_error"
     assert report["population_counts"] is None
+    assert report["account_checks"] is None
     assert str(path) not in json.dumps(report)
 
 
@@ -108,3 +112,42 @@ def test_readiness_cli_exit_codes(tmp_path: Path):
     )
     assert failed.returncode == 1
     assert json.loads(failed.stdout)["reason"] == "database_missing"
+
+
+@pytest.mark.parametrize("mutation", [
+    "update mart.rpt_loan_current_assignment_action set account_id = 2",
+    "update mart.rpt_loan_current_assignment_action set as_of_date = date '2025-11-30'",
+    "update mart.rpt_loan_case_activity_summary set account_id = null",
+    "update mart.rpt_loan_current_assignment_action set as_of_date = null",
+    """insert into mart.rpt_loan_case_activity_summary
+            select * from mart.rpt_loan_case_activity_summary;
+        insert into mart.rpt_loan_current_assignment_action
+            select * from mart.rpt_loan_current_assignment_action;
+        update mart.agg_loan_case_team_coverage set account_count = 2;
+        update mart.agg_loan_assignment_action_coverage set queue_account_count = 2""",
+])
+def test_equal_counts_do_not_hide_wrong_keys_dates_or_grain(tmp_path: Path, mutation):
+    path = tmp_path / "finance.duckdb"
+    healthy_database(path)
+    with duckdb.connect(str(path)) as connection:
+        connection.execute(mutation)
+    report = reader_readiness.probe_database(path)
+    assert len(set(report["population_counts"].values())) == 1
+    assert report["status"] == "inconsistent"
+    assert report["reason"] == "case_account_grain_mismatch"
+    assert any(report["account_checks"].values())
+
+
+def test_empty_matching_reports_are_readable_not_complete(tmp_path: Path):
+    path = tmp_path / "finance.duckdb"
+    healthy_database(path)
+    with duckdb.connect(str(path)) as connection:
+        for table in (
+            "rpt_loan_case_activity_summary", "rpt_loan_current_assignment_action",
+            "agg_loan_case_team_coverage", "agg_loan_assignment_action_coverage",
+        ):
+            connection.execute(f"delete from mart.{table}")
+    report = reader_readiness.probe_database(path)
+    assert report["status"] == "ready"
+    assert not any(report["account_checks"].values())
+    assert set(report["population_counts"].values()) == {0}
