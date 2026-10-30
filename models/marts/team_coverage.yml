@@ -1,0 +1,14 @@
+version: 2
+models:
+  - name: agg_loan_case_team_coverage
+    description: >-
+      One row per reporting date and current assigned team, including a NULL-team
+      group for unassigned accounts. Coverage means any recorded event, including
+      assignment; it does not imply customer contact or successful resolution.
+    columns:
+      - name: as_of_date
+        data_tests: [not_null]
+      - name: account_count
+        data_tests: [not_null]
+      - name: activity_coverage_rate
+        data_tests: [not_null]

@@ -471,3 +471,19 @@ event timestamp and elapsed minutes are audit context only.
 The timeline does not change the exception queue, latest case status or workload
 aggregate. It cannot establish response quality, SLA compliance or treatment
 effectiveness because those business rules are absent.
+
+
+## Day 61 case-activity coverage
+
+| Model | Grain | Purpose |
+|---|---|---|
+| `rpt_loan_case_activity_summary` | One exception account and reporting date | Reconcile action and assignment counts and expose latest recorded activity age |
+
+Every queue account remains visible. The model counts actions and assignments from
+the unified event fact, records first and latest timestamps, and calculates calendar
+days from latest activity to the fixed reporting date. Accounts without events have
+zero counts and null timestamps rather than disappearing.
+
+`days_since_latest_activity` is descriptive. No response deadline, follow-up
+cadence, staffing target or customer-treatment rule has been supplied, so the model
+does not classify an account as overdue for contact.
