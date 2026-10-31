@@ -57,6 +57,7 @@ No cloud account, paid API, employer information or credentials are required.
 
 ## Inspect the contracts
 
+- [Untrusted tool proposals](docs/tool-proposals.md): a validation boundary, not LLM inference.
 - [Metric definitions](docs/metric-contract.md) and [exception API review](docs/exception-investigation-review.md)
 - [Snapshot guard](docs/snapshot-guard.md), [collector](docs/pinned-investigation.md),
   [offline verifier](docs/offline-investigation-verification.md) and [digest anchor](docs/report-digest-anchor.md)
