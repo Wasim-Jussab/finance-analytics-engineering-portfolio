@@ -51,6 +51,7 @@ class QuestionRequest(BaseModel):
     baseline_end: date | None = None
     limit: int | None = Field(default=None, ge=1, le=100)
     offset: int | None = Field(default=None, ge=0, le=10000)
+    expected_snapshot_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
 
 class UnsupportedQuestionError(ValueError):

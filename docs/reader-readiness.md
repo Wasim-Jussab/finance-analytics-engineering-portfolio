@@ -1,5 +1,7 @@
 # Direct-reader readiness
 
+For stage-by-stage failure timing, use the [lifecycle diagnostic](reader-lifecycle.md).
+
 After the normal pipeline, run:
 
 ```bash
