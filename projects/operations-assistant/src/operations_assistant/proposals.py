@@ -5,7 +5,7 @@ This boundary performs no model inference and does not execute a tool.
 
 import json
 
-from operations_assistant.intent import QuestionRequest
+from operations_assistant.intent import LocalIntentModel, QuestionRequest, UnsupportedQuestionError
 from operations_assistant.tools import ToolRequest
 
 
@@ -41,3 +41,18 @@ def validate_proposal(raw: str, scope: QuestionRequest) -> ToolRequest:
     if proposal.model_dump() != expected.model_dump():
         raise ValueError("Proposed arguments differ from explicit caller scope")
     return proposal
+
+
+def authorize_proposal(raw: str, scope: QuestionRequest, router: LocalIntentModel) -> tuple:
+    """Require existing classifier/policy agreement as well as scope validation.
+
+    This is not execution permission or a runtime-release check. The caller must
+    retain its existing release/readiness controls before any tool execution.
+    """
+    approved, routing = router.route(scope)
+    if approved is None:
+        raise UnsupportedQuestionError("Existing question policy abstained from the proposal")
+    proposal = validate_proposal(raw, scope)
+    if proposal.model_dump() != approved.model_dump():
+        raise ValueError("Proposal disagrees with the existing governed router")
+    return proposal, routing
