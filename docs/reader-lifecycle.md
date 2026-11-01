@@ -1,5 +1,7 @@
 # Original-reader lifecycle diagnosis
 
+First inspect any retained lock with the [read-only lock status command](lock-status.md).
+
 Run from the repository root:
 
 ```bash
