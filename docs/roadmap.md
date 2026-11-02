@@ -181,3 +181,9 @@ summary. It distinguishes eight accounts with recorded synthetic events from 17
 without them, reconciles all 22 action and assignment events, and exposes recency
 without inventing an SLA threshold. Later sessions can add movement or approved
 policy only if the source contract genuinely supports it.
+
+Days 66–70 deliver separate account/date readiness, stage-level reader diagnosis
+and conservative lock-provenance controls. The [milestone review](reader-controls-review.md)
+records their executable boundaries and successful fresh-run observations without
+claiming a repair of intermittent WAL errors or local lock retention. There is no
+automatic recovery-file deletion, lock cleanup or new consumer-availability SLA.

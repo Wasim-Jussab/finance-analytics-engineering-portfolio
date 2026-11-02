@@ -25,7 +25,7 @@ The implementation includes:
 - SCD Type 2 snapshots, distinguishing observed status changes from source disappearance.
 - Keyed incremental payment merges handling late arrivals, corrections, absence and restoration.
 - Grain, relationship, chronology, freshness and financial reconciliation checks.
-- Isolated scenarios that exercise failure handling and changes across consecutive runs.
+- Read-only [consumer checks](docs/reader-controls-review.md) separate build success from reader availability.
 - A fail-fast runner with locking, verified [health decisions](docs/pipeline-health.md), degraded-path testing and policy-gated portable [evidence bundles](docs/evidence-pack.md).
 
 ## Example output
