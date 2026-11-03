@@ -20,6 +20,7 @@ evaluate: data model-artifact-verify
 	python -m operations_assistant.question_evaluation --model-artifact artifacts/local-intent-model
 	python -m operations_assistant.question_release
 	$(MAKE) runtime-readiness
+	python -m operations_assistant.proposal_evaluation --model-artifact artifacts/local-intent-model
 
 runtime-readiness:
 	python -m operations_assistant.runtime_readiness

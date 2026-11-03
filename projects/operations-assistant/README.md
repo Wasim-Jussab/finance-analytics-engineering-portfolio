@@ -57,6 +57,7 @@ No cloud account, paid API, employer information or credentials are required.
 
 ## Inspect the contracts
 
+- [Proposal evaluation](docs/proposal-evaluation.md): executed integration check using existing fixtures.
 - [Proposal adapter](docs/proposal-adapter.md): executed classifier baseline; no generative model.
 - [Proposal authorisation](docs/proposal-authorization.md): existing classifier/policy agreement.
 - [Untrusted tool proposals](docs/tool-proposals.md): a validation boundary, not LLM inference.
