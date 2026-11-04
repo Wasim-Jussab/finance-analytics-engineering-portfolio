@@ -57,6 +57,7 @@ No cloud account, paid API, employer information or credentials are required.
 
 ## Inspect the contracts
 
+- [Days 31–35 review](docs/proposal-milestone-review.md): scope, reproduction and limits.
 - [Proposal evaluation](docs/proposal-evaluation.md): executed integration check using existing fixtures.
 - [Proposal adapter](docs/proposal-adapter.md): executed classifier baseline; no generative model.
 - [Proposal authorisation](docs/proposal-authorization.md): existing classifier/policy agreement.
