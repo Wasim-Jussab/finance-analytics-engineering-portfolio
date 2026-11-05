@@ -14,29 +14,13 @@ import duckdb
 
 
 def _checkpoint_completed_database(source_database: Path) -> bool:
-    """Checkpoint a completed build, or confirm its known WAL replay condition.
+    """Require successful recovery/checkpoint before a file-only scenario copy.
 
-    dbt's DuckDB connection can leave a recovery file whose replay repeats schema
-    creation already present in the checkpointed database. In that exact case the
-    completed database file is still suitable for an isolated scenario copy. The
-    recovery file is left untouched for diagnosis, and every other database error
-    is raised.
+    An unreadable recovery file is not evidence that all committed data is already
+    in the database file. Propagate every failure, preserving the original WAL.
     """
-
-    try:
-        with duckdb.connect(str(source_database)) as connection:
-            connection.execute("force checkpoint")
-    except duckdb.CatalogException as error:
-        message = str(error)
-        recovery_file = Path(f"{source_database}.wal")
-        known_replay_error = (
-            "Failure while replaying WAL file" in message
-            and "already exists" in message
-            and recovery_file.exists()
-        )
-        if not known_replay_error:
-            raise
-        return False
+    with duckdb.connect(str(source_database)) as connection:
+        connection.execute("force checkpoint")
     return True
 
 

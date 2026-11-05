@@ -1,11 +1,12 @@
 from pathlib import Path
 
 import duckdb
+import pytest
 
 from finance_portfolio import snapshot_scenario
 
 
-def test_scenario_copy_uses_checkpointed_file_for_known_wal_replay(
+def test_scenario_copy_refuses_unverified_file_for_known_wal_replay(
     tmp_path: Path, monkeypatch
 ) -> None:
     source_database = tmp_path / "portfolio.duckdb"
@@ -27,15 +28,29 @@ def test_scenario_copy_uses_checkpointed_file_for_known_wal_replay(
         return real_connect(database, *args, **kwargs)
 
     monkeypatch.setattr(snapshot_scenario.duckdb, "connect", connect_with_known_source_failure)
+    before = source_database.read_bytes()
 
-    with snapshot_scenario.temporary_database_copy(
-        source_database, "known-wal-replay-"
-    ) as scenario_database:
-        assert scenario_database.name == source_database.name
-        with real_connect(str(scenario_database), read_only=True) as connection:
+    def forbidden_copy(*args, **kwargs):
+        raise AssertionError("An unverified database file must not be copied")
+
+    monkeypatch.setattr(snapshot_scenario.shutil, "copy2", forbidden_copy)
+    with pytest.raises(duckdb.CatalogException, match="Failure while replaying WAL"):
+        with snapshot_scenario.temporary_database_copy(source_database, "known-wal-replay-"):
+            raise AssertionError("The scenario must never start")
+    assert recovery_file.read_text() == "retained for diagnosis"
+    assert source_database.read_bytes() == before
+
+
+def test_healthy_checkpoint_copy_retains_catalogue_name_and_data(tmp_path):
+    source = tmp_path / "portfolio.duckdb"
+    with duckdb.connect(str(source)) as connection:
+        connection.execute(
+            "create table evidence (value integer); insert into evidence values (31)"
+        )
+    with snapshot_scenario.temporary_database_copy(source, "healthy-copy-") as copied:
+        assert copied.name == source.name
+        with duckdb.connect(str(copied), read_only=True) as connection:
             assert connection.execute("select value from evidence").fetchone() == (31,)
-
-    assert recovery_file.exists()
 
 
 def test_unrelated_catalog_error_is_not_suppressed(tmp_path: Path, monkeypatch) -> None:
@@ -48,9 +63,7 @@ def test_unrelated_catalog_error_is_not_suppressed(tmp_path: Path, monkeypatch) 
     monkeypatch.setattr(snapshot_scenario.duckdb, "connect", fail_to_connect)
 
     try:
-        with snapshot_scenario.temporary_database_copy(
-            source_database, "unrelated-error-"
-        ):
+        with snapshot_scenario.temporary_database_copy(source_database, "unrelated-error-"):
             raise AssertionError("scenario copy should not be created")
     except duckdb.CatalogException as error:
         assert str(error) == "unrelated catalogue failure"
