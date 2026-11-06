@@ -55,6 +55,9 @@ Open `http://127.0.0.1:8000`; API documentation is at `/docs`.
 grounding and classifier evaluations, then checks release/runtime readiness.
 No cloud account, paid API, employer information or credentials are required.
 
+After verification, run `make proposal-demo` for a
+[weekly comparison with traceable evidence](docs/proposal-demo.md).
+
 ## Inspect the contracts
 
 - [Days 31–35 review](docs/proposal-milestone-review.md): scope, reproduction and limits.
