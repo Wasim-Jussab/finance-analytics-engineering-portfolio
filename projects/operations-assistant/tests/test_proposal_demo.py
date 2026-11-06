@@ -1,7 +1,11 @@
 from types import SimpleNamespace
 
 import pytest
+from fastapi.testclient import TestClient
 from operations_assistant import proposal_demo
+from operations_assistant.app import create_app
+from operations_assistant.decision_trace import verify_decision_trace
+from operations_assistant.generate import build_snapshot
 from operations_assistant.model_artifact import export_model_artifact
 
 
@@ -30,6 +34,24 @@ def test_demo_reconciles_weekly_cohorts_with_grounded_evidence(tmp_path, monkeyp
     assert result["evidence"]["evidence_id"] in result["answer"]
     assert result["routing"]["model_artifact_sha256"] == manifest["artifact_sha256"]
     assert result["generative_inference"] is False
+    trace = result["decision_trace"]
+    verify_decision_trace(trace)
+    assert trace["evidence_id"] == result["evidence"]["evidence_id"]
+    assert "question" not in trace["parameters"]
+
+    database = tmp_path / "api.duckdb"
+    build_snapshot(database)
+    with TestClient(create_app(database=database, model_artifact=artifact)) as client:
+        response = client.post(
+            "/api/questions",
+            json={
+                **trace["parameters"],
+                "question": "How does the current week compare with the prior week?",
+            },
+        )
+    assert response.status_code == 200
+    assert response.json()["claims"] == result["claims"]
+    assert response.json()["decision_trace"] == trace
 
 
 def test_blocked_readiness_stops_before_loading_classifier_for_routing(tmp_path, monkeypatch):

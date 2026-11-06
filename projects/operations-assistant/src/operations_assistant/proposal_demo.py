@@ -6,6 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from operations_assistant.answers import render_answer
+from operations_assistant.decision_trace import build_decision_trace
 from operations_assistant.generate import build_snapshot
 from operations_assistant.intent import LocalIntentModel, QuestionRequest
 from operations_assistant.model_artifact import load_model_artifact
@@ -45,6 +46,7 @@ def run_demo(model_artifact: Path, routing_release: Path, question_release: Path
         "demo": "synthetic weekly delivery comparison",
         "runtime_readiness": readiness,
         "routing": routing,
+        "decision_trace": build_decision_trace(scope, routing, "answered", request, answer),
         "generative_inference": False,
         **answer,
     }

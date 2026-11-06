@@ -26,3 +26,10 @@ as observed at two historical cutoffs. A region's change is not proof of cause.
 This is a reproducible example, not a new holdout or approval for the proposal
 path in production. It does not change the public API. Local classifier inference
 executes; no generative inference is implemented or run.
+
+The demo also emits the same core decision trace as the question API for the
+same model, question, typed scope and synthetic snapshot. The trace binds the
+claims and tool evidence; it omits raw question text. Proposal and release
+details remain separate in the demo output, so matching decision IDs show
+parity of the core decision, not identical execution paths. The digest is not
+a signature or an immutable audit log.
