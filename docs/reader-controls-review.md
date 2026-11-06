@@ -1,5 +1,8 @@
 # Days 66–70: build success and consumer readiness are separate decisions
 
+Day 71 strengthens the [checkpoint/copy policy](checkpoint-copy-policy.md): an
+unreadable original recovery state may no longer be bypassed with a file-only copy.
+
 The milestone adds three deliberately different controls:
 
 | Control | Establishes | Does not establish |
