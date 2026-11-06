@@ -53,6 +53,35 @@ def test_healthy_checkpoint_copy_retains_catalogue_name_and_data(tmp_path):
             assert connection.execute("select value from evidence").fetchone() == (31,)
 
 
+def test_nonempty_wal_after_checkpoint_blocks_copy(tmp_path: Path, monkeypatch) -> None:
+    source = tmp_path / "portfolio.duckdb"
+    source.write_bytes(b"synthetic database fixture")
+    recovery_file = source.with_name(source.name + ".wal")
+
+    class CheckpointConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def execute(self, statement):
+            assert statement == "force checkpoint"
+            recovery_file.write_bytes(b"synthetic retained WAL")
+
+    monkeypatch.setattr(snapshot_scenario.duckdb, "connect", lambda _: CheckpointConnection())
+
+    def forbidden_copy(*_):
+        pytest.fail("Must not copy with a nonempty WAL")
+
+    monkeypatch.setattr(snapshot_scenario.shutil, "copy2", forbidden_copy)
+    with pytest.raises(RuntimeError, match="Nonempty recovery file remains"):
+        with snapshot_scenario.temporary_database_copy(source, "retained-wal-"):
+            pytest.fail("Must not yield a scenario database")
+    assert source.read_bytes() == b"synthetic database fixture"
+    assert recovery_file.read_bytes() == b"synthetic retained WAL"
+
+
 def test_unrelated_catalog_error_is_not_suppressed(tmp_path: Path, monkeypatch) -> None:
     source_database = tmp_path / "portfolio.duckdb"
     source_database.touch()

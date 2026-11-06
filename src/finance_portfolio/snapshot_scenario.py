@@ -13,7 +13,7 @@ from pathlib import Path
 import duckdb
 
 
-def _checkpoint_completed_database(source_database: Path) -> bool:
+def _checkpoint_completed_database(source_database: Path) -> None:
     """Require successful recovery/checkpoint before a file-only scenario copy.
 
     An unreadable recovery file is not evidence that all committed data is already
@@ -21,7 +21,16 @@ def _checkpoint_completed_database(source_database: Path) -> bool:
     """
     with duckdb.connect(str(source_database)) as connection:
         connection.execute("force checkpoint")
-    return True
+    recovery_file = source_database.with_name(source_database.name + ".wal")
+    try:
+        size = recovery_file.stat().st_size
+    except FileNotFoundError:
+        return
+    if size:
+        raise RuntimeError(
+            f"Nonempty recovery file remains after checkpoint: {recovery_file}. "
+            "Refusing a database-only copy; preserve the source and recovery file."
+        )
 
 
 @contextmanager

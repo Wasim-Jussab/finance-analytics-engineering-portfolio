@@ -20,3 +20,10 @@ This intentionally strengthens `make verify`: if the original cannot checkpoint,
 dependent scenarios/docs fail rather than contribute a misleading green result.
 Do not restore the old fallback or remove recovery evidence to make the gate pass.
 Use the [reader controls](reader-controls-review.md) and capture the actual failure.
+
+Even when checkpoint returns successfully, a nonempty WAL visible after the
+connection closes blocks a database-only copy. This is a conservative check,
+not a determination that the WAL contains unapplied changes. The caller still
+needs a quiescent source: a file-size check is not a writer lock and cannot rule
+out changes after the check. The verification pipeline holds its own lock;
+standalone callers must not run alongside a writer.
