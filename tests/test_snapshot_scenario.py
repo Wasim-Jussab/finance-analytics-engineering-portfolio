@@ -1,3 +1,5 @@
+import subprocess
+import sys
 from pathlib import Path
 
 import duckdb
@@ -51,6 +53,49 @@ def test_healthy_checkpoint_copy_retains_catalogue_name_and_data(tmp_path):
         assert copied.name == source.name
         with duckdb.connect(str(copied), read_only=True) as connection:
             assert connection.execute("select value from evidence").fetchone() == (31,)
+
+
+def test_checkpoint_copy_includes_committed_wal_row(tmp_path: Path) -> None:
+    source = tmp_path / "portfolio.duckdb"
+    with duckdb.connect(str(source)) as connection:
+        connection.execute("create table evidence (value integer)")
+        connection.execute("insert into evidence values (31)")
+        connection.execute("force checkpoint")
+    before = source.read_bytes()
+
+    # End only this disposable child without closing the connection normally.
+    # COMMIT must finish first so the fixture has a recoverable, committed row.
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            """
+import os
+import sys
+import duckdb
+
+connection = duckdb.connect(sys.argv[1])
+connection.execute("begin transaction")
+connection.execute("insert into evidence values (72)")
+connection.execute("commit")
+os._exit(0)
+""",
+            str(source),
+        ],
+        check=True,
+        timeout=30,
+    )
+    recovery_file = source.with_name(source.name + ".wal")
+    assert recovery_file.stat().st_size > 0
+    assert source.read_bytes() == before
+
+    with snapshot_scenario.temporary_database_copy(source, "committed-wal-") as copied:
+        assert not copied.with_name(copied.name + ".wal").exists()
+        with duckdb.connect(str(copied), read_only=True) as connection:
+            assert connection.execute("select value from evidence order by value").fetchall() == [
+                (31,),
+                (72,),
+            ]
 
 
 def test_nonempty_wal_after_checkpoint_blocks_copy(tmp_path: Path, monkeypatch) -> None:

@@ -27,3 +27,9 @@ not a determination that the WAL contains unapplied changes. The caller still
 needs a quiescent source: a file-size check is not a writer lock and cannot rule
 out changes after the check. The verification pipeline holds its own lock;
 standalone callers must not run alongside a writer.
+
+The real-WAL regression commits a row in an isolated DuckDB child and exits
+without closing the connection normally. It checks that the main file is
+unchanged and that a nonempty WAL exists. The copy must then reopen read-only,
+without a copied WAL, and contain both the old and the newly committed row.
+This covers recoverable WAL replay, not repair of a damaged database.
