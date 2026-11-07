@@ -33,3 +33,9 @@ claims and tool evidence; it omits raw question text. Proposal and release
 details remain separate in the demo output, so matching decision IDs show
 parity of the core decision, not identical execution paths. The digest is not
 a signature or an immutable audit log.
+
+The demo checks that its structured claims, evidence ID, contract version
+and executed request match its decision trace before printing the answer.
+This catches inconsistent pairing, such as claims edited after the trace
+was built or evidence for a different region. It does not replay source
+data, authenticate the bundle, or verify the free-text rendering.

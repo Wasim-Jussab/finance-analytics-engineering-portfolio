@@ -76,3 +76,23 @@ def verify_decision_trace(trace: dict) -> None:
         raise ValueError(
             f"Decision trace does not match its ID (recorded {recorded!r}; expected {expected!r})"
         )
+
+
+def verify_answer_binding(trace: dict, answer: dict) -> None:
+    """Check structured answer evidence against an existing answered trace."""
+
+    verify_decision_trace(trace)
+    if trace.get("outcome") != "answered":
+        raise ValueError("Only answered traces can bind an answer")
+    claims, evidence = answer.get("claims"), answer.get("evidence")
+    if not isinstance(claims, dict) or not isinstance(evidence, dict):
+        raise ValueError("Answer requires structured claims and evidence")
+    if not trace.get("claims_sha256") or _fingerprint(claims) != trace["claims_sha256"]:
+        raise ValueError("Answer claims do not match the trace")
+    for field in ("evidence_id", "contract_version"):
+        if not trace.get(field) or evidence.get(field) != trace[field]:
+            raise ValueError(f"Answer {field} does not match the trace")
+    if not trace.get("tool") or not isinstance(trace.get("parameters"), dict):
+        raise ValueError("Answered trace requires a tool and parameters")
+    if evidence.get("request") != {**trace["parameters"], "name": trace["tool"]}:
+        raise ValueError("Answer tool request does not match the trace")

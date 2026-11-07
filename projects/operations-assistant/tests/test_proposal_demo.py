@@ -1,10 +1,11 @@
+from copy import deepcopy
 from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
 from operations_assistant import proposal_demo
 from operations_assistant.app import create_app
-from operations_assistant.decision_trace import verify_decision_trace
+from operations_assistant.decision_trace import verify_answer_binding, verify_decision_trace
 from operations_assistant.generate import build_snapshot
 from operations_assistant.model_artifact import export_model_artifact
 
@@ -52,6 +53,24 @@ def test_demo_reconciles_weekly_cohorts_with_grounded_evidence(tmp_path, monkeyp
     assert response.status_code == 200
     assert response.json()["claims"] == result["claims"]
     assert response.json()["decision_trace"] == trace
+    verify_answer_binding(trace, response.json())
+
+    for field, change, message in (
+        ("claims", {"current": {"on_time": 154}}, "claims"),
+        ("evidence", {"evidence_id": "different-evidence"}, "evidence_id"),
+        ("evidence", {"contract_version": "other-contract"}, "contract_version"),
+        (
+            "evidence",
+            {"request": {**result["evidence"]["request"], "region": "North"}},
+            "tool request",
+        ),
+    ):
+        edited = deepcopy(result)
+        edited[field].update(change)
+        # The standalone trace still verifies; the answer paired with it does not.
+        verify_decision_trace(trace)
+        with pytest.raises(ValueError, match=message):
+            verify_answer_binding(trace, edited)
 
 
 def test_blocked_readiness_stops_before_loading_classifier_for_routing(tmp_path, monkeypatch):
