@@ -38,4 +38,18 @@ The demo checks that its structured claims, evidence ID, contract version
 and executed request match its decision trace before printing the answer.
 This catches inconsistent pairing, such as claims edited after the trace
 was built or evidence for a different region. It does not replay source
-data, authenticate the bundle, or verify the free-text rendering.
+data, authenticate the bundle, or verify the free-text rendering by itself.
+
+To replay the fixed synthetic comparison from a saved JSON report, run these
+commands after the package gate:
+
+```sh
+python -m operations_assistant.proposal_demo > weekly-comparison.json
+python -m operations_assistant.proposal_demo --verify-report weekly-comparison.json
+```
+
+Replay regenerates the synthetic data and recomputes the approved comparison.
+It checks the claims, complete evidence and rendered answer; no report input
+chooses the tool or windows. It neither loads a model nor revalidates routing
+or release records. This verifies reproducibility, not authorship or
+independent model accuracy.

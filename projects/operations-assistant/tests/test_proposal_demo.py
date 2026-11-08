@@ -54,6 +54,16 @@ def test_demo_reconciles_weekly_cohorts_with_grounded_evidence(tmp_path, monkeyp
     assert response.json()["claims"] == result["claims"]
     assert response.json()["decision_trace"] == trace
     verify_answer_binding(trace, response.json())
+    proposal_demo.verify_report(result)
+
+    for field, change in (
+        ("answer", "Unfounded: the current week had no delays"),
+        ("evidence", {**result["evidence"], "snapshot_id": "different-snapshot"}),
+    ):
+        edited = {**result, field: change}
+        verify_answer_binding(trace, edited)
+        with pytest.raises(ValueError, match=f"{field} differs from synthetic replay"):
+            proposal_demo.verify_report(edited)
 
     for field, change, message in (
         ("claims", {"current": {"on_time": 154}}, "claims"),

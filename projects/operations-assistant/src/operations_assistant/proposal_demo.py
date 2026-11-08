@@ -12,7 +12,42 @@ from operations_assistant.intent import LocalIntentModel, QuestionRequest
 from operations_assistant.model_artifact import load_model_artifact
 from operations_assistant.proposal_adapter import ClassifierProposalAdapter, plan_with_adapter
 from operations_assistant.runtime_readiness import build_runtime_readiness
-from operations_assistant.tools import execute_tool
+from operations_assistant.tools import ToolRequest, execute_tool
+
+
+def comparison_scope() -> QuestionRequest:
+    return QuestionRequest(
+        question="How does the current week compare with the prior week?",
+        start="2026-09-21",
+        end="2026-09-28",
+        baseline_start="2026-09-14",
+        baseline_end="2026-09-21",
+    )
+
+
+def _compute_answer(request: ToolRequest) -> dict:
+    with TemporaryDirectory(prefix="operations-proposal-demo-") as directory:
+        database = Path(directory) / "synthetic.duckdb"
+        build_snapshot(database)
+        return render_answer(execute_tool(database, request))
+
+
+def verify_report(report: dict) -> None:
+    """Replay only the fixed comparison; do not trust a report to select a tool."""
+    if not isinstance(report, dict) or not isinstance(report.get("decision_trace"), dict):
+        raise ValueError("Report requires a decision trace")
+    trace = report["decision_trace"]
+    verify_answer_binding(trace, report)
+    scope = comparison_scope()
+    if trace["parameters"] != scope.model_dump(mode="json", exclude={"question"}):
+        raise ValueError("Report scope differs from the fixed comparison")
+    request = ToolRequest(
+        name="compare_delivery_periods", **scope.model_dump(exclude={"question"})
+    )
+    expected = _compute_answer(request)
+    for field in ("claims", "evidence", "answer"):
+        if report.get(field) != expected[field]:
+            raise ValueError(f"Report {field} differs from synthetic replay")
 
 
 def run_demo(model_artifact: Path, routing_release: Path, question_release: Path) -> dict:
@@ -26,21 +61,12 @@ def run_demo(model_artifact: Path, routing_release: Path, question_release: Path
         raise ValueError("Loaded classifier differs from the approved artifact")
 
     router = LocalIntentModel(adapter=model)
-    scope = QuestionRequest(
-        question="How does the current week compare with the prior week?",
-        start="2026-09-21",
-        end="2026-09-28",
-        baseline_start="2026-09-14",
-        baseline_end="2026-09-21",
-    )
+    scope = comparison_scope()
     request, routing = plan_with_adapter(scope, ClassifierProposalAdapter(router), router)
     if request.name != "compare_delivery_periods":
         raise ValueError("The demo must select the approved period comparison")
 
-    with TemporaryDirectory(prefix="operations-proposal-demo-") as directory:
-        database = Path(directory) / "synthetic.duckdb"
-        build_snapshot(database)
-        answer = render_answer(execute_tool(database, request))
+    answer = _compute_answer(request)
 
     trace = build_decision_trace(scope, routing, "answered", request, answer)
     verify_answer_binding(trace, answer)
@@ -56,6 +82,7 @@ def run_demo(model_artifact: Path, routing_release: Path, question_release: Path
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--verify-report", type=Path, help="Replay a saved demo JSON report")
     parser.add_argument("--model-artifact", type=Path, default=Path("artifacts/local-intent-model"))
     parser.add_argument(
         "--routing-release", type=Path, default=Path("reports/routing-release.json")
@@ -65,8 +92,12 @@ def main() -> None:
     )
     args = parser.parse_args()
     try:
+        if args.verify_report is not None:
+            verify_report(json.loads(args.verify_report.read_text(encoding="utf-8")))
+            print("Synthetic comparison replay verified: claims, evidence and answer")
+            return
         result = run_demo(args.model_artifact, args.routing_release, args.question_release)
-    except ValueError as error:
+    except (OSError, ValueError) as error:
         parser.exit(1, f"Proposal demo blocked: {error}\n")
     print(json.dumps(result, indent=2))
 
