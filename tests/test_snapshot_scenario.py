@@ -127,6 +127,26 @@ def test_nonempty_wal_after_checkpoint_blocks_copy(tmp_path: Path, monkeypatch) 
     assert recovery_file.read_bytes() == b"synthetic retained WAL"
 
 
+def test_unreadable_destination_is_not_yielded(tmp_path: Path, monkeypatch) -> None:
+    source = tmp_path / "portfolio.duckdb"
+    with duckdb.connect(str(source)) as connection:
+        connection.execute("create table evidence as select 74 as value")
+    destinations = []
+
+    def corrupt_copy(_source, destination):
+        destinations.append(destination)
+        destination.write_bytes(b"not a DuckDB database")
+
+    monkeypatch.setattr(snapshot_scenario.shutil, "copy2", corrupt_copy)
+    with pytest.raises(duckdb.IOException):
+        with snapshot_scenario.temporary_database_copy(source, "unreadable-copy-"):
+            pytest.fail("Consumers must not receive an unreadable copy")
+    assert len(destinations) == 1
+    assert not destinations[0].parent.exists()
+    with duckdb.connect(str(source), read_only=True) as connection:
+        assert connection.execute("select value from evidence").fetchone() == (74,)
+
+
 def test_unrelated_catalog_error_is_not_suppressed(tmp_path: Path, monkeypatch) -> None:
     source_database = tmp_path / "portfolio.duckdb"
     source_database.touch()

@@ -49,6 +49,8 @@ def temporary_database_copy(source_database: Path, prefix: str) -> Iterator[Path
         # unchanged when running a scenario against a non-default database path.
         scenario_database = Path(temp_directory) / source_database.name
         shutil.copy2(source_database, scenario_database)
+        with duckdb.connect(str(scenario_database), read_only=True) as connection:
+            connection.execute("select count(*) from duckdb_tables()").fetchone()
         yield scenario_database
 
 

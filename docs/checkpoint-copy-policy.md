@@ -33,3 +33,8 @@ without closing the connection normally. It checks that the main file is
 unchanged and that a nonempty WAL exists. The copy must then reopen read-only,
 without a copied WAL, and contain both the old and the newly committed row.
 This covers recoverable WAL replay, not repair of a damaged database.
+
+Before handing off a file-only copy, the helper opens the destination read-only
+and reads its table catalogue, then closes it so dbt can open it independently.
+This catches an unreadable destination at the copy boundary. It is not a full
+data scan, source-to-copy reconciliation, or concurrency guarantee.
