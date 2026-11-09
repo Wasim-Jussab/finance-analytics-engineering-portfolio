@@ -1,4 +1,4 @@
-.PHONY: data test model-artifact model-artifact-verify evaluate runtime-readiness verify demo proposal-demo
+.PHONY: data test model-artifact model-artifact-verify evaluate runtime-readiness verify demo proposal-demo proposal-demo-verify
 
 data:
 	python -m operations_assistant.generate
@@ -21,7 +21,7 @@ evaluate: data model-artifact-verify
 	python -m operations_assistant.question_release
 	$(MAKE) runtime-readiness
 	python -m operations_assistant.proposal_evaluation --model-artifact artifacts/local-intent-model
-	$(MAKE) proposal-demo
+	$(MAKE) proposal-demo-verify
 
 runtime-readiness:
 	python -m operations_assistant.runtime_readiness
@@ -30,6 +30,12 @@ verify: test model-artifact evaluate
 
 proposal-demo:
 	python -m operations_assistant.proposal_demo
+
+proposal-demo-verify:
+	@report=$$(mktemp) && \
+	trap 'rm -f -- "$$report"' EXIT && \
+	python -m operations_assistant.proposal_demo > "$$report" && \
+	python -m operations_assistant.proposal_demo --verify-report "$$report"
 
 demo: data
 	python -m uvicorn operations_assistant.app:create_app --factory --host 127.0.0.1 --port 8000

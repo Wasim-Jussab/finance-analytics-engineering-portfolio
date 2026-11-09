@@ -1,8 +1,10 @@
 # Weekly delivery comparison demo
 
 From the operations package, run `make verify`, then `make proposal-demo` to
-repeat the demonstration. The package gate also runs the demo with the release
-decisions it just produced. Use only artifacts you generated locally; the
+repeat the demonstration. The package gate runs `make proposal-demo-verify`:
+it generates the demo with the release decisions it just produced, saves the
+JSON temporarily, and requires the offline CLI to replay it successfully.
+Use only artifacts you generated locally; the
 existing classifier loader uses joblib, and fingerprints do not authenticate
 an untrusted artifact and manifest.
 
