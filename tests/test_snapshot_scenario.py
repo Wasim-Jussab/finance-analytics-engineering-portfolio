@@ -147,6 +147,28 @@ def test_unreadable_destination_is_not_yielded(tmp_path: Path, monkeypatch) -> N
         assert connection.execute("select value from evidence").fetchone() == (74,)
 
 
+def test_failed_scenario_write_stays_in_copy_and_cleans_up(tmp_path: Path) -> None:
+    source = tmp_path / "portfolio.duckdb"
+    with duckdb.connect(str(source)) as connection:
+        connection.execute("create table evidence as select 75 as value")
+
+    class ScenarioError(Exception):
+        pass
+
+    with pytest.raises(ScenarioError, match="scenario did not complete"):
+        with snapshot_scenario.temporary_database_copy(source, "failed-scenario-") as copied:
+            source_after_checkpoint = source.read_bytes()
+            with duckdb.connect(str(copied)) as connection:
+                connection.execute("insert into evidence values (999)")
+                assert connection.execute("select count(*) from evidence").fetchone() == (2,)
+            raise ScenarioError("scenario did not complete")
+
+    assert not copied.parent.exists()
+    assert source.read_bytes() == source_after_checkpoint
+    with duckdb.connect(str(source), read_only=True) as connection:
+        assert connection.execute("select value from evidence").fetchall() == [(75,)]
+
+
 def test_unrelated_catalog_error_is_not_suppressed(tmp_path: Path, monkeypatch) -> None:
     source_database = tmp_path / "portfolio.duckdb"
     source_database.touch()

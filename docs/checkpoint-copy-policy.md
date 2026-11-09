@@ -38,3 +38,9 @@ Before handing off a file-only copy, the helper opens the destination read-only
 and reads its table catalogue, then closes it so dbt can open it independently.
 This catches an unreadable destination at the copy boundary. It is not a full
 data scan, source-to-copy reconciliation, or concurrency guarantee.
+
+The last boundary is what happens after handoff. A regression commits a write
+to the isolated copy, then raises an expected scenario error. The exception
+propagates, the temporary directory is removed, and the original still has
+its single row and the same bytes as immediately after checkpoint. This is
+normal exception cleanup, not a guarantee after process termination.
