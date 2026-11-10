@@ -335,3 +335,14 @@ This repository demonstrates how I structure and validate analytics-engineering 
 
 The [assignment/action contract](current-assignment-action.md) documents the
 account-grain observation report, timestamp boundaries and limitations added on Day 63.
+
+## Portfolio principal coverage by month end
+
+`agg_loan_portfolio_total_monthly` rolls up the reconciled product-month
+positions. Filter to one `snapshot_date` to answer portfolio coverage, or
+show one value per date as a trend. Do not sum positions across dates. The
+ratio uses total assumed allocated completed payments divided by total
+scheduled principal due, rounded to four decimals; zero due returns null.
+The numerator, denominator, shortfall and account count are available for
+reconciliation. It is a principal-only proxy, not contractual arrears.
+See the [Day 76 learning note](../notes/day-76.md).
