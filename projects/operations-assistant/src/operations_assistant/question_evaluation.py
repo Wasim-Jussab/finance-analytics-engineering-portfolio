@@ -52,6 +52,25 @@ SAFE_CASES = (
         },
     },
     {
+        "name": "comparison_with_no_baseline_due",
+        "request": {
+            "question": "Compare delivery performance between these periods",
+            "start": "2026-09-14",
+            "end": "2026-09-21",
+            "baseline_start": "2026-09-07",
+            "baseline_end": "2026-09-14",
+        },
+        "expected_tool": "compare_delivery_periods",
+        "expected_claims": {
+            "baseline": {"due": 0, "on_time_rate": None},
+            "current": {"due": 213, "on_time": 176},
+            "change": {
+                "due_change": 213,
+                "on_time_rate_change_percentage_points": None,
+            },
+        },
+    },
+    {
         "name": "exception_detail",
         "request": {
             "question": "List the five worst delivery exceptions",

@@ -14,14 +14,34 @@ def test_question_evaluation_executes_supported_and_blocked_paths(
 
     result = run_question_evaluation(database)
 
-    assert result["cases"] == result["passed"] == 10
+    assert result["cases"] == result["passed"] == 11
     assert result["failed"] == 0
-    assert result["answered_cases"] == result["tool_executions"] == 6
+    assert result["answered_cases"] == result["tool_executions"] == 7
     assert result["blocked_cases"] == 4
-    assert result["decision_traces"] == 10
+    assert result["decision_traces"] == 11
     assert result["database_unchanged"] is True
-    assert all(row["evidence_id"] for row in result["results"][:6])
-    assert all(row["tool"] is None for row in result["results"][6:])
+    assert all(row["evidence_id"] for row in result["results"][:7])
+    assert all(row["tool"] is None for row in result["results"][7:])
+
+
+def test_question_api_does_not_invent_rate_change_without_baseline(tmp_path: Path) -> None:
+    database = tmp_path / "operations.duckdb"
+    build_snapshot(database)
+    with TestClient(create_app(database)) as client:
+        response = client.post(
+            "/api/questions",
+            json={
+                "question": "Compare delivery performance between these periods",
+                "start": "2026-09-14",
+                "end": "2026-09-21",
+                "baseline_start": "2026-09-07",
+                "baseline_end": "2026-09-14",
+            },
+        )
+    assert response.status_code == 200
+    report = response.json()
+    assert report["claims"]["change"]["on_time_rate_change_percentage_points"] is None
+    assert "not calculable because at least one period has no due shipments" in report["answer"]
 
 
 def test_explicit_parameters_remain_authoritative_over_question_wording(
