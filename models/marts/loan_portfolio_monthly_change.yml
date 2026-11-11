@@ -1,0 +1,23 @@
+version: 2
+models:
+  - name: rpt_loan_portfolio_monthly_change
+    description: >
+      One row per observed month end with differences from the immediately
+      preceding calendar month end, when observed. Missing comparators yield
+      null differences, not zero. Differences are positions across changing
+      populations, not collections flows or causal attribution.
+    columns:
+      - name: snapshot_date
+        tests: [not_null, unique]
+      - name: has_previous_month
+        tests: [not_null]
+      - name: previous_snapshot_date
+        description: Null unless the previous calendar month end is observed.
+      - name: loan_account_count
+        tests: [not_null]
+      - name: scheduled_principal_due_amount
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]

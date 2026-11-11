@@ -346,3 +346,9 @@ scheduled principal due, rounded to four decimals; zero due returns null.
 The numerator, denominator, shortfall and account count are available for
 reconciliation. It is a principal-only proxy, not contractual arrears.
 See the [Day 76 learning note](../notes/day-76.md).
+
+`rpt_loan_portfolio_monthly_change` compares each position to the immediately
+preceding calendar month end. The current amounts and comparator date stay
+visible; absent comparators produce null changes. Changes in population,
+scheduled due and payment allocation all affect these differences. They
+must not be labelled monthly cash collections or risk improvement.
