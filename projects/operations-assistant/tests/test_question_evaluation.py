@@ -14,14 +14,41 @@ def test_question_evaluation_executes_supported_and_blocked_paths(
 
     result = run_question_evaluation(database)
 
-    assert result["cases"] == result["passed"] == 11
+    assert result["cases"] == result["passed"] == 12
     assert result["failed"] == 0
-    assert result["answered_cases"] == result["tool_executions"] == 7
+    assert result["answered_cases"] == result["tool_executions"] == 8
     assert result["blocked_cases"] == 4
-    assert result["decision_traces"] == 11
+    assert result["decision_traces"] == 12
     assert result["database_unchanged"] is True
-    assert all(row["evidence_id"] for row in result["results"][:7])
-    assert all(row["tool"] is None for row in result["results"][7:])
+    assert all(row["evidence_id"] for row in result["results"][:8])
+    assert all(row["tool"] is None for row in result["results"][8:])
+
+
+def test_empty_page_does_not_erase_exception_population(tmp_path: Path) -> None:
+    database = tmp_path / "operations.duckdb"
+    build_snapshot(database)
+    with TestClient(create_app(database)) as client:
+        response = client.post(
+            "/api/questions",
+            json={
+                "question": "List the five worst delivery exceptions",
+                "start": "2026-09-21",
+                "end": "2026-09-28",
+                "outcome": "overdue_open",
+                "limit": 5,
+                "offset": 25,
+            },
+        )
+    assert response.status_code == 200
+    report = response.json()
+    assert report["claims"]["exception_count"] == 21
+    assert report["claims"]["returned_count"] == 0
+    assert report["claims"]["rows"] == []
+    assert report["claims"]["has_more"] is False
+    assert report["claims"]["next_offset"] is None
+    assert "No shipment rows appear on this page." in report["answer"]
+    assert "21 overdue_open shipment exceptions" in report["answer"]
+    assert "earlier rows were omitted by the offset" in report["answer"]
 
 
 def test_question_api_does_not_invent_rate_change_without_baseline(tmp_path: Path) -> None:
