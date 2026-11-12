@@ -352,3 +352,9 @@ preceding calendar month end. The current amounts and comparator date stay
 visible; absent comparators produce null changes. Changes in population,
 scheduled due and payment allocation all affect these differences. They
 must not be labelled monthly cash collections or risk improvement.
+
+The report also shows current and previous coverage and the percentage-point
+change, computed from unrounded allocation/due ratios before final rounding.
+The change remains null when either denominator is zero or the prior month
+is missing. It is a weighted portfolio ratio, not an average of product
+rates, and changing cohorts still limit its interpretation.

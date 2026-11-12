@@ -21,3 +21,11 @@ models:
         tests: [not_null]
       - name: scheduled_principal_shortfall_amount
         tests: [not_null]
+      - name: due_principal_coverage_ratio
+        description: Current total allocation divided by total due; null on zero due.
+      - name: previous_due_principal_coverage_ratio
+        description: Previous calendar month's coverage; null if absent or zero due.
+      - name: coverage_change_percentage_points
+        description: >
+          Difference of unrounded ratios multiplied by 100, rounded to six decimals.
+          Null if either denominator is zero or the previous month is unobserved.
