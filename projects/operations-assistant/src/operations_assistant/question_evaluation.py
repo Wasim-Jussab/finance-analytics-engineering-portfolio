@@ -71,6 +71,23 @@ SAFE_CASES = (
         },
     },
     {
+        "name": "comparison_north_only",
+        "request": {
+            "question": "Compare delivery performance between these periods",
+            "start": "2026-09-21",
+            "end": "2026-09-28",
+            "baseline_start": "2026-09-14",
+            "baseline_end": "2026-09-21",
+            "region": "North",
+        },
+        "expected_tool": "compare_delivery_periods",
+        "expected_claims": {
+            "baseline": {"selected_region": "North", "due": 53, "on_time": 46},
+            "current": {"selected_region": "North", "due": 54, "on_time": 47},
+            "change": {"due_change": 1, "on_time_change": 1},
+        },
+    },
+    {
         "name": "exception_detail",
         "request": {
             "question": "List the five worst delivery exceptions",
