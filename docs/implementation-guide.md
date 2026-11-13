@@ -358,3 +358,12 @@ change, computed from unrounded allocation/due ratios before final rounding.
 The change remains null when either denominator is zero or the prior month
 is missing. It is a weighted portfolio ratio, not an average of product
 rates, and changing cohorts still limit its interpretation.
+
+The two coverage bridge fields use a fixed sequence: first change allocation
+at prior due, then change due at current allocation. With allocation A and due D:
+`100 * (A_current - A_prior) / D_prior`, followed by
+`100 * A_current * (1/D_current - 1/D_prior)`.
+They sum to the percentage-point change within six-decimal rounding.
+Both remain null without two positive denominators. Reversing the sequence
+changes the components, so this is an order-dependent arithmetic explanation,
+not a causal attribution, collection-flow decomposition or credit-risk model.

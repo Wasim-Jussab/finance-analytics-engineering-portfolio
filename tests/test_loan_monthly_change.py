@@ -60,8 +60,18 @@ def test_coverage_change_uses_unrounded_ratios_and_requires_both_denominators():
             "coverage_change_percentage_points from (" + sql.replace(reference, "positions")
             + ") order by snapshot_date"
         ).fetchall()
+        effects = connection.execute(
+            "select allocation_first_effect_percentage_points, due_second_effect_percentage_points "
+            "from (" + sql.replace(reference, "positions") + ") order by snapshot_date"
+        ).fetchall()
     assert rows[0] == (None, None, None)
     assert rows[1] == (0.4, None, None)
     assert rows[2] == pytest.approx((0.3333, 0.4, -6.666667))
     assert rows[3] == pytest.approx((0.6667, 0.3333, 33.333333))
     assert rows[4] == (None, None, None)
+    assert effects[0] == effects[1] == effects[4] == (None, None)
+    assert effects[2] == pytest.approx((60.0, -66.666667))
+    assert effects[3] == pytest.approx((33.333333, 0.0))
+    for row, effect in zip(rows, effects, strict=True):
+        if row[2] is not None:
+            assert sum(effect) == pytest.approx(row[2], abs=0.000002)

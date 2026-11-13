@@ -29,3 +29,11 @@ models:
         description: >
           Difference of unrounded ratios multiplied by 100, rounded to six decimals.
           Null if either denominator is zero or the previous month is unobserved.
+      - name: allocation_first_effect_percentage_points
+        description: >
+          Change allocation first, holding prior due fixed. An order-dependent
+          arithmetic bridge, not causal attribution; null without both positive denominators.
+      - name: due_second_effect_percentage_points
+        description: >
+          Change due second, holding current allocation fixed. Together with
+          allocation-first effect reconciles to coverage change within rounding tolerance.

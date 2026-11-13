@@ -28,7 +28,23 @@ select
             / nullif(current_position.scheduled_principal_due_amount, 0)
         - previous_position.assumed_allocated_completed_payment_amount
             / nullif(previous_position.scheduled_principal_due_amount, 0)
-    ), 6) as coverage_change_percentage_points
+    ), 6) as coverage_change_percentage_points,
+    case
+        when current_position.scheduled_principal_due_amount > 0
+            and previous_position.scheduled_principal_due_amount > 0
+        then round(100 * (
+            current_position.assumed_allocated_completed_payment_amount
+                - previous_position.assumed_allocated_completed_payment_amount
+        ) / previous_position.scheduled_principal_due_amount, 6)
+    end as allocation_first_effect_percentage_points,
+    case
+        when current_position.scheduled_principal_due_amount > 0
+            and previous_position.scheduled_principal_due_amount > 0
+        then round(100 * current_position.assumed_allocated_completed_payment_amount * (
+            1.0 / current_position.scheduled_principal_due_amount
+            - 1.0 / previous_position.scheduled_principal_due_amount
+        ), 6)
+    end as due_second_effect_percentage_points
 from {{ ref('agg_loan_portfolio_total_monthly') }} as current_position
 left join {{ ref('agg_loan_portfolio_total_monthly') }} as previous_position
     on previous_position.snapshot_date
