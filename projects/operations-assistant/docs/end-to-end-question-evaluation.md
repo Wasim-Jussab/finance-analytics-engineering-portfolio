@@ -17,6 +17,14 @@ the rate and percentage-point change, not just that the region label says North.
 These fixture counts were checked with a direct grouped query of the synthetic
 shipment source, independently of the reporting tool.
 
+Summary grounding also checks the canonical renderer's labelled counts and
+rate in prose against the approved result, including the null-rate wording.
+Regression cases change each number while preserving claims and evidence.
+These checks are intentionally tied to the deterministic template. They do
+not validate arbitrary paraphrases, establish general factuality, or evaluate
+a generative model. Comparison and exception prose are not covered by these
+new summary-specific checks.
+
 Every answered case must retain a tool name, model version and evidence ID, pass the independent grounding checks and match named synthetic fixture totals. Blocked write, causal, forecast and out-of-domain cases have no tool or evidence ID. A database fingerprint proves the evaluation did not alter the source snapshot.
 
 This executes real local classifier inference. Tool execution, metric calculation and answer prose remain deterministic, and no generative model or LLM is used. The cases are bounded regression evidence, not a production accuracy estimate. The new denominator case reuses known comparison wording to isolate the metric edge case.

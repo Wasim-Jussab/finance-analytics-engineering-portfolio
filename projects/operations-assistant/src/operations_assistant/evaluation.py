@@ -71,7 +71,23 @@ def evaluate_answer(tool_result: dict, answer: dict) -> list[str]:
     if any(phrase in text.lower() for phrase in CAUSAL_PHRASES):
         failures.append("answer text uses an unapproved causal phrase")
     if tool_result["tool"] == "delivery_summary":
-        rate = tool_result["result"]["totals"]["on_time_rate"]
+        totals = tool_result["result"]["totals"]
+        rate = totals["on_time_rate"]
+        fragments = {
+            "due": f"{totals['due']} non-cancelled shipments were due:",
+            "on_time": f"{totals['on_time']} on time,",
+            "late_delivered": f"{totals['late_delivered']} delivered late and",
+            "overdue_open": f"{totals['overdue_open']} still open after promise.",
+            "cancelled": f"{totals['cancelled']} cancelled rows are excluded",
+            "on_time_rate": (
+                "The on-time completion rate is not calculable;"
+                if rate is None
+                else f"The on-time completion rate is {rate:.2%};"
+            ),
+        }
+        for claim, fragment in fragments.items():
+            if fragment not in text:
+                failures.append(f"summary prose {claim} does not match the approved tool result")
         if rate is None and "not calculable" not in text.lower():
             failures.append("null rate is not described as not calculable")
     elif tool_result["tool"] == "compare_delivery_periods":
