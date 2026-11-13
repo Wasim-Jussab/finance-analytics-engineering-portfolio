@@ -1,0 +1,21 @@
+version: 2
+
+models:
+  - name: agg_loan_portfolio_total_monthly
+    description: >
+      One row per observed month end across all synthetic loan products.
+      Principal amounts are positions as of that date, not monthly flows.
+      Allocation is principal-only and does not represent contractual arrears.
+    columns:
+      - name: snapshot_date
+        tests: [not_null, unique]
+      - name: loan_account_count
+        tests: [not_null]
+      - name: scheduled_principal_due_amount
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: due_principal_coverage_ratio
+        description: Total allocated principal divided by total principal due; null when none is due.

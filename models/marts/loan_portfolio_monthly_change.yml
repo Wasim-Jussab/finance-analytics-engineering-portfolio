@@ -1,0 +1,39 @@
+version: 2
+models:
+  - name: rpt_loan_portfolio_monthly_change
+    description: >
+      One row per observed month end with differences from the immediately
+      preceding calendar month end, when observed. Missing comparators yield
+      null differences, not zero. Differences are positions across changing
+      populations, not collections flows or causal attribution.
+    columns:
+      - name: snapshot_date
+        tests: [not_null, unique]
+      - name: has_previous_month
+        tests: [not_null]
+      - name: previous_snapshot_date
+        description: Null unless the previous calendar month end is observed.
+      - name: loan_account_count
+        tests: [not_null]
+      - name: scheduled_principal_due_amount
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: due_principal_coverage_ratio
+        description: Current total allocation divided by total due; null on zero due.
+      - name: previous_due_principal_coverage_ratio
+        description: Previous calendar month's coverage; null if absent or zero due.
+      - name: coverage_change_percentage_points
+        description: >
+          Difference of unrounded ratios multiplied by 100, rounded to six decimals.
+          Null if either denominator is zero or the previous month is unobserved.
+      - name: allocation_first_effect_percentage_points
+        description: >
+          Change allocation first, holding prior due fixed. An order-dependent
+          arithmetic bridge, not causal attribution; null without both positive denominators.
+      - name: due_second_effect_percentage_points
+        description: >
+          Change due second, holding current allocation fixed. Together with
+          allocation-first effect reconciles to coverage change within rounding tolerance.
