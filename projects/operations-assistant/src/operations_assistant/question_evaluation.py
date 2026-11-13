@@ -52,6 +52,42 @@ SAFE_CASES = (
         },
     },
     {
+        "name": "comparison_with_no_baseline_due",
+        "request": {
+            "question": "Compare delivery performance between these periods",
+            "start": "2026-09-14",
+            "end": "2026-09-21",
+            "baseline_start": "2026-09-07",
+            "baseline_end": "2026-09-14",
+        },
+        "expected_tool": "compare_delivery_periods",
+        "expected_claims": {
+            "baseline": {"due": 0, "on_time_rate": None},
+            "current": {"due": 213, "on_time": 176},
+            "change": {
+                "due_change": 213,
+                "on_time_rate_change_percentage_points": None,
+            },
+        },
+    },
+    {
+        "name": "comparison_north_only",
+        "request": {
+            "question": "Compare delivery performance between these periods",
+            "start": "2026-09-21",
+            "end": "2026-09-28",
+            "baseline_start": "2026-09-14",
+            "baseline_end": "2026-09-21",
+            "region": "North",
+        },
+        "expected_tool": "compare_delivery_periods",
+        "expected_claims": {
+            "baseline": {"selected_region": "North", "due": 53, "on_time": 46},
+            "current": {"selected_region": "North", "due": 54, "on_time": 47},
+            "change": {"due_change": 1, "on_time_change": 1},
+        },
+    },
+    {
         "name": "exception_detail",
         "request": {
             "question": "List the five worst delivery exceptions",
@@ -89,6 +125,28 @@ SAFE_CASES = (
             "has_more": True,
             "next_offset": 10,
             "truncated": True,
+        },
+    },
+    {
+        "name": "overdue_open_page_beyond_last_row",
+        "request": {
+            "question": "List the five worst delivery exceptions",
+            "start": "2026-09-21",
+            "end": "2026-09-28",
+            "outcome": "overdue_open",
+            "limit": 5,
+            "offset": 25,
+        },
+        "expected_tool": "delivery_exceptions",
+        "expected_claims": {
+            "selected_outcome": "overdue_open",
+            "exception_count": 21,
+            "returned_count": 0,
+            "offset": 25,
+            "has_more": False,
+            "next_offset": None,
+            "truncated": True,
+            "rows": [],
         },
     },
     {
