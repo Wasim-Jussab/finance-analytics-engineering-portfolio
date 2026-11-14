@@ -16,6 +16,7 @@ from operations_assistant.decision_audit import (
     decision_audit_status,
 )
 from operations_assistant.decision_trace import build_decision_trace
+from operations_assistant.evaluation import evaluate_answer
 from operations_assistant.generate import REGIONS
 from operations_assistant.intent import LocalIntentModel, QuestionRequest
 from operations_assistant.metrics import summary
@@ -87,10 +88,17 @@ def create_app(
         except FileNotFoundError as error:
             raise HTTPException(status_code=503, detail=str(error)) from error
 
+    def grounded_answer(request: ToolRequest) -> dict:
+        result = execute_tool(database, request)
+        rendered = render_answer(result)
+        if evaluate_answer(result, rendered):
+            raise HTTPException(status_code=500, detail="Generated answer failed grounding checks")
+        return rendered
+
     @app.post("/api/answers")
     def answer(request: ToolRequest) -> dict:
         try:
-            return render_answer(execute_tool(database, request))
+            return grounded_answer(request)
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
         except FileNotFoundError as error:
@@ -113,7 +121,7 @@ def create_app(
                         "decision_audit": audit,
                     },
                 )
-            answer_result = render_answer(execute_tool(database, tool_request))
+            answer_result = grounded_answer(tool_request)
             answer_result["mode"] = "deterministic-template; local intent inference only"
             trace = build_decision_trace(
                 request, routing, "answered", tool_request, answer_result
