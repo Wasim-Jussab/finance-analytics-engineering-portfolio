@@ -335,3 +335,35 @@ This repository demonstrates how I structure and validate analytics-engineering 
 
 The [assignment/action contract](current-assignment-action.md) documents the
 account-grain observation report, timestamp boundaries and limitations added on Day 63.
+
+## Portfolio principal coverage by month end
+
+`agg_loan_portfolio_total_monthly` rolls up the reconciled product-month
+positions. Filter to one `snapshot_date` to answer portfolio coverage, or
+show one value per date as a trend. Do not sum positions across dates. The
+ratio uses total assumed allocated completed payments divided by total
+scheduled principal due, rounded to four decimals; zero due returns null.
+The numerator, denominator, shortfall and account count are available for
+reconciliation. It is a principal-only proxy, not contractual arrears.
+See the [Day 76 learning note](../notes/day-76.md).
+
+`rpt_loan_portfolio_monthly_change` compares each position to the immediately
+preceding calendar month end. The current amounts and comparator date stay
+visible; absent comparators produce null changes. Changes in population,
+scheduled due and payment allocation all affect these differences. They
+must not be labelled monthly cash collections or risk improvement.
+
+The report also shows current and previous coverage and the percentage-point
+change, computed from unrounded allocation/due ratios before final rounding.
+The change remains null when either denominator is zero or the prior month
+is missing. It is a weighted portfolio ratio, not an average of product
+rates, and changing cohorts still limit its interpretation.
+
+The two coverage bridge fields use a fixed sequence: first change allocation
+at prior due, then change due at current allocation. With allocation A and due D:
+`100 * (A_current - A_prior) / D_prior`, followed by
+`100 * A_current * (1/D_current - 1/D_prior)`.
+They sum to the percentage-point change within six-decimal rounding.
+Both remain null without two positive denominators. Reversing the sequence
+changes the components, so this is an order-dependent arithmetic explanation,
+not a causal attribution, collection-flow decomposition or credit-risk model.
