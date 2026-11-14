@@ -53,7 +53,8 @@ def test_coverage_change_uses_unrounded_ratios_and_requires_both_denominators():
                 ('2025-02-28', 2, 100, 40, 60),
                 ('2025-03-31', 2, 300, 100, 200),
                 ('2025-04-30', 2, 300, 200, 100),
-                ('2025-06-30', 2, 0, 0, 0);
+                ('2025-05-31', 2, 0, 0, 0),
+                ('2025-07-31', 2, 0, 0, 0);
         """)
         rows = connection.execute(
             "select due_principal_coverage_ratio, previous_due_principal_coverage_ratio, "
@@ -68,8 +69,9 @@ def test_coverage_change_uses_unrounded_ratios_and_requires_both_denominators():
     assert rows[1] == (0.4, None, None)
     assert rows[2] == pytest.approx((0.3333, 0.4, -6.666667))
     assert rows[3] == pytest.approx((0.6667, 0.3333, 33.333333))
-    assert rows[4] == (None, None, None)
-    assert effects[0] == effects[1] == effects[4] == (None, None)
+    assert rows[4] == (None, 0.6667, None)
+    assert rows[5] == (None, None, None)
+    assert effects[0] == effects[1] == effects[4] == effects[5] == (None, None)
     assert effects[2] == pytest.approx((60.0, -66.666667))
     assert effects[3] == pytest.approx((33.333333, 0.0))
     for row, effect in zip(rows, effects, strict=True):
