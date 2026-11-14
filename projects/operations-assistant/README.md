@@ -60,6 +60,7 @@ After verification, run `make proposal-demo` for a
 
 ## Inspect the contracts
 
+- [Metric edge-case review](docs/metric-edge-case-review.md): scope, fixtures and runtime checks.
 - [Days 31–35 review](docs/proposal-milestone-review.md): scope, reproduction and limits.
 - [Proposal evaluation](docs/proposal-evaluation.md): executed integration check using existing fixtures.
 - [Proposal adapter](docs/proposal-adapter.md): executed classifier baseline; no generative model.

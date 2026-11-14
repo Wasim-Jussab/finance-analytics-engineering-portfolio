@@ -67,6 +67,11 @@ def render_answer(tool_result: dict) -> dict:
         scope = claims["selected_region"] or "all regions"
         outcome_scope = claims["selected_outcome"] or "late-delivered or overdue-open"
         shipment_ids = ", ".join(row["shipment_id"] for row in claims["rows"])
+        page_contents = (
+            f" in the governed order: {shipment_ids}."
+            if claims["rows"]
+            else ". No shipment rows appear on this page."
+        )
         if claims["has_more"]:
             page_status = (
                 f" Further rows remain; request offset {claims['next_offset']} for the next page."
@@ -80,7 +85,7 @@ def render_answer(tool_result: dict) -> dict:
             f"{tool_result['period']['end_exclusive']} (exclusive end), the synthetic "
             f"snapshot contains {claims['exception_count']} {outcome_scope} "
             f"shipment exceptions. Returning {claims['returned_count']} from offset "
-            f"{claims['offset']} in the governed order: {shipment_ids}.{page_status} "
+            f"{claims['offset']}{page_contents}{page_status} "
             f"Snapshot as of {tool_result['as_of']}. "
             f"Evidence: {evidence_id}."
         )
