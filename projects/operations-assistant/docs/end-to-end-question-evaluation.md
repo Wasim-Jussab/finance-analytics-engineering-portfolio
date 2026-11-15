@@ -22,8 +22,15 @@ rate in prose against the approved result, including the null-rate wording.
 Regression cases change each number while preserving claims and evidence.
 These checks are intentionally tied to the deterministic template. They do
 not validate arbitrary paraphrases, establish general factuality, or evaluate
-a generative model. Comparison and exception prose are not covered by these
-new summary-specific checks.
+a generative model. Comparison and exception prose are not covered by those
+summary-specific checks.
+
+Comparison grounding additionally verifies the canonical baseline/current
+windows, due counts, rates and signed percentage-point change, including
+null-rate wording. Mutation regressions preserve claims and evidence while
+altering these headline values; both API answer paths refuse a reversed
+change sign. Remaining comparison sentences and exception prose are not
+covered by this new numeric guard.
 
 Every answered case must retain a tool name, model version and evidence ID, pass the independent grounding checks and match named synthetic fixture totals. Blocked write, causal, forecast and out-of-domain cases have no tool or evidence ID. A database fingerprint proves the evaluation did not alter the source snapshot.
 

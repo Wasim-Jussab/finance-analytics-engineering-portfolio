@@ -92,6 +92,27 @@ def evaluate_answer(tool_result: dict, answer: dict) -> list[str]:
             failures.append("null rate is not described as not calculable")
     elif tool_result["tool"] == "compare_delivery_periods":
         rate = tool_result["change"]["on_time_rate_change_percentage_points"]
+        for label in ("baseline", "current"):
+            summary = tool_result[label]
+            period, totals = summary["period"], summary["totals"]
+            value = totals["on_time_rate"]
+            rendered_rate = "not calculable" if value is None else f"{value:.2%}"
+            scope = (
+                f"{label} {period['start_inclusive']} to {period['end_exclusive']} "
+                f"(exclusive end) had {totals['due']}"
+            )
+            expected = (
+                f"{scope} due shipments at {rendered_rate};" if label == "baseline"
+                else f"{scope} at {rendered_rate}."
+            )
+            if expected not in text:
+                failures.append(f"comparison prose {label} does not match the approved tool result")
+        change_text = (
+            "not calculable because at least one period has no due shipments"
+            if rate is None else f"{rate:+.2f} percentage points"
+        )
+        if f"The rate change is {change_text}." not in text:
+            failures.append("comparison prose rate change does not match the approved tool result")
         if rate is None and "not calculable" not in text.lower():
             failures.append("null rate is not described as not calculable")
     return failures
