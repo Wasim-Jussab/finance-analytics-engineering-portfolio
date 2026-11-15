@@ -338,6 +338,14 @@ account-grain observation report, timestamp boundaries and limitations added on 
 
 ## Portfolio principal coverage by month end
 
+`fct_loan_monthly_schedule_position` is the account/month explanation layer
+behind the product and portfolio summaries. It exposes due principal,
+assumed allocation, shortfall, future principal and unallocated payments.
+The product aggregate now reads this fact rather than repeating the logic.
+Filter to one snapshot before drilling into accounts; summing dates double
+counts positions. The independent product reconciliation still rebuilds
+expected amounts from snapshots and schedules.
+
 `agg_loan_portfolio_total_monthly` rolls up the reconciled product-month
 positions. Filter to one `snapshot_date` to answer portfolio coverage, or
 show one value per date as a trend. Do not sum positions across dates. The
