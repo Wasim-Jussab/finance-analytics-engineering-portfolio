@@ -30,7 +30,15 @@ windows, due counts, rates and signed percentage-point change, including
 null-rate wording. Mutation regressions preserve claims and evidence while
 altering these headline values; both API answer paths refuse a reversed
 change sign. Remaining comparison sentences and exception prose are not
-covered by this new numeric guard.
+covered by that comparison-specific numeric guard.
+
+Exception prose grounding checks the canonical scope/population header,
+returned count and offset, ordered shipment IDs (or empty-page statement),
+and next-page/completeness statement against the approved tool result.
+Six mutations preserve claims/evidence while changing those fields; both
+API paths refuse an altered next offset. The existing empty-page release
+case must still pass. This is template-specific grounding, not free-text
+fact checking or a generative-model evaluation.
 
 Every answered case must retain a tool name, model version and evidence ID, pass the independent grounding checks and match named synthetic fixture totals. Blocked write, causal, forecast and out-of-domain cases have no tool or evidence ID. A database fingerprint proves the evaluation did not alter the source snapshot.
 

@@ -90,6 +90,39 @@ def evaluate_answer(tool_result: dict, answer: dict) -> list[str]:
                 failures.append(f"summary prose {claim} does not match the approved tool result")
         if rate is None and "not calculable" not in text.lower():
             failures.append("null rate is not described as not calculable")
+    elif tool_result["tool"] == "delivery_exceptions":
+        region = tool_result["selected_region"] or "all regions"
+        outcome = tool_result["selected_outcome"] or "late-delivered or overdue-open"
+        period = tool_result["period"]
+        fragments = {
+            "population": (
+                f"For {region}, {period['start_inclusive']} to {period['end_exclusive']} "
+                f"(exclusive end), the synthetic snapshot contains "
+                f"{tool_result['exception_count']} {outcome} shipment exceptions."
+            ),
+            "page": (
+                f"Returning {tool_result['returned_count']} from offset {tool_result['offset']}"
+            ),
+            "rows": (
+                "in the governed order: "
+                + ", ".join(row["shipment_id"] for row in tool_result["rows"]) + "."
+                if tool_result["rows"] else "No shipment rows appear on this page."
+            ),
+        }
+        if tool_result["has_more"]:
+            fragments["pagination"] = (
+                f"Further rows remain; request offset {tool_result['next_offset']} "
+                "for the next page."
+            )
+        elif tool_result["offset"] > 0:
+            fragments["pagination"] = (
+                "No further rows remain; earlier rows were omitted by the offset."
+            )
+        else:
+            fragments["pagination"] = "The complete exception set is returned."
+        for claim, fragment in fragments.items():
+            if fragment not in text:
+                failures.append(f"exception prose {claim} does not match the approved tool result")
     elif tool_result["tool"] == "compare_delivery_periods":
         rate = tool_result["change"]["on_time_rate_change_percentage_points"]
         for label in ("baseline", "current"):
