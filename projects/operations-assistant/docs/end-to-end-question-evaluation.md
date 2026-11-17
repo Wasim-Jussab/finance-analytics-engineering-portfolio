@@ -40,6 +40,12 @@ API paths refuse an altered next offset. The existing empty-page release
 case must still pass. This is template-specific grounding, not free-text
 fact checking or a generative-model evaluation.
 
+All three canonical answer types must also start with the selected region
+(or all regions) and state the approved snapshot time. Scope mutation tests
+retain claims/evidence; API regressions alter the displayed time on every
+tool through both answer paths. These checks bind the displayed provenance
+to the tool result, not to live data or an external freshness service.
+
 Every answered case must retain a tool name, model version and evidence ID, pass the independent grounding checks and match named synthetic fixture totals. Blocked write, causal, forecast and out-of-domain cases have no tool or evidence ID. A database fingerprint proves the evaluation did not alter the source snapshot.
 
 This executes real local classifier inference. Tool execution, metric calculation and answer prose remain deterministic, and no generative model or LLM is used. The cases are bounded regression evidence, not a production accuracy estimate. The new denominator case reuses known comparison wording to isolate the metric edge case.

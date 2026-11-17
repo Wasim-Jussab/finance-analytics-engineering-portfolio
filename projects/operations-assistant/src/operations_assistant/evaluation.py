@@ -71,6 +71,17 @@ def evaluate_answer(tool_result: dict, answer: dict) -> list[str]:
     if any(phrase in text.lower() for phrase in CAUSAL_PHRASES):
         failures.append("answer text uses an unapproved causal phrase")
     if tool_result["tool"] == "delivery_summary":
+        scope = tool_result["result"]
+    elif tool_result["tool"] == "compare_delivery_periods":
+        scope = tool_result["current"]
+    else:
+        scope = tool_result
+    region = scope["selected_region"] or "all regions"
+    if not text.startswith(f"For {region}, "):
+        failures.append("answer prose region does not match the approved tool result")
+    if f"snapshot as of {scope['as_of']}.".lower() not in text.lower():
+        failures.append("answer prose snapshot time does not match the approved tool result")
+    if tool_result["tool"] == "delivery_summary":
         totals = tool_result["result"]["totals"]
         rate = totals["on_time_rate"]
         fragments = {
