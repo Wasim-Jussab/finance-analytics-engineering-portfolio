@@ -352,6 +352,13 @@ change, including prior-only accounts rather than losing them in an inner
 join. Entered/Exited are observed membership labels, not business events.
 When the comparator month is missing, prior amounts and changes stay null.
 
+`agg_loan_shortfall_by_membership` summarizes observed membership states.
+Its account count includes prior-only accounts, not just current loans.
+Gross increase and decrease are positive magnitudes whose difference is
+net shortfall change; they remain null without a comparator. Sparse states
+remain absent rather than being invented as zero-population observations.
+This is descriptive position movement, not a default or recovery metric.
+
 `agg_loan_portfolio_total_monthly` rolls up the reconciled product-month
 positions. Filter to one `snapshot_date` to answer portfolio coverage, or
 show one value per date as a trend. Do not sum positions across dates. The
