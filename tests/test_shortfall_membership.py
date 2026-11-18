@@ -18,18 +18,20 @@ def test_gross_changes_preserve_offsets_and_unknown_comparators():
                 ('2025-01-31',null,false,'No comparator',50,null,null),
                 ('2025-02-28','2025-01-31',true,'Continuing',15,10,5),
                 ('2025-02-28','2025-01-31',true,'Continuing',5,8,-3),
+                ('2025-02-28','2025-01-31',true,'Continuing',7,7,0),
                 ('2025-02-28','2025-01-31',true,'Entered',30,0,30),
                 ('2025-02-28','2025-01-31',true,'Exited',0,20,-20);
         """)
         rows = connection.execute(
             "select position_state, contribution_account_count, "
             "scheduled_principal_shortfall_change,"
-            " gross_shortfall_increase_amount, gross_shortfall_decrease_amount "
+            " gross_shortfall_increase_amount, gross_shortfall_decrease_amount, "
+            "increasing_account_count, decreasing_account_count, unchanged_account_count "
             "from (" + sql + ") order by snapshot_date, position_state"
         ).fetchall()
     assert rows == [
-        ("No comparator", 1, None, None, None),
-        ("Continuing", 2, 2, 5, 3),
-        ("Entered", 1, 30, 30, 0),
-        ("Exited", 1, -20, 0, 20),
+        ("No comparator", 1, None, None, None, None, None, None),
+        ("Continuing", 3, 2, 5, 3, 1, 1, 1),
+        ("Entered", 1, 30, 30, 0, 1, 0, 0),
+        ("Exited", 1, -20, 0, 20, 0, 1, 0),
     ]

@@ -36,6 +36,13 @@ union all
 select snapshot_date from {{ ref('agg_loan_shortfall_by_membership') }}
 where contribution_account_count <= 0
     or (has_previous_month and (
+        increasing_account_count is null or decreasing_account_count is null
+        or unchanged_account_count is null
+        or increasing_account_count < 0 or decreasing_account_count < 0
+        or unchanged_account_count < 0
+        or contribution_account_count <>
+            increasing_account_count + decreasing_account_count + unchanged_account_count
+        or
         gross_shortfall_increase_amount is null or gross_shortfall_decrease_amount is null
         or scheduled_principal_shortfall_change is null
         or gross_shortfall_increase_amount < 0 or gross_shortfall_decrease_amount < 0
@@ -43,6 +50,9 @@ where contribution_account_count <= 0
             gross_shortfall_increase_amount - gross_shortfall_decrease_amount
     ))
     or (not has_previous_month and (
+        increasing_account_count is not null or decreasing_account_count is not null
+        or unchanged_account_count is not null
+        or
         gross_shortfall_increase_amount is not null or gross_shortfall_decrease_amount is not null
         or scheduled_principal_shortfall_change is not null
         or previous_scheduled_principal_shortfall_amount is not null

@@ -359,6 +359,11 @@ net shortfall change; they remain null without a comparator. Sparse states
 remain absent rather than being invented as zero-population observations.
 This is descriptive position movement, not a default or recovery metric.
 
+Increasing, decreasing and unchanged account counts classify the sign of
+each account's shortfall change. Together they equal the contribution
+population when a comparator exists; all three are null without one.
+An unchanged shortfall is not evidence of payment or an unchanged balance.
+
 `agg_loan_portfolio_total_monthly` rolls up the reconciled product-month
 positions. Filter to one `snapshot_date` to answer portfolio coverage, or
 show one value per date as a trend. Do not sum positions across dates. The

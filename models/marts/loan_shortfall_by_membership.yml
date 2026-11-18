@@ -17,6 +17,12 @@ models:
         tests: [not_null]
       - name: scheduled_principal_shortfall_amount
         tests: [not_null]
+      - name: increasing_account_count
+        description: Positive shortfall-change accounts; null without a comparator.
+      - name: decreasing_account_count
+        description: Negative shortfall-change accounts; null without a comparator.
+      - name: unchanged_account_count
+        description: Exactly zero shortfall-change accounts; null without a comparator.
       - name: gross_shortfall_increase_amount
         description: Sum of positive account contributions; null without a comparator.
       - name: gross_shortfall_decrease_amount

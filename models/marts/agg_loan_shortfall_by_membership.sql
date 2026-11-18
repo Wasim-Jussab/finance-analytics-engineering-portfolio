@@ -4,6 +4,15 @@ select
     has_previous_month,
     position_state,
     count(*) as contribution_account_count,
+    case when has_previous_month then sum(
+        case when scheduled_principal_shortfall_change > 0 then 1 else 0 end
+    ) end as increasing_account_count,
+    case when has_previous_month then sum(
+        case when scheduled_principal_shortfall_change < 0 then 1 else 0 end
+    ) end as decreasing_account_count,
+    case when has_previous_month then sum(
+        case when scheduled_principal_shortfall_change = 0 then 1 else 0 end
+    ) end as unchanged_account_count,
     sum(scheduled_principal_shortfall_amount) as scheduled_principal_shortfall_amount,
     sum(previous_scheduled_principal_shortfall_amount)
         as previous_scheduled_principal_shortfall_amount,
