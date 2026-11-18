@@ -157,6 +157,14 @@ def evaluate_answer(tool_result: dict, answer: dict) -> list[str]:
         )
         if f"The rate change is {change_text}." not in text:
             failures.append("comparison prose rate change does not match the approved tool result")
+        change = tool_result["change"]
+        volume_text = (
+            f"Due volume changed by {change['due_change']:+d}, late deliveries by "
+            f"{change['late_delivered_change']:+d} and overdue-open shipments by "
+            f"{change['overdue_open_change']:+d}."
+        )
+        if volume_text not in text:
+            failures.append("comparison prose volume changes do not match the approved tool result")
         if rate is None and "not calculable" not in text.lower():
             failures.append("null rate is not described as not calculable")
     return failures

@@ -32,6 +32,13 @@ altering these headline values; both API answer paths refuse a reversed
 change sign. Remaining comparison sentences and exception prose are not
 covered by that comparison-specific numeric guard.
 
+The comparison guard also verifies the canonical signed due-volume,
+late-delivery and overdue-open changes against the approved result.
+Three mutations retain claims/evidence while altering one volume value;
+both API paths refuse each alteration. The regional-decrease narrative
+remains outside these numeric prose checks. These are deterministic
+template checks, not generative evaluation or a language holdout.
+
 Exception prose grounding checks the canonical scope/population header,
 returned count and offset, ordered shipment IDs (or empty-page statement),
 and next-page/completeness statement against the approved tool result.
