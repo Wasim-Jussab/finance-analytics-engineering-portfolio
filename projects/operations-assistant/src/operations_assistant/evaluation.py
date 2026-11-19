@@ -71,6 +71,17 @@ def evaluate_answer(tool_result: dict, answer: dict) -> list[str]:
     if any(phrase in text.lower() for phrase in CAUSAL_PHRASES):
         failures.append("answer text uses an unapproved causal phrase")
     if tool_result["tool"] == "delivery_summary":
+        scope = tool_result["result"]
+    elif tool_result["tool"] == "compare_delivery_periods":
+        scope = tool_result["current"]
+    else:
+        scope = tool_result
+    region = scope["selected_region"] or "all regions"
+    if not text.startswith(f"For {region}, "):
+        failures.append("answer prose region does not match the approved tool result")
+    if f"snapshot as of {scope['as_of']}.".lower() not in text.lower():
+        failures.append("answer prose snapshot time does not match the approved tool result")
+    if tool_result["tool"] == "delivery_summary":
         totals = tool_result["result"]["totals"]
         rate = totals["on_time_rate"]
         fragments = {
@@ -90,8 +101,82 @@ def evaluate_answer(tool_result: dict, answer: dict) -> list[str]:
                 failures.append(f"summary prose {claim} does not match the approved tool result")
         if rate is None and "not calculable" not in text.lower():
             failures.append("null rate is not described as not calculable")
+    elif tool_result["tool"] == "delivery_exceptions":
+        region = tool_result["selected_region"] or "all regions"
+        outcome = tool_result["selected_outcome"] or "late-delivered or overdue-open"
+        period = tool_result["period"]
+        fragments = {
+            "population": (
+                f"For {region}, {period['start_inclusive']} to {period['end_exclusive']} "
+                f"(exclusive end), the synthetic snapshot contains "
+                f"{tool_result['exception_count']} {outcome} shipment exceptions."
+            ),
+            "page": (
+                f"Returning {tool_result['returned_count']} from offset {tool_result['offset']}"
+            ),
+            "rows": (
+                "in the governed order: "
+                + ", ".join(row["shipment_id"] for row in tool_result["rows"]) + "."
+                if tool_result["rows"] else "No shipment rows appear on this page."
+            ),
+        }
+        if tool_result["has_more"]:
+            fragments["pagination"] = (
+                f"Further rows remain; request offset {tool_result['next_offset']} "
+                "for the next page."
+            )
+        elif tool_result["offset"] > 0:
+            fragments["pagination"] = (
+                "No further rows remain; earlier rows were omitted by the offset."
+            )
+        else:
+            fragments["pagination"] = "The complete exception set is returned."
+        for claim, fragment in fragments.items():
+            if fragment not in text:
+                failures.append(f"exception prose {claim} does not match the approved tool result")
     elif tool_result["tool"] == "compare_delivery_periods":
         rate = tool_result["change"]["on_time_rate_change_percentage_points"]
+        for label in ("baseline", "current"):
+            summary = tool_result[label]
+            period, totals = summary["period"], summary["totals"]
+            value = totals["on_time_rate"]
+            rendered_rate = "not calculable" if value is None else f"{value:.2%}"
+            scope = (
+                f"{label} {period['start_inclusive']} to {period['end_exclusive']} "
+                f"(exclusive end) had {totals['due']}"
+            )
+            expected = (
+                f"{scope} due shipments at {rendered_rate};" if label == "baseline"
+                else f"{scope} at {rendered_rate}."
+            )
+            if expected not in text:
+                failures.append(f"comparison prose {label} does not match the approved tool result")
+        change_text = (
+            "not calculable because at least one period has no due shipments"
+            if rate is None else f"{rate:+.2f} percentage points"
+        )
+        if f"The rate change is {change_text}." not in text:
+            failures.append("comparison prose rate change does not match the approved tool result")
+        change = tool_result["change"]
+        volume_text = (
+            f"Due volume changed by {change['due_change']:+d}, late deliveries by "
+            f"{change['late_delivered_change']:+d} and overdue-open shipments by "
+            f"{change['overdue_open_change']:+d}."
+        )
+        if volume_text not in text:
+            failures.append("comparison prose volume changes do not match the approved tool result")
+        decreases = [row for row in tool_result["regional_changes"] if row["on_time_change"] < 0]
+        largest = min(decreases, key=lambda row: row["on_time_change"], default=None)
+        regional_text = (
+            "No region had a decrease in on-time completion count."
+            if largest is None else (
+                f"{largest['region']} had the largest on-time count decrease "
+                f"({largest['on_time_change']:+d}); this is a count contribution, "
+                "not a causal explanation."
+            )
+        )
+        if regional_text not in text:
+            failures.append("comparison prose regional decrease does not match the approved result")
         if rate is None and "not calculable" not in text.lower():
             failures.append("null rate is not described as not calculable")
     return failures
