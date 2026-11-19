@@ -165,6 +165,18 @@ def evaluate_answer(tool_result: dict, answer: dict) -> list[str]:
         )
         if volume_text not in text:
             failures.append("comparison prose volume changes do not match the approved tool result")
+        decreases = [row for row in tool_result["regional_changes"] if row["on_time_change"] < 0]
+        largest = min(decreases, key=lambda row: row["on_time_change"], default=None)
+        regional_text = (
+            "No region had a decrease in on-time completion count."
+            if largest is None else (
+                f"{largest['region']} had the largest on-time count decrease "
+                f"({largest['on_time_change']:+d}); this is a count contribution, "
+                "not a causal explanation."
+            )
+        )
+        if regional_text not in text:
+            failures.append("comparison prose regional decrease does not match the approved result")
         if rate is None and "not calculable" not in text.lower():
             failures.append("null rate is not described as not calculable")
     return failures

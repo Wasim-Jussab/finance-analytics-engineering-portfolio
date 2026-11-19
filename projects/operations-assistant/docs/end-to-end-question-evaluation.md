@@ -55,4 +55,12 @@ to the tool result, not to live data or an external freshness service.
 
 Every answered case must retain a tool name, model version and evidence ID, pass the independent grounding checks and match named synthetic fixture totals. Blocked write, causal, forecast and out-of-domain cases have no tool or evidence ID. A database fingerprint proves the evaluation did not alter the source snapshot.
 
+The comparison guard now also binds the regional-decrease sentence to
+the selected region and signed on-time count contribution, or the exact
+no-decrease statement. Regressions preserve claims/evidence while changing
+region, count or that statement; both API paths refuse an incorrect region.
+The no-decrease boundary is a controlled tool-result fixture, not a new
+observed shipment scenario. Ties retain the renderer's first-in-order rule;
+this is not unique causal attribution or arbitrary free-text validation.
+
 This executes real local classifier inference. Tool execution, metric calculation and answer prose remain deterministic, and no generative model or LLM is used. The cases are bounded regression evidence, not a production accuracy estimate. The new denominator case reuses known comparison wording to isolate the metric edge case.
