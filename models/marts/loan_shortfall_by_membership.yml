@@ -1,0 +1,29 @@
+version: 2
+models:
+  - name: agg_loan_shortfall_by_membership
+    description: >
+      One row per observed month and observed membership state. Counts refer
+      to the union of current and prior account sets, not current active loans.
+      Gross changes are positive magnitudes; net equals increase minus decrease.
+      Missing comparators preserve null gross and net changes.
+    columns:
+      - name: snapshot_date
+        tests: [not_null]
+      - name: has_previous_month
+        tests: [not_null]
+      - name: position_state
+        tests: [not_null]
+      - name: contribution_account_count
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: increasing_account_count
+        description: Positive shortfall-change accounts; null without a comparator.
+      - name: decreasing_account_count
+        description: Negative shortfall-change accounts; null without a comparator.
+      - name: unchanged_account_count
+        description: Exactly zero shortfall-change accounts; null without a comparator.
+      - name: gross_shortfall_increase_amount
+        description: Sum of positive account contributions; null without a comparator.
+      - name: gross_shortfall_decrease_amount
+        description: Absolute sum of negative contributions; null without a comparator.

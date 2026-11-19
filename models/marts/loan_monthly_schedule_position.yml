@@ -1,0 +1,29 @@
+version: 2
+models:
+  - name: fct_loan_monthly_schedule_position
+    description: >
+      One row per account and observed month end, exposing the principal-only
+      position previously computed inside the product aggregate. Cumulative
+      completed payments are capped at principal due for assumed allocation;
+      excess remains unallocated. Not contractual arrears or a cash-flow fact.
+    columns:
+      - name: account_id
+        tests: [not_null]
+      - name: product_code
+        tests: [not_null]
+      - name: snapshot_date
+        tests: [not_null]
+      - name: original_balance
+        tests: [not_null]
+      - name: cumulative_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_due_amount
+        tests: [not_null]
+      - name: assumed_allocated_completed_payment_amount
+        tests: [not_null]
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: future_scheduled_principal_amount
+        tests: [not_null]
+      - name: unallocated_completed_payment_amount
+        tests: [not_null]

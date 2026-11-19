@@ -1,0 +1,27 @@
+version: 2
+models:
+  - name: rpt_loan_monthly_shortfall_contribution
+    description: >
+      One account per observed month and its immediately preceding calendar month.
+      Includes current-only and prior-only accounts. Entered/Exited describe
+      observed membership, not loan origination, closure, default or recovery.
+      Shortfall contributions are positions, not collections flows.
+    columns:
+      - name: snapshot_date
+        tests: [not_null]
+      - name: account_id
+        tests: [not_null]
+      - name: has_previous_month
+        tests: [not_null]
+      - name: position_state
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['No comparator', 'Entered', 'Exited', 'Continuing']
+      - name: scheduled_principal_shortfall_amount
+        tests: [not_null]
+      - name: previous_scheduled_principal_shortfall_amount
+        description: Zero for absent prior accounts only when the prior month is observed; otherwise null.
+      - name: scheduled_principal_shortfall_change
+        description: Current less prior shortfall; null without a prior calendar month.

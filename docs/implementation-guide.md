@@ -338,6 +338,32 @@ account-grain observation report, timestamp boundaries and limitations added on 
 
 ## Portfolio principal coverage by month end
 
+`fct_loan_monthly_schedule_position` is the account/month explanation layer
+behind the product and portfolio summaries. It exposes due principal,
+assumed allocation, shortfall, future principal and unallocated payments.
+The product aggregate now reads this fact rather than repeating the logic.
+Filter to one snapshot before drilling into accounts; summing dates double
+counts positions. The independent product reconciliation still rebuilds
+expected amounts from snapshots and schedules.
+
+`rpt_loan_monthly_shortfall_contribution` includes the union of current
+and prior-calendar-month accounts. Contributions sum to portfolio shortfall
+change, including prior-only accounts rather than losing them in an inner
+join. Entered/Exited are observed membership labels, not business events.
+When the comparator month is missing, prior amounts and changes stay null.
+
+`agg_loan_shortfall_by_membership` summarizes observed membership states.
+Its account count includes prior-only accounts, not just current loans.
+Gross increase and decrease are positive magnitudes whose difference is
+net shortfall change; they remain null without a comparator. Sparse states
+remain absent rather than being invented as zero-population observations.
+This is descriptive position movement, not a default or recovery metric.
+
+Increasing, decreasing and unchanged account counts classify the sign of
+each account's shortfall change. Together they equal the contribution
+population when a comparator exists; all three are null without one.
+An unchanged shortfall is not evidence of payment or an unchanged balance.
+
 `agg_loan_portfolio_total_monthly` rolls up the reconciled product-month
 positions. Filter to one `snapshot_date` to answer portfolio coverage, or
 show one value per date as a trend. Do not sum positions across dates. The
