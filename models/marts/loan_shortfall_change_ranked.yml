@@ -1,0 +1,21 @@
+version: 2
+models:
+  - name: rpt_loan_shortfall_change_ranked
+    description: >
+      All contribution accounts retained at month/account grain. Increasing and
+      decreasing changes are ranked separately by absolute amount descending,
+      account ID ascending for ties. Unchanged or unknown changes have no rank.
+      This is descriptive position movement, not collections prioritisation.
+    columns:
+      - name: snapshot_date
+        tests: [not_null]
+      - name: account_id
+        tests: [not_null]
+      - name: change_direction
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Increase', 'Decrease', 'Unchanged', 'No comparator']
+      - name: direction_rank
+        description: One-based ordinal within month/direction; null for zero or unknown change.
