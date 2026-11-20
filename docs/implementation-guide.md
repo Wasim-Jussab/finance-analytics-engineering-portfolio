@@ -364,6 +364,13 @@ each account's shortfall change. Together they equal the contribution
 population when a comparator exists; all three are null without one.
 An unchanged shortfall is not evidence of payment or an unchanged balance.
 
+`rpt_loan_shortfall_change_ranked` retains every contribution account and
+ranks increases and decreases separately within each month by absolute
+change descending, account ID ascending for ties. Zero and unknown changes
+have null ranks. Filtering a direction to rank <= N produces an ordinal
+top-N review, not a peer-tied rank or collections treatment recommendation.
+Use one snapshot date; amounts remain position changes, not cash flows.
+
 `agg_loan_portfolio_total_monthly` rolls up the reconciled product-month
 positions. Filter to one `snapshot_date` to answer portfolio coverage, or
 show one value per date as a trend. Do not sum positions across dates. The
