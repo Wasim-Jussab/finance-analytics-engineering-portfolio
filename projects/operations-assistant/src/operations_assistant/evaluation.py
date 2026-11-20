@@ -83,6 +83,13 @@ def evaluate_answer(tool_result: dict, answer: dict) -> list[str]:
         failures.append("answer prose snapshot time does not match the approved tool result")
     if tool_result["tool"] == "delivery_summary":
         totals = tool_result["result"]["totals"]
+        period = tool_result["result"]["period"]
+        window = (
+            f"For {region}, {period['start_inclusive']} to {period['end_exclusive']} "
+            "(exclusive end), "
+        )
+        if not text.startswith(window):
+            failures.append("summary prose period does not match the approved tool result")
         rate = totals["on_time_rate"]
         fragments = {
             "due": f"{totals['due']} non-cancelled shipments were due:",

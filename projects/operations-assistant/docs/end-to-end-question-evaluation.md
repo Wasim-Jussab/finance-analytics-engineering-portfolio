@@ -63,4 +63,10 @@ The no-decrease boundary is a controlled tool-result fixture, not a new
 observed shipment scenario. Ties retain the renderer's first-in-order rule;
 this is not unique causal attribution or arbitrary free-text validation.
 
+Summary grounding also binds the prose header to the approved inclusive
+start, exclusive end and explicit exclusive-end label. Three mutations
+retain claims/evidence while changing a boundary or end-date interpretation;
+both API paths refuse each altered summary. This closes a displayed-window
+gap, not a new language holdout, metric definition or generative evaluation.
+
 This executes real local classifier inference. Tool execution, metric calculation and answer prose remain deterministic, and no generative model or LLM is used. The cases are bounded regression evidence, not a production accuracy estimate. The new denominator case reuses known comparison wording to isolate the metric edge case.
