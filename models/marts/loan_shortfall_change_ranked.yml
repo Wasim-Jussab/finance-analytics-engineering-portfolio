@@ -19,3 +19,9 @@ models:
                 values: ['Increase', 'Decrease', 'Unchanged', 'No comparator']
       - name: direction_rank
         description: One-based ordinal within month/direction; null for zero or unknown change.
+      - name: direction_gross_change_amount
+        description: Full-month gross magnitude within direction, not net portfolio movement.
+      - name: cumulative_gross_change_amount
+        description: Gross magnitude through this ordinal rank; null for zero/unknown changes.
+      - name: cumulative_gross_change_share
+        description: Cumulative/full gross direction amount as an unrounded fraction, not percent.
