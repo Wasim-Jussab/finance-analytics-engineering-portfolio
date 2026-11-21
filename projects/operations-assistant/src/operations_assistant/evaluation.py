@@ -96,7 +96,9 @@ def evaluate_answer(tool_result: dict, answer: dict) -> list[str]:
             "on_time": f"{totals['on_time']} on time,",
             "late_delivered": f"{totals['late_delivered']} delivered late and",
             "overdue_open": f"{totals['overdue_open']} still open after promise.",
-            "cancelled": f"{totals['cancelled']} cancelled rows are excluded",
+            "cancelled": (
+                f"{totals['cancelled']} cancelled rows are excluded from that denominator."
+            ),
             "on_time_rate": (
                 "The on-time completion rate is not calculable;"
                 if rate is None
