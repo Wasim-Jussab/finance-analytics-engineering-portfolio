@@ -377,6 +377,12 @@ Increase and decrease denominators are separate, never netted together.
 Shares are unrounded fractions (1 means 100%); zero/unknown changes stay
 null. The full-direction denominator is retained when selecting top N.
 
+`agg_loan_shortfall_concentration` returns the minimum ordinal account count
+covering at least 80% of a month's gross increase or gross decrease.
+The 80% threshold is a fixed descriptive review choice, not a business
+treatment rule. Exact threshold equality qualifies; ties follow account-ID
+order. Missing directions stay absent. Do not sum cumulative shares.
+
 `agg_loan_portfolio_total_monthly` rolls up the reconciled product-month
 positions. Filter to one `snapshot_date` to answer portfolio coverage, or
 show one value per date as a trend. Do not sum positions across dates. The
