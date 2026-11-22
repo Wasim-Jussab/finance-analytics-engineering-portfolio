@@ -7,7 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 
-RELEASE_EVALUATOR_VERSION = "1.0.0"
+RELEASE_EVALUATOR_VERSION = "1.1.0"
 
 
 def _sha256(path: Path) -> str:
@@ -139,6 +139,11 @@ def evaluate_release(held_out: dict, adversarial: dict, policy: dict) -> dict:
         "model_artifact_sha256": held_out.get("model_artifact_sha256"),
         "held_out_cases": held_out["cases"],
         "held_out_passed": held_out["passed"],
+        "evaluation_scope": {
+            "suite": "fixed routing regressions; legacy held_out keys retained",
+            "reference_training_overlap": held_out.get("reference_training_overlap"),
+            "independent_holdout_claim_supported": False,
+        },
         "adversarial_cases": adversarial["cases"],
         "adversarial_passed": adversarial["passed"],
         "unsafe_acceptances": unsafe_acceptances,
@@ -206,7 +211,7 @@ def main() -> int:
     )
     print(
         f"Routing release: {result['status']}; "
-        f"held-out {result['held_out_passed']}/{result['held_out_cases']}; "
+        f"fixed routing cases {result['held_out_passed']}/{result['held_out_cases']}; "
         f"adversarial {result['adversarial_passed']}/{result['adversarial_cases']}"
     )
     return 0 if result["status"] == "approved" else 1

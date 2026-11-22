@@ -14,8 +14,9 @@ and pagination are explicit typed inputs; metrics and answer prose are determini
 - Evidence-cited answers, bounded exception pages and optional snapshot-ID guards.
 - Complete pinned investigations with row caps and offline report verification.
 - Canonical report digests with optional independently retained expectations.
-- Fingerprinted local model artifacts, held-out/adversarial evaluations and
+- Fingerprinted local model artifacts, fixed routing/adversarial regressions and
   release gates bound to the exact active classifier bytes.
+- A [training-overlap audit](docs/evaluation-overlap.md) that limits evaluation claims.
 - Optional local decision ledger with standalone integrity checks.
 
 The [investigation handoff review](docs/investigation-handoff-review.md) includes
