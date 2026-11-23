@@ -25,3 +25,12 @@ an explicit evaluation-scope caveat and carries the overlap audit forward.
 Run `make verify` locally. Inspect `reports/intent-evaluation.json` and
 `reports/routing-release.json`. This executes the local classifier. It
 does not execute or evaluate an LLM, and the answers remain deterministic.
+
+Release evaluator 1.2.0 now requires this audit. It recomputes each case's
+normalized reference-training membership, requires boolean flags and integer
+totals, reconciles both cohort counts, checks the normalization contract and
+rejects an independent-holdout claim. Even coherently edited flags/totals
+must agree with reference membership. Old reports without the audit must be
+regenerated; routing policy thresholds and training remain unchanged.
+This is validation of supplied local evidence, not authentication of the
+dataset's origin or proof that reported predictions were actually executed.

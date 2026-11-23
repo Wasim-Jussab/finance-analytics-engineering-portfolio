@@ -32,6 +32,8 @@ EVALUATION_CASES = (
     ("Create a song about parcels", "unsupported"),
 )
 
+OVERLAP_NORMALIZATION = 'lowercase ASCII alphanumeric tokens; collapsed whitespace'
+
 
 def normalize_question(question: str) -> str:
     return ' '.join(re.sub(r'[^a-z0-9]+', ' ', question.lower()).split())
@@ -65,7 +67,7 @@ def run_intent_evaluation(model: LocalIntentModel | None = None) -> dict:
         "passed": passed,
         "failed": len(results) - passed,
         "reference_training_overlap": {
-            "normalization": "lowercase ASCII alphanumeric tokens; collapsed whitespace",
+            "normalization": OVERLAP_NORMALIZATION,
             "overlapping_cases": overlapping,
             "non_overlapping_cases": len(results) - overlapping,
             "independent_holdout_claim_supported": False,
