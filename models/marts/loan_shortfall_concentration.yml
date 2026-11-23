@@ -13,3 +13,11 @@ models:
         tests: [not_null]
       - name: accounts_to_review_threshold
         tests: [not_null]
+      - name: covered_gross_change_amount
+        description: Gross magnitude covered by the minimal crossing prefix.
+        tests: [not_null]
+      - name: covered_gross_change_share
+        description: Actual crossing share, an unrounded fraction that can exceed 0.80.
+        tests: [not_null]
+      - name: previous_rank_gross_change_share
+        description: Predecessor share; null when the first account crosses the threshold.

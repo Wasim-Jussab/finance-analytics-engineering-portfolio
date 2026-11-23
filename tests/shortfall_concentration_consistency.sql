@@ -15,6 +15,7 @@ with source_totals as (
         or a.direction_gross_change_amount is distinct from s.gross
 ), checked as (
     select a.*, r.cumulative_gross_change_share as crossing_share,
+        r.cumulative_gross_change_amount as crossing_amount,
         p.cumulative_gross_change_share as preceding_share
     from {{ ref('agg_loan_shortfall_concentration') }} a
     left join {{ ref('rpt_loan_shortfall_change_ranked') }} r
@@ -30,6 +31,9 @@ where contributing_account_count <= 0 or direction_gross_change_amount <= 0
     or accounts_to_review_threshold < 1
     or accounts_to_review_threshold > contributing_account_count
     or crossing_share is null or crossing_share < review_share_threshold
+    or covered_gross_change_amount is distinct from crossing_amount
+    or covered_gross_change_share is distinct from crossing_share
+    or previous_rank_gross_change_share is distinct from preceding_share
     or (accounts_to_review_threshold > 1 and
         (preceding_share is null or preceding_share >= review_share_threshold))
 union all

@@ -21,8 +21,10 @@ def test_minimum_rank_covers_threshold_without_inventing_absent_directions():
         con.execute('create view ranked as ' + ranked)
         rows = con.execute(
             'select snapshot_date::varchar, change_direction, contributing_account_count, '
-            'accounts_to_review_threshold from (' + aggregate + ') '
+            'accounts_to_review_threshold, covered_gross_change_amount, '
+            'covered_gross_change_share, previous_rank_gross_change_share from (' + aggregate + ') '
             'order by snapshot_date, change_direction'
         ).fetchall()
-    assert rows == [('2025-02-28', 'Decrease', 2, 2), ('2025-02-28', 'Increase', 2, 1),
-                    ('2025-03-31', 'Increase', 1, 1)]
+    assert rows == [('2025-02-28', 'Decrease', 2, 2, 12, 1, .75),
+                    ('2025-02-28', 'Increase', 2, 1, 80, .8, None),
+                    ('2025-03-31', 'Increase', 1, 1, 20, 1, None)]
