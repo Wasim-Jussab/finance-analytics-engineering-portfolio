@@ -34,3 +34,10 @@ must agree with reference membership. Old reports without the audit must be
 regenerated; routing policy thresholds and training remain unchanged.
 This is validation of supplied local evidence, not authentication of the
 dataset's origin or proof that reported predictions were actually executed.
+
+The release CLI regression executes the real command with valid evidence,
+a missing audit and coherently altered flags/totals. Invalid evidence must
+exit nonzero without publishing a decision at a fresh output path. Only
+consume the decision after a successful exit; a failed command does not
+delete an older output that already existed. The audit remains relative
+to reference training, not an independent holdout or proof of broad accuracy.
