@@ -6,7 +6,7 @@
 
 When the loaded artifact routes a question, its SHA-256 fingerprint is included in the routing decision trace. An in-memory development fit records a null artifact fingerprint instead of implying that persisted bytes were used.
 
-The executable `make evaluate` path verifies and loads the artifact before running the 15 held-out and 24 adversarial routing cases. Both reports carry its fingerprint, and the release gate rejects evidence from different artifact bytes. This proves which local serialization was evaluated; it does not make the fixtures representative of production language.
+The executable `make evaluate` path verifies and loads the artifact before running the 18 fixed-routing and 27 adversarial cases. Both reports carry its fingerprint, and the release gate rejects evidence from different artifact bytes. The [overlap audit](evaluation-overlap.md) corrects the former held-out description. This proves which local serialization was evaluated; it does not make the fixtures independent or representative of production language.
 
 Joblib uses pickle-compatible deserialization. The verifier therefore loads only an artifact generated locally by this project; the fingerprint catches changed bytes but does not make arbitrary downloaded serialization trustworthy. The generated files are deliberately not committed because the source examples and pinned training specification reproduce them locally.
 

@@ -40,6 +40,8 @@ def test_release_gate_approves_executed_local_model_evaluations() -> None:
     assert result["adversarial_passed"] == result["adversarial_cases"] == 27
     assert result["unsafe_acceptances"] == 0
     assert result["breaches"] == []
+    assert result['evaluation_scope']['independent_holdout_claim_supported'] is False
+    assert result['evaluation_scope']['reference_training_overlap']['overlapping_cases'] > 0
 
 
 def test_release_gate_blocks_unsafe_acceptance_and_failed_fixture() -> None:

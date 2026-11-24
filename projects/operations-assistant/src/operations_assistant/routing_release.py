@@ -7,7 +7,10 @@ import hashlib
 import json
 from pathlib import Path
 
-RELEASE_EVALUATOR_VERSION = "1.0.0"
+from operations_assistant.intent_evaluation import OVERLAP_NORMALIZATION, normalize_question
+from operations_assistant.model_adapter import TRAINING_EXAMPLES
+
+RELEASE_EVALUATOR_VERSION = "1.2.0"
 
 
 def _sha256(path: Path) -> str:
@@ -76,11 +79,37 @@ def _validate_evaluation(report: dict, label: str) -> None:
         raise ValueError(f"{label} evaluation must identify the model version")
 
 
+def _validate_reference_overlap(report: dict) -> None:
+    audit = report.get('reference_training_overlap')
+    if not isinstance(audit, dict):
+        raise ValueError('Fixed-routing evaluation must contain a reference-training overlap audit')
+    if audit.get('normalization') != OVERLAP_NORMALIZATION:
+        raise ValueError('Reference-training overlap normalization does not match')
+    if audit.get('independent_holdout_claim_supported') is not False:
+        raise ValueError('Reference-training overlap must not claim an independent holdout')
+    training = {normalize_question(question) for question, _label in TRAINING_EXAMPLES}
+    overlapping = 0
+    for row in report['results']:
+        question, flag = row.get('question'), row.get('overlaps_reference_training')
+        if not isinstance(question, str) or not question.strip() or not isinstance(flag, bool):
+            raise ValueError('Reference-training overlap case evidence is missing or invalid')
+        actual = normalize_question(question) in training
+        if flag is not actual:
+            raise ValueError('Reference-training overlap case flag does not match the reference')
+        overlapping += actual
+    expected = {'overlapping_cases': overlapping,
+                'non_overlapping_cases': len(report['results']) - overlapping}
+    for key, count in expected.items():
+        if type(audit.get(key)) is not int or audit[key] != count:
+            raise ValueError('Reference-training overlap totals do not reconcile')
+
+
 def evaluate_release(held_out: dict, adversarial: dict, policy: dict) -> dict:
     """Return a release decision derived from reconciled evaluation case evidence."""
 
     _validate_evaluation(held_out, "held-out")
     _validate_evaluation(adversarial, "adversarial")
+    _validate_reference_overlap(held_out)
     if held_out.get("model") != adversarial.get("model"):
         raise ValueError("Evaluation reports identify different model types")
     if held_out["model_version"] != adversarial["model_version"]:
@@ -139,6 +168,11 @@ def evaluate_release(held_out: dict, adversarial: dict, policy: dict) -> dict:
         "model_artifact_sha256": held_out.get("model_artifact_sha256"),
         "held_out_cases": held_out["cases"],
         "held_out_passed": held_out["passed"],
+        "evaluation_scope": {
+            "suite": "fixed routing regressions; legacy held_out keys retained",
+            "reference_training_overlap": held_out.get("reference_training_overlap"),
+            "independent_holdout_claim_supported": False,
+        },
         "adversarial_cases": adversarial["cases"],
         "adversarial_passed": adversarial["passed"],
         "unsafe_acceptances": unsafe_acceptances,
@@ -206,7 +240,7 @@ def main() -> int:
     )
     print(
         f"Routing release: {result['status']}; "
-        f"held-out {result['held_out_passed']}/{result['held_out_cases']}; "
+        f"fixed routing cases {result['held_out_passed']}/{result['held_out_cases']}; "
         f"adversarial {result['adversarial_passed']}/{result['adversarial_cases']}"
     )
     return 0 if result["status"] == "approved" else 1

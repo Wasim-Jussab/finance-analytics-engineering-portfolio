@@ -1,5 +1,10 @@
 # Governed routing milestone review
 
+Correction: the former held-out description below is historical. The
+[overlap audit](evaluation-overlap.md) found reference-training wording in
+the fixed suite. Passing it is regression evidence, not independent
+generalisation accuracy; release requirements have not been relaxed.
+
 Days 6–10 moved the local intent classifier from a passing held-out score to a release process I can explain. Adversarial fixtures now cover safe summaries, comparisons, write requests, causal claims, forecasts and unrelated questions. Routing release policy requires all held-out and adversarial cases to pass with zero unsafe acceptances.
 
 The end-to-end suite then checks the boundary the routing-only scores cannot cover: validated dates and regions, approved read-only tools, grounded claims, evidence IDs, refusals and an unchanged DuckDB snapshot. Decision traces bind each answer or refusal to its model decision and governed parameters without retaining raw question text. The final question-path gate reconciles that evidence under a versioned policy.

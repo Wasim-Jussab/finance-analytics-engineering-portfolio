@@ -83,13 +83,22 @@ def evaluate_answer(tool_result: dict, answer: dict) -> list[str]:
         failures.append("answer prose snapshot time does not match the approved tool result")
     if tool_result["tool"] == "delivery_summary":
         totals = tool_result["result"]["totals"]
+        period = tool_result["result"]["period"]
+        window = (
+            f"For {region}, {period['start_inclusive']} to {period['end_exclusive']} "
+            "(exclusive end), "
+        )
+        if not text.startswith(window):
+            failures.append("summary prose period does not match the approved tool result")
         rate = totals["on_time_rate"]
         fragments = {
             "due": f"{totals['due']} non-cancelled shipments were due:",
             "on_time": f"{totals['on_time']} on time,",
             "late_delivered": f"{totals['late_delivered']} delivered late and",
             "overdue_open": f"{totals['overdue_open']} still open after promise.",
-            "cancelled": f"{totals['cancelled']} cancelled rows are excluded",
+            "cancelled": (
+                f"{totals['cancelled']} cancelled rows are excluded from that denominator."
+            ),
             "on_time_rate": (
                 "The on-time completion rate is not calculable;"
                 if rate is None

@@ -1,12 +1,14 @@
-"""Evaluate held-out intent routing and abstention examples."""
+"""Execute fixed routing regressions and audit reference-training overlap."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 from operations_assistant.intent import LocalIntentModel
+from operations_assistant.model_adapter import TRAINING_EXAMPLES
 from operations_assistant.model_artifact import load_model_artifact
 
 EVALUATION_CASES = (
@@ -30,10 +32,17 @@ EVALUATION_CASES = (
     ("Create a song about parcels", "unsupported"),
 )
 
+OVERLAP_NORMALIZATION = 'lowercase ASCII alphanumeric tokens; collapsed whitespace'
+
+
+def normalize_question(question: str) -> str:
+    return ' '.join(re.sub(r'[^a-z0-9]+', ' ', question.lower()).split())
+
 
 def run_intent_evaluation(model: LocalIntentModel | None = None) -> dict:
     model = model or LocalIntentModel()
     results = []
+    training = {normalize_question(question) for question, _label in TRAINING_EXAMPLES}
     for question, expected in EVALUATION_CASES:
         prediction = model.predict(question)
         observed = prediction["label"] if prediction["accepted"] else "unsupported"
@@ -44,9 +53,11 @@ def run_intent_evaluation(model: LocalIntentModel | None = None) -> dict:
                 "observed": observed,
                 "confidence": prediction["confidence"],
                 "passed": observed == expected,
+                "overlaps_reference_training": normalize_question(question) in training,
             }
         )
     passed = sum(result["passed"] for result in results)
+    overlapping = sum(result['overlaps_reference_training'] for result in results)
     return {
         "mode": "executed local intent-model inference; no generative model",
         "model": "local-tfidf-logistic-regression",
@@ -55,6 +66,17 @@ def run_intent_evaluation(model: LocalIntentModel | None = None) -> dict:
         "cases": len(results),
         "passed": passed,
         "failed": len(results) - passed,
+        "reference_training_overlap": {
+            "normalization": OVERLAP_NORMALIZATION,
+            "overlapping_cases": overlapping,
+            "non_overlapping_cases": len(results) - overlapping,
+            "independent_holdout_claim_supported": False,
+            "limitation": (
+                "Fixed previously used regression cases, not an independent holdout. "
+                "Non-overlap does not establish semantic novelty or absence of tuning. "
+                "Overlap is relative to this repository's reference training examples."
+            ),
+        },
         "results": results,
     }
 
