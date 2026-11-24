@@ -1,0 +1,23 @@
+version: 2
+models:
+  - name: agg_loan_shortfall_concentration
+    description: >
+      One row per observed month and nonzero change direction. Fewest ordinal
+      ranked accounts covering at least 80% of that direction's gross magnitude.
+      This is a fixed descriptive review threshold, not a treatment policy.
+      Absent directions remain absent, not zero-population observations.
+    columns:
+      - name: snapshot_date
+        tests: [not_null]
+      - name: change_direction
+        tests: [not_null]
+      - name: accounts_to_review_threshold
+        tests: [not_null]
+      - name: covered_gross_change_amount
+        description: Gross magnitude covered by the minimal crossing prefix.
+        tests: [not_null]
+      - name: covered_gross_change_share
+        description: Actual crossing share, an unrounded fraction that can exceed 0.80.
+        tests: [not_null]
+      - name: previous_rank_gross_change_share
+        description: Predecessor share; null when the first account crosses the threshold.

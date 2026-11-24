@@ -364,6 +364,30 @@ each account's shortfall change. Together they equal the contribution
 population when a comparator exists; all three are null without one.
 An unchanged shortfall is not evidence of payment or an unchanged balance.
 
+`rpt_loan_shortfall_change_ranked` retains every contribution account and
+ranks increases and decreases separately within each month by absolute
+change descending, account ID ascending for ties. Zero and unknown changes
+have null ranks. Filtering a direction to rank <= N produces an ordinal
+top-N review, not a peer-tied rank or collections treatment recommendation.
+Use one snapshot date; amounts remain position changes, not cash flows.
+
+The ranked report's cumulative gross share divides the magnitude through
+the current rank by the full month's gross magnitude in that direction.
+Increase and decrease denominators are separate, never netted together.
+Shares are unrounded fractions (1 means 100%); zero/unknown changes stay
+null. The full-direction denominator is retained when selecting top N.
+
+`agg_loan_shortfall_concentration` returns the minimum ordinal account count
+covering at least 80% of a month's gross increase or gross decrease.
+The 80% threshold is a fixed descriptive review choice, not a business
+treatment rule. Exact threshold equality qualifies; ties follow account-ID
+order. Missing directions stay absent. Do not sum cumulative shares.
+
+The summary retains the actual covered gross amount/share at the crossing
+and the predecessor share. The crossing may exceed 80%; it is not rounded
+down to the threshold. A null predecessor means the first account qualifies,
+not that a prior account had zero movement. Amounts remain gross magnitudes.
+
 `agg_loan_portfolio_total_monthly` rolls up the reconciled product-month
 positions. Filter to one `snapshot_date` to answer portfolio coverage, or
 show one value per date as a trend. Do not sum positions across dates. The

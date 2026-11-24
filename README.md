@@ -64,7 +64,7 @@ Collections are cash received, not recognised revenue. Loan schedules are synthe
 
 - [Operations project](projects/operations-assistant/README.md)
 - [Portfolio coverage review](docs/portfolio-coverage-review.md)
-- [Shortfall movement review](docs/shortfall-movement-review.md)
+- [Shortfall concentration review](docs/shortfall-concentration-review.md)
 - [Local pipeline runbook](docs/local-pipeline-runbook.md)
 - [Pipeline health summary](docs/pipeline-health.md)
 - [Implementation guide and model catalogue](docs/implementation-guide.md)
