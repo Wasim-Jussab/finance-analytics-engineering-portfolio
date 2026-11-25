@@ -41,3 +41,10 @@ exit nonzero without publishing a decision at a fresh output path. Only
 consume the decision after a successful exit; a failed command does not
 delete an older output that already existed. The audit remains relative
 to reference training, not an independent holdout or proof of broad accuracy.
+
+The fixed-routing report also retains the model's label, acceptance flag,
+guardrail and primary decision reason per case. Diagnostics count raw-label
+matches separately from governed-outcome matches, and partition decisions
+into accepted, guardrail, model-unsupported or below-threshold cases, in
+that precedence. These are descriptive fixed-fixture counts, not calibrated
+probabilities, new release criteria or independent accuracy estimates.
