@@ -83,3 +83,43 @@ def test_unknown_month_or_comparator_is_refused(database, snapshot, message):
 def test_unapproved_direction_is_refused(database):
     with pytest.raises(ValueError, match="Direction"):
         build_review(database, date(2025, 2, 28), "arbitrary sql")
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "count",
+        "gross",
+        "missing",
+        "duplicate_summary",
+        "bad_ranks",
+        "duplicate_accounts",
+    ],
+)
+def test_inconsistent_models_are_refused_even_for_a_one_row_cap(database, mutation):
+    with duckdb.connect(str(database)) as con:
+        con.execute(
+            "create table mart.summary_copy as select * from mart.agg_loan_shortfall_concentration"
+        )
+        con.execute(
+            "create or replace view mart.agg_loan_shortfall_concentration "
+            "as select * from mart.summary_copy"
+        )
+        if mutation == "count":
+            con.execute("update mart.summary_copy set contributing_account_count=99")
+        elif mutation == "gross":
+            con.execute("update mart.summary_copy set direction_gross_change_amount=999")
+        elif mutation == "missing":
+            con.execute("delete from mart.summary_copy")
+        elif mutation == "duplicate_summary":
+            con.execute("insert into mart.summary_copy select * from mart.summary_copy")
+        else:
+            field = "3 as direction_rank" if mutation == "bad_ranks" else "'A' as account_id"
+            con.execute(
+                "create or replace view mart.rpt_loan_shortfall_change_ranked "
+                "as select * replace (" + field + ") from mart.ranked"
+            )
+    before = hashlib.sha256(database.read_bytes()).hexdigest()
+    with pytest.raises(ValueError, match="reconcile"):
+        build_review(database, date(2025, 2, 28), "Increase", 1)
+    assert hashlib.sha256(database.read_bytes()).hexdigest() == before

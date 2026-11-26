@@ -19,6 +19,7 @@ def build_review(database: Path, snapshot_date: date, direction: str, limit: int
     if type(snapshot_date) is not date:
         raise ValueError("Snapshot date must be a date")
     with duckdb.connect(str(database), read_only=True) as con:
+        con.begin()
         observed, comparable = con.execute(
             "select count(*), bool_or(has_previous_month) "
             "from mart.rpt_loan_shortfall_change_ranked where snapshot_date = ?",
@@ -28,12 +29,35 @@ def build_review(database: Path, snapshot_date: date, direction: str, limit: int
             raise ValueError("Snapshot date is not available")
         if not comparable:
             raise ValueError("Comparison month is not available")
-        summary = con.execute(
+        summaries = con.execute(
             "select contributing_account_count, direction_gross_change_amount "
             "from mart.agg_loan_shortfall_concentration "
             "where snapshot_date = ? and change_direction = ?",
             [snapshot_date, direction],
+        ).fetchall()
+        if len(summaries) > 1:
+            raise ValueError("Direction summary does not reconcile: duplicate grain")
+        summary = summaries[0] if summaries else None
+        count, gross, first_rank, last_rank, distinct_ranks, accounts, signs = con.execute(
+            "select count(*), sum(abs(scheduled_principal_shortfall_change)), "
+            "min(direction_rank), max(direction_rank), count(distinct direction_rank), "
+            "count(distinct account_id), sum(sign(scheduled_principal_shortfall_change)) "
+            "from mart.rpt_loan_shortfall_change_ranked "
+            "where snapshot_date = ? and change_direction = ?",
+            [snapshot_date, direction],
         ).fetchone()
+        if summary is None and count:
+            raise ValueError("Direction summary does not reconcile: missing direction")
+        if summary is not None and (
+            count <= 0
+            or gross is None
+            or gross <= 0
+            or summary != (count, gross)
+            or (first_rank, last_rank, distinct_ranks) != (1, count, count)
+            or accounts != count
+            or signs != (count if direction == "Increase" else -count)
+        ):
+            raise ValueError("Direction summary does not reconcile to full ranked population")
         rows = con.execute(
             "select account_id, direction_rank, scheduled_principal_shortfall_change "
             "from mart.rpt_loan_shortfall_change_ranked "
@@ -41,6 +65,7 @@ def build_review(database: Path, snapshot_date: date, direction: str, limit: int
             "order by direction_rank",
             [snapshot_date, direction, limit],
         ).fetchall()
+        con.commit()
     if summary and summary[1] <= 0:
         raise ValueError("Direction gross amount must be positive")
     selected = sum((abs(row[2]) for row in rows), Decimal("0.00"))

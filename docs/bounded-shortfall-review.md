@@ -23,3 +23,11 @@ This consumer trusts the reconciled dbt models; run verification first.
 These are synthetic principal-position changes, not cash collections,
 default/recovery evidence or a treatment recommendation. The selected
 prefix never replaces the full direction denominator. No model is used.
+
+The reader now uses one read-only transaction and reconciles summary grain,
+account count and gross magnitude against the full ranked direction before
+applying the row cap. Account IDs must be unique, ranks contiguous and
+distinct, and signs consistent with the selected direction. Missing or
+duplicate summary rows and inconsistent populations are refused rather
+than returned as apparently valid JSON. This is a targeted consumer check,
+not a replacement for the full dbt contract or proof of source authenticity.
