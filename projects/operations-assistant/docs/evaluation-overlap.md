@@ -48,3 +48,12 @@ matches separately from governed-outcome matches, and partition decisions
 into accepted, guardrail, model-unsupported or below-threshold cases, in
 that precedence. These are descriptive fixed-fixture counts, not calibrated
 probabilities, new release criteria or independent accuracy estimates.
+
+Release evaluator 1.3.0 now requires consistent decision diagnostics. It
+recomputes match/reason counts from case rows, checks approved raw labels,
+boolean acceptance, guardrail shape and the governed outcome/primary reason.
+Unknown counters and non-integer counts are refused. Old reports without
+diagnostics must be regenerated. Predictions, training and routing thresholds
+are unchanged. Acceptance is checked against the supplied decision fields,
+not re-derived from rounded confidence; this does not prove model execution,
+calibration or dataset provenance, and the fixed suite is still not a holdout.
