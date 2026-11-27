@@ -31,3 +31,9 @@ distinct, and signs consistent with the selected direction. Missing or
 duplicate summary rows and inconsistent populations are refused rather
 than returned as apparently valid JSON. This is a targeted consumer check,
 not a replacement for the full dbt contract or proof of source authenticity.
+
+Contiguous ranks alone do not prove that a capped page contains the largest
+movements. The reader also recomputes full-direction order by absolute
+movement descending, then account ID ascending for ties, and refuses ranks
+that disagree before applying the cap. This mirrors the current mart's
+ranking contract; changing that contract requires updating both checks.

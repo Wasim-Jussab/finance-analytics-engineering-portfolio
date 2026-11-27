@@ -54,6 +54,45 @@ def test_bounded_review_keeps_full_denominator_and_database_unchanged(
     assert hashlib.sha256(database.read_bytes()).hexdigest() == before
 
 
+@pytest.mark.parametrize("direction", ["Increase", "Decrease"])
+@pytest.mark.parametrize("tied", [False, True])
+def test_reader_refuses_contiguous_but_incorrectly_ordered_ranks(database, direction, tied):
+    with duckdb.connect(str(database)) as con:
+        if tied:
+            con.execute(
+                "update fixture set scheduled_principal_shortfall_change=80 where account_id='B'"
+            )
+            con.execute(
+                "update fixture set scheduled_principal_shortfall_change=-9 where account_id='D'"
+            )
+        con.execute(
+            "create or replace view mart.rpt_loan_shortfall_change_ranked as "
+            "select * replace (case when change_direction=? then 3-direction_rank "
+            "else direction_rank end as direction_rank) from mart.ranked".replace(
+                "?", "'" + direction + "'"
+            )
+        )
+    before = hashlib.sha256(database.read_bytes()).hexdigest()
+    with pytest.raises(ValueError, match="magnitude and account order"):
+        build_review(database, date(2025, 2, 28), direction, 1)
+    assert hashlib.sha256(database.read_bytes()).hexdigest() == before
+
+
+@pytest.mark.parametrize("direction,accounts", [("Increase", ["A", "B"]), ("Decrease", ["C", "D"])])
+def test_ties_use_account_order_and_full_page_covers_denominator(database, direction, accounts):
+    with duckdb.connect(str(database)) as con:
+        con.execute(
+            "update fixture set scheduled_principal_shortfall_change=80 where account_id='B'"
+        )
+        con.execute(
+            "update fixture set scheduled_principal_shortfall_change=-9 where account_id='D'"
+        )
+    report = build_review(database, date(2025, 2, 28), direction, 50)
+    assert [row["account_id"] for row in report["rows"]] == accounts
+    assert report["selected_gross_change_share"] == 1.0
+    assert report["has_more"] is False
+
+
 def test_absent_direction_is_not_invented_as_zero(database):
     report = build_review(database, date(2025, 3, 31), "Decrease", 5)
     assert report["status"] == "direction_absent"

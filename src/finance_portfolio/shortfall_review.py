@@ -58,6 +58,16 @@ def build_review(database: Path, snapshot_date: date, direction: str, limit: int
             or signs != (count if direction == "Increase" else -count)
         ):
             raise ValueError("Direction summary does not reconcile to full ranked population")
+        rank_mismatches = con.execute(
+            "select count(*) from (select direction_rank, row_number() over ("
+            "order by abs(scheduled_principal_shortfall_change) desc, account_id) expected_rank "
+            "from mart.rpt_loan_shortfall_change_ranked "
+            "where snapshot_date = ? and change_direction = ?) "
+            "where direction_rank != expected_rank",
+            [snapshot_date, direction],
+        ).fetchone()[0]
+        if rank_mismatches:
+            raise ValueError("Direction ranks do not reconcile to magnitude and account order")
         rows = con.execute(
             "select account_id, direction_rank, scheduled_principal_shortfall_change "
             "from mart.rpt_loan_shortfall_change_ranked "
