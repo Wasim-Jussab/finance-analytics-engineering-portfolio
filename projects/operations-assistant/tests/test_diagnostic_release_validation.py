@@ -20,6 +20,11 @@ from operations_assistant.routing_release import evaluate_release, load_release_
         "accepted_guardrail",
         "reason",
         "unknown_counter",
+        "missing_slices",
+        "slice_count",
+        "slice_float",
+        "slice_reason",
+        "extra_slice",
     ],
 )
 def test_release_refuses_inconsistent_decision_diagnostics(mutation):
@@ -44,8 +49,18 @@ def test_release_refuses_inconsistent_decision_diagnostics(mutation):
         row["accepted"] = True
     elif mutation == "reason":
         report["results"][0]["decision_reason"] = "made_up_reason"
-    else:
+    elif mutation == "unknown_counter":
         diagnostics["decision_counts"]["unknown_reason"] = 0
+    elif mutation == "missing_slices":
+        diagnostics.pop("by_expected_intent")
+    elif mutation == "slice_count":
+        diagnostics["by_expected_intent"]["delivery_summary"]["cases"] += 1
+    elif mutation == "slice_float":
+        diagnostics["by_expected_intent"]["delivery_summary"]["cases"] = 5.0
+    elif mutation == "slice_reason":
+        diagnostics["by_expected_intent"]["unsupported"]["decision_counts"]["guardrail"] += 1
+    else:
+        diagnostics["by_expected_intent"]["invented_intent"] = {}
     assert report["passed"] == report["cases"] == 18
     with pytest.raises(ValueError, match="[Dd]iagnostic"):
         evaluate_release(

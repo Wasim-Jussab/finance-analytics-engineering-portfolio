@@ -44,3 +44,21 @@ def test_executed_diagnostics_reconcile_to_fixed_case_results():
         if row["guardrail"]:
             assert row["decision_reason"] == "guardrail"
     assert report["reference_training_overlap"]["independent_holdout_claim_supported"] is False
+    slices = diagnostics["by_expected_intent"]
+    assert set(slices) == {
+        "delivery_summary",
+        "compare_delivery_periods",
+        "delivery_exceptions",
+        "unsupported",
+    }
+    assert sum(s["cases"] for s in slices.values()) == report["cases"]
+    for field in ("raw_label_matches", "governed_label_matches"):
+        assert sum(s[field] for s in slices.values()) == diagnostics[field]
+    for intent, summary in slices.items():
+        rows = [r for r in report["results"] if r["expected"] == intent]
+        assert summary["cases"] == len(rows)
+        assert summary["raw_label_matches"] == sum(r["model_label"] == intent for r in rows)
+        assert summary["governed_label_matches"] == sum(r["observed"] == intent for r in rows)
+        for reason, count in summary["decision_counts"].items():
+            assert count == sum(r["decision_reason"] == reason for r in rows)
+        assert sum(summary["decision_counts"].values()) == len(rows)

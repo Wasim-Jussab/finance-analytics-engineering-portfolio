@@ -57,3 +57,14 @@ diagnostics must be regenerated. Predictions, training and routing thresholds
 are unchanged. Acceptance is checked against the supplied decision fields,
 not re-derived from rounded confidence; this does not prove model execution,
 calibration or dataset provenance, and the fixed suite is still not a holdout.
+
+## Per-question-type diagnostics
+
+Decision diagnostics now include `by_expected_intent`: case counts, raw and
+governed label matches, and reason counts for each expected question type.
+These partition the same fixed regressions, not newly sampled data. They
+show where successful governed outcomes rely on refusals or guardrails.
+Release evaluator 1.4.0 recomputes every slice from case rows and refuses
+missing, extra or inconsistent slices, including non-integer counts.
+Regenerate older evaluation reports. No model or threshold was changed;
+these small, reused groups are not independent accuracy estimates.

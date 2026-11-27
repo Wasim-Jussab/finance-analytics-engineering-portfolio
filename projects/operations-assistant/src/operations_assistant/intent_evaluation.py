@@ -43,6 +43,18 @@ def summarize_decisions(results: list[dict]) -> dict:
     """Count fixed-fixture model labels separately from governed outcomes."""
     reasons = ("accepted", "guardrail", "model_unsupported", "below_threshold")
     return {
+        "by_expected_intent": {
+            intent: {
+                "cases": len(group),
+                "raw_label_matches": sum(r["model_label"] == intent for r in group),
+                "governed_label_matches": sum(r["observed"] == intent for r in group),
+                "decision_counts": {
+                    reason: sum(r["decision_reason"] == reason for r in group) for reason in reasons
+                },
+            }
+            for intent in sorted({r["expected"] for r in results})
+            for group in [[r for r in results if r["expected"] == intent]]
+        },
         "raw_label_matches": sum(r["model_label"] == r["expected"] for r in results),
         "governed_label_matches": sum(r["observed"] == r["expected"] for r in results),
         "decision_counts": {

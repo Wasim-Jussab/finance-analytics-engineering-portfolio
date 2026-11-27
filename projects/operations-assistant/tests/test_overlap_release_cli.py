@@ -45,7 +45,7 @@ def test_release_command_checks_audit_before_publishing_decision(tmp_path, case)
         assert result.returncode == 0, result.stderr
         decision = json.loads(output.read_text(encoding="utf-8"))
         assert decision["status"] == "approved"
-        assert decision["release_evidence"]["evaluator_version"] == "1.3.0"
+        assert decision["release_evidence"]["evaluator_version"] == "1.4.0"
         assert decision["evaluation_scope"]["independent_holdout_claim_supported"] is False
     else:
         assert result.returncode != 0

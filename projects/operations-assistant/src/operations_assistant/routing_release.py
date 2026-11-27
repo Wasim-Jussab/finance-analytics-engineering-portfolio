@@ -14,7 +14,7 @@ from operations_assistant.intent_evaluation import (
 )
 from operations_assistant.model_adapter import TRAINING_EXAMPLES
 
-RELEASE_EVALUATOR_VERSION = "1.3.0"
+RELEASE_EVALUATOR_VERSION = "1.4.0"
 
 
 def _sha256(path: Path) -> str:
@@ -149,6 +149,12 @@ def _validate_decision_diagnostics(report: dict) -> None:
         if row["observed"] != observed or row.get("decision_reason") != reason:
             raise ValueError("Decision diagnostic outcome or reason does not reconcile")
     expected = summarize_decisions(report["results"])
+    slices = diagnostics.get("by_expected_intent")
+    # Canonical JSON also distinguishes bool/float counts from integer counts.
+    if json.dumps(slices, sort_keys=True) != json.dumps(
+        expected["by_expected_intent"], sort_keys=True
+    ):
+        raise ValueError("Decision diagnostic intent slices do not reconcile")
     for field in ("raw_label_matches", "governed_label_matches"):
         value = diagnostics.get(field)
         if type(value) is not int or value != expected[field]:
