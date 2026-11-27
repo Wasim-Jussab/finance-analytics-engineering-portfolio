@@ -388,6 +388,11 @@ and the predecessor share. The crossing may exceed 80%; it is not rounded
 down to the threshold. A null predecessor means the first account qualifies,
 not that a prior account had zero movement. Amounts remain gross magnitudes.
 
+The [bounded CLI review](bounded-shortfall-review.md) exposes these ranked
+contributions through read-only parameterized queries, with explicit date,
+direction and row cap. It preserves full-direction denominators and
+distinguishes absent directions from unavailable comparisons.
+
 `agg_loan_portfolio_total_monthly` rolls up the reconciled product-month
 positions. Filter to one `snapshot_date` to answer portfolio coverage, or
 show one value per date as a trend. Do not sum positions across dates. The
