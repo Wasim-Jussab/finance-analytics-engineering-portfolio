@@ -41,3 +41,30 @@ exit nonzero without publishing a decision at a fresh output path. Only
 consume the decision after a successful exit; a failed command does not
 delete an older output that already existed. The audit remains relative
 to reference training, not an independent holdout or proof of broad accuracy.
+
+The fixed-routing report also retains the model's label, acceptance flag,
+guardrail and primary decision reason per case. Diagnostics count raw-label
+matches separately from governed-outcome matches, and partition decisions
+into accepted, guardrail, model-unsupported or below-threshold cases, in
+that precedence. These are descriptive fixed-fixture counts, not calibrated
+probabilities, new release criteria or independent accuracy estimates.
+
+Release evaluator 1.3.0 now requires consistent decision diagnostics. It
+recomputes match/reason counts from case rows, checks approved raw labels,
+boolean acceptance, guardrail shape and the governed outcome/primary reason.
+Unknown counters and non-integer counts are refused. Old reports without
+diagnostics must be regenerated. Predictions, training and routing thresholds
+are unchanged. Acceptance is checked against the supplied decision fields,
+not re-derived from rounded confidence; this does not prove model execution,
+calibration or dataset provenance, and the fixed suite is still not a holdout.
+
+## Per-question-type diagnostics
+
+Decision diagnostics now include `by_expected_intent`: case counts, raw and
+governed label matches, and reason counts for each expected question type.
+These partition the same fixed regressions, not newly sampled data. They
+show where successful governed outcomes rely on refusals or guardrails.
+Release evaluator 1.4.0 recomputes every slice from case rows and refuses
+missing, extra or inconsistent slices, including non-integer counts.
+Regenerate older evaluation reports. No model or threshold was changed;
+these small, reused groups are not independent accuracy estimates.

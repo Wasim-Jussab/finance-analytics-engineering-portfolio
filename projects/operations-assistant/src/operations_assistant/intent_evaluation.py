@@ -32,11 +32,36 @@ EVALUATION_CASES = (
     ("Create a song about parcels", "unsupported"),
 )
 
-OVERLAP_NORMALIZATION = 'lowercase ASCII alphanumeric tokens; collapsed whitespace'
+OVERLAP_NORMALIZATION = "lowercase ASCII alphanumeric tokens; collapsed whitespace"
 
 
 def normalize_question(question: str) -> str:
-    return ' '.join(re.sub(r'[^a-z0-9]+', ' ', question.lower()).split())
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", question.lower()).split())
+
+
+def summarize_decisions(results: list[dict]) -> dict:
+    """Count fixed-fixture model labels separately from governed outcomes."""
+    reasons = ("accepted", "guardrail", "model_unsupported", "below_threshold")
+    return {
+        "by_expected_intent": {
+            intent: {
+                "cases": len(group),
+                "raw_label_matches": sum(r["model_label"] == intent for r in group),
+                "governed_label_matches": sum(r["observed"] == intent for r in group),
+                "decision_counts": {
+                    reason: sum(r["decision_reason"] == reason for r in group) for reason in reasons
+                },
+            }
+            for intent in sorted({r["expected"] for r in results})
+            for group in [[r for r in results if r["expected"] == intent]]
+        },
+        "raw_label_matches": sum(r["model_label"] == r["expected"] for r in results),
+        "governed_label_matches": sum(r["observed"] == r["expected"] for r in results),
+        "decision_counts": {
+            reason: sum(r["decision_reason"] == reason for r in results) for reason in reasons
+        },
+        "interpretation": "Fixed regression counts, not independent model accuracy or calibration.",
+    }
 
 
 def run_intent_evaluation(model: LocalIntentModel | None = None) -> dict:
@@ -46,18 +71,31 @@ def run_intent_evaluation(model: LocalIntentModel | None = None) -> dict:
     for question, expected in EVALUATION_CASES:
         prediction = model.predict(question)
         observed = prediction["label"] if prediction["accepted"] else "unsupported"
+        reason = (
+            "guardrail"
+            if prediction["guardrail"]
+            else "model_unsupported"
+            if prediction["label"] == "unsupported"
+            else "accepted"
+            if prediction["accepted"]
+            else "below_threshold"
+        )
         results.append(
             {
                 "question": question,
                 "expected": expected,
                 "observed": observed,
+                "model_label": prediction["label"],
+                "accepted": prediction["accepted"],
+                "guardrail": prediction["guardrail"],
+                "decision_reason": reason,
                 "confidence": prediction["confidence"],
                 "passed": observed == expected,
                 "overlaps_reference_training": normalize_question(question) in training,
             }
         )
     passed = sum(result["passed"] for result in results)
-    overlapping = sum(result['overlaps_reference_training'] for result in results)
+    overlapping = sum(result["overlaps_reference_training"] for result in results)
     return {
         "mode": "executed local intent-model inference; no generative model",
         "model": "local-tfidf-logistic-regression",
@@ -78,6 +116,7 @@ def run_intent_evaluation(model: LocalIntentModel | None = None) -> dict:
             ),
         },
         "results": results,
+        "decision_diagnostics": summarize_decisions(results),
     }
 
 

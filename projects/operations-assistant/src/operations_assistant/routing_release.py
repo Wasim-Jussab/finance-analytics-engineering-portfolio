@@ -7,10 +7,14 @@ import hashlib
 import json
 from pathlib import Path
 
-from operations_assistant.intent_evaluation import OVERLAP_NORMALIZATION, normalize_question
+from operations_assistant.intent_evaluation import (
+    OVERLAP_NORMALIZATION,
+    normalize_question,
+    summarize_decisions,
+)
 from operations_assistant.model_adapter import TRAINING_EXAMPLES
 
-RELEASE_EVALUATOR_VERSION = "1.2.0"
+RELEASE_EVALUATOR_VERSION = "1.4.0"
 
 
 def _sha256(path: Path) -> str:
@@ -80,28 +84,89 @@ def _validate_evaluation(report: dict, label: str) -> None:
 
 
 def _validate_reference_overlap(report: dict) -> None:
-    audit = report.get('reference_training_overlap')
+    audit = report.get("reference_training_overlap")
     if not isinstance(audit, dict):
-        raise ValueError('Fixed-routing evaluation must contain a reference-training overlap audit')
-    if audit.get('normalization') != OVERLAP_NORMALIZATION:
-        raise ValueError('Reference-training overlap normalization does not match')
-    if audit.get('independent_holdout_claim_supported') is not False:
-        raise ValueError('Reference-training overlap must not claim an independent holdout')
+        raise ValueError("Fixed-routing evaluation must contain a reference-training overlap audit")
+    if audit.get("normalization") != OVERLAP_NORMALIZATION:
+        raise ValueError("Reference-training overlap normalization does not match")
+    if audit.get("independent_holdout_claim_supported") is not False:
+        raise ValueError("Reference-training overlap must not claim an independent holdout")
     training = {normalize_question(question) for question, _label in TRAINING_EXAMPLES}
     overlapping = 0
-    for row in report['results']:
-        question, flag = row.get('question'), row.get('overlaps_reference_training')
+    for row in report["results"]:
+        question, flag = row.get("question"), row.get("overlaps_reference_training")
         if not isinstance(question, str) or not question.strip() or not isinstance(flag, bool):
-            raise ValueError('Reference-training overlap case evidence is missing or invalid')
+            raise ValueError("Reference-training overlap case evidence is missing or invalid")
         actual = normalize_question(question) in training
         if flag is not actual:
-            raise ValueError('Reference-training overlap case flag does not match the reference')
+            raise ValueError("Reference-training overlap case flag does not match the reference")
         overlapping += actual
-    expected = {'overlapping_cases': overlapping,
-                'non_overlapping_cases': len(report['results']) - overlapping}
+    expected = {
+        "overlapping_cases": overlapping,
+        "non_overlapping_cases": len(report["results"]) - overlapping,
+    }
     for key, count in expected.items():
         if type(audit.get(key)) is not int or audit[key] != count:
-            raise ValueError('Reference-training overlap totals do not reconcile')
+            raise ValueError("Reference-training overlap totals do not reconcile")
+
+
+def _validate_decision_diagnostics(report: dict) -> None:
+    diagnostics = report.get("decision_diagnostics")
+    if not isinstance(diagnostics, dict):
+        raise ValueError("Decision diagnostics are required")
+    approved = {
+        "delivery_summary",
+        "compare_delivery_periods",
+        "delivery_exceptions",
+        "unsupported",
+    }
+    for row in report["results"]:
+        label, accepted, guardrail = (
+            row.get("model_label"),
+            row.get("accepted"),
+            row.get("guardrail"),
+        )
+        if (
+            not isinstance(label, str)
+            or label not in approved
+            or not isinstance(accepted, bool)
+            or "guardrail" not in row
+            or (guardrail is not None and (not isinstance(guardrail, str) or not guardrail))
+        ):
+            raise ValueError("Decision diagnostic case evidence is invalid")
+        if accepted and (guardrail is not None or label == "unsupported"):
+            raise ValueError("Decision diagnostic acceptance contradicts case evidence")
+        observed = label if accepted else "unsupported"
+        reason = (
+            "guardrail"
+            if guardrail
+            else "model_unsupported"
+            if label == "unsupported"
+            else "accepted"
+            if accepted
+            else "below_threshold"
+        )
+        if row["observed"] != observed or row.get("decision_reason") != reason:
+            raise ValueError("Decision diagnostic outcome or reason does not reconcile")
+    expected = summarize_decisions(report["results"])
+    slices = diagnostics.get("by_expected_intent")
+    # Canonical JSON also distinguishes bool/float counts from integer counts.
+    if json.dumps(slices, sort_keys=True) != json.dumps(
+        expected["by_expected_intent"], sort_keys=True
+    ):
+        raise ValueError("Decision diagnostic intent slices do not reconcile")
+    for field in ("raw_label_matches", "governed_label_matches"):
+        value = diagnostics.get(field)
+        if type(value) is not int or value != expected[field]:
+            raise ValueError("Decision diagnostic match counts do not reconcile")
+    counts = diagnostics.get("decision_counts")
+    if (
+        not isinstance(counts, dict)
+        or set(counts) != set(expected["decision_counts"])
+        or any(type(v) is not int for v in counts.values())
+        or counts != expected["decision_counts"]
+    ):
+        raise ValueError("Decision diagnostic reason counts do not reconcile")
 
 
 def evaluate_release(held_out: dict, adversarial: dict, policy: dict) -> dict:
@@ -110,6 +175,7 @@ def evaluate_release(held_out: dict, adversarial: dict, policy: dict) -> dict:
     _validate_evaluation(held_out, "held-out")
     _validate_evaluation(adversarial, "adversarial")
     _validate_reference_overlap(held_out)
+    _validate_decision_diagnostics(held_out)
     if held_out.get("model") != adversarial.get("model"):
         raise ValueError("Evaluation reports identify different model types")
     if held_out["model_version"] != adversarial["model_version"]:
@@ -185,9 +251,7 @@ def evaluate_release(held_out: dict, adversarial: dict, policy: dict) -> dict:
     }
 
 
-def build_release_decision(
-    held_out_path: Path, adversarial_path: Path, policy_path: Path
-) -> dict:
+def build_release_decision(held_out_path: Path, adversarial_path: Path, policy_path: Path) -> dict:
     held_out = _load_json(held_out_path, "held-out evaluation")
     adversarial = _load_json(adversarial_path, "adversarial evaluation")
     policy = load_release_policy(policy_path)
@@ -222,18 +286,12 @@ def write_release_decision(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--held-out", type=Path, default=Path("reports/intent-evaluation.json")
-    )
+    parser.add_argument("--held-out", type=Path, default=Path("reports/intent-evaluation.json"))
     parser.add_argument(
         "--adversarial", type=Path, default=Path("reports/adversarial-evaluation.json")
     )
-    parser.add_argument(
-        "--policy", type=Path, default=Path("config/routing-release-policy.json")
-    )
-    parser.add_argument(
-        "--output", type=Path, default=Path("reports/routing-release.json")
-    )
+    parser.add_argument("--policy", type=Path, default=Path("config/routing-release-policy.json"))
+    parser.add_argument("--output", type=Path, default=Path("reports/routing-release.json"))
     arguments = parser.parse_args()
     result = write_release_decision(
         arguments.held_out, arguments.adversarial, arguments.policy, arguments.output
